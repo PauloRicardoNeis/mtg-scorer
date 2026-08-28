@@ -23,7 +23,10 @@ The repository is at the **first vertical-slice stage**.
 Read the [measurement contract](docs/measurement-contract.md) before changing
 feature semantics or scoring. The [implementation plan](docs/implementation-plan.md)
 records what was changed after the foundation release and what remains deliberately
-deferred.
+deferred. The
+[polyglot application boundary](docs/adr/0001-polyglot-application-boundary.md)
+records how the future Python, Java, and React applications will cooperate without
+duplicating analytical logic.
 
 ## Core idea
 
@@ -177,14 +180,43 @@ precomputed gold tables through an API.
 
 Planned product stack:
 
-- Python for ingestion, analytics, and scoring;
+- Python for ingestion, feature research, model evaluation, and batch scoring;
 - Parquet/DuckDB for exploratory and batch computation;
-- PostgreSQL for eventual concurrent serving;
-- FastAPI for the read API;
-- Next.js for the Forge-oriented interface.
+- PostgreSQL for stable, versioned serving tables and product data;
+- Java 21 and Spring Boot for the product API, authentication, collections, and
+  saved searches;
+- TypeScript, React, and Next.js for the public Forge-oriented interface.
 
 No application request should scrape or query a third-party site live. External
 data belongs in the ingestion pipeline.
+
+### Product boundary
+
+Python owns the volatile empirical work; Spring Boot owns the durable product
+boundary. The two runtimes exchange versioned data through PostgreSQL or immutable
+Parquet artifacts. Java must not spawn Python during an HTTP request, and the same
+score formula must not be maintained independently in both languages.
+
+```text
+Batch publication
+Scryfall / tournament sources -> Python -> Parquet/DuckDB -> PostgreSQL
+
+User request
+Browser -> Next.js -> Spring Boot -> PostgreSQL
+```
+
+The first interface should expose the score surface rather than hide it behind a
+single ranking. A user should be able to:
+
+- search and filter by set, date, color, legality, rarity, and owned cards;
+- sort independently by Staple, Build-around, Evidence, and Distinctiveness;
+- inspect the observations and coverage behind every score;
+- discover coherent card packages rather than lists of near-duplicate candidates;
+- save Forge card pools, searches, and prospective deck packages.
+
+The current repository is still the Python analytical application. The Java API
+and React interface will be introduced only after one empirical vertical slice
+produces a useful, reproducible score snapshot.
 
 ## Current domain model
 
@@ -241,6 +273,8 @@ src/mtg_scorer/
   ingest/scryfall.py    immutable Scryfall snapshot pipeline
 
 docs/
+  adr/
+    0001-polyglot-application-boundary.md
   measurement-contract.md
   implementation-plan.md
 
@@ -297,8 +331,10 @@ not downloaded corpora.
 5. Add historical card-pool and legality snapshots.
 6. Add deck-family clustering and regularized package association.
 7. Calibrate against sentinel cards and known deck families.
-8. Materialize stable gold tables for a read API.
-9. Add Forge filters for sets, rarity, card pools, and owned cards.
+8. Materialize stable gold tables and publish them to PostgreSQL.
+9. Add the Java 21/Spring Boot read API over those immutable score snapshots.
+10. Add the Next.js interface with Forge filters, score explanations, and owned
+    card pools.
 
 The unresolved statistical questions are research work, not empty spaces to fill
 with arbitrary constants.
