@@ -16,5 +16,9 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Format
+        run: ruff format --check .
       - name: Test
         run: pytest -q

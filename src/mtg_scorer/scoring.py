@@ -1,16 +1,13 @@
-"""Replaceable score models over normalized historical features.
-
-The formulas in this module are deliberately provisional. Their job in the
-foundation release is to establish invariants and interfaces, not to canonize a
-particular weighting scheme.
-"""
+"""Replaceable score models over missing-aware historical features."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from hashlib import sha256
+from json import dumps
 from math import exp
 
-from .domain import CardFeatures
+from .features import CardFeatures, FeatureObservation
 
 
 def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
@@ -21,52 +18,65 @@ def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
 
 
 @dataclass(frozen=True, slots=True)
+class ScoreContext:
+    """Data and feature identities required to reproduce a score."""
+
+    dataset_snapshot_id: str
+    feature_pipeline_version: str
+
+    def __post_init__(self) -> None:
+        for field_name in ("dataset_snapshot_id", "feature_pipeline_version"):
+            if not getattr(self, field_name).strip():
+                raise ValueError(f"{field_name} cannot be blank")
+
+
+@dataclass(frozen=True, slots=True)
 class ScoreConfig:
-    """Versioned weights for one interpretation of the historical evidence."""
+    """Versioned weights for one interpretation of historical evidence."""
 
-    version: str = "foundation-v1"
+    version: str = "foundation-v2"
 
-    # Staple score: breadth and incidence are intentionally dominant.
     staple_incidence: float = 0.35
-    staple_archetype_breadth: float = 0.25
+    staple_deck_family_breadth: float = 0.25
     staple_format_era_breadth: float = 0.15
     staple_competitive_proof: float = 0.20
     staple_commitment: float = 0.05
 
-    # Engine score: package/specificity dominate and repetition saturates upstream.
-    engine_specificity: float = 0.25
-    engine_package_coherence: float = 0.25
-    engine_commitment: float = 0.15
-    engine_competitive_proof: float = 0.20
-    engine_repeat_evidence: float = 0.10
-    engine_choice_freedom: float = 0.05
+    buildaround_specificity: float = 0.25
+    buildaround_package_coherence: float = 0.25
+    buildaround_commitment: float = 0.15
+    buildaround_competitive_proof: float = 0.20
+    buildaround_recurrence: float = 0.10
+    buildaround_choice_freedom: float = 0.05
 
-    # Evidence score: sample volume and coverage quality are separate from the estimate.
-    evidence_decks: float = 0.35
-    evidence_events: float = 0.30
+    evidence_decks: float = 0.30
+    evidence_events: float = 0.25
     evidence_matches: float = 0.20
-    evidence_coverage: float = 0.15
+    evidence_source_coverage: float = 0.15
+    evidence_feature_availability: float = 0.10
 
     def __post_init__(self) -> None:
+        if not self.version.strip():
+            raise ValueError("version cannot be blank")
         _validate_weight_group(
             "staple",
             (
                 self.staple_incidence,
-                self.staple_archetype_breadth,
+                self.staple_deck_family_breadth,
                 self.staple_format_era_breadth,
                 self.staple_competitive_proof,
                 self.staple_commitment,
             ),
         )
         _validate_weight_group(
-            "engine",
+            "buildaround",
             (
-                self.engine_specificity,
-                self.engine_package_coherence,
-                self.engine_commitment,
-                self.engine_competitive_proof,
-                self.engine_repeat_evidence,
-                self.engine_choice_freedom,
+                self.buildaround_specificity,
+                self.buildaround_package_coherence,
+                self.buildaround_commitment,
+                self.buildaround_competitive_proof,
+                self.buildaround_recurrence,
+                self.buildaround_choice_freedom,
             ),
         )
         _validate_weight_group(
@@ -75,20 +85,33 @@ class ScoreConfig:
                 self.evidence_decks,
                 self.evidence_events,
                 self.evidence_matches,
-                self.evidence_coverage,
+                self.evidence_source_coverage,
+                self.evidence_feature_availability,
             ),
         )
+
+    @property
+    def fingerprint(self) -> str:
+        """Hash the complete configuration so a reused version label cannot lie."""
+
+        payload = dumps(asdict(self), sort_keys=True, separators=(",", ":"))
+        return sha256(payload.encode()).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
 class ScoreBreakdown:
-    """Human-facing scores on a 0-100 scale, except uniqueness (-100 to 100)."""
+    """Human-facing estimates plus their complete computational identity."""
 
     model_version: str
+    model_config_hash: str
+    dataset_snapshot_id: str
+    feature_pipeline_version: str
     staple: float
-    engine: float
+    buildaround_signal: float
     evidence: float
-    uniqueness: float
+    distinctiveness_delta: float
+    staple_feature_coverage: float
+    buildaround_feature_coverage: float
 
 
 DEFAULT_CONFIG = ScoreConfig()
@@ -96,60 +119,85 @@ DEFAULT_CONFIG = ScoreConfig()
 
 def score_card(
     features: CardFeatures,
+    context: ScoreContext,
     config: ScoreConfig = DEFAULT_CONFIG,
 ) -> ScoreBreakdown:
-    """Score a feature vector without mutating or interpreting source data.
+    """Score normalized features without interpreting unavailable data as zero.
 
-    A card with no observed decks is hard-gated to zero Engine score. This prevents
-    obscurity alone from masquerading as strategic uniqueness. Once at least one
-    observation exists, sparse evidence is reflected by the independent Evidence
-    score instead of automatically crushing the Engine estimate.
+    Known features are reweighted within their score group. The returned feature
+    coverage records how much of the configured model was actually observable.
+    A build-around score is a strategy-specificity signal, not a causal assertion
+    that the card alone generated its associated deck.
     """
 
-    staple = 100.0 * (
-        config.staple_incidence * features.incidence
-        + config.staple_archetype_breadth * features.archetype_breadth
-        + config.staple_format_era_breadth * features.format_era_breadth
-        + config.staple_competitive_proof * features.competitive_proof
-        + config.staple_commitment * features.commitment
+    staple, staple_coverage = _weighted_estimate(
+        (
+            (features.incidence, config.staple_incidence),
+            (features.deck_family_breadth, config.staple_deck_family_breadth),
+            (features.format_era_breadth, config.staple_format_era_breadth),
+            (features.competitive_proof, config.staple_competitive_proof),
+            (features.commitment, config.staple_commitment),
+        )
     )
 
     if features.deck_count == 0:
-        engine = 0.0
+        buildaround = 0.0
+        buildaround_coverage = 0.0
     else:
-        engine = 100.0 * (
-            config.engine_specificity * features.specificity
-            + config.engine_package_coherence * features.package_coherence
-            + config.engine_commitment * features.commitment
-            + config.engine_competitive_proof * features.competitive_proof
-            + config.engine_repeat_evidence * features.repeat_evidence
-            + config.engine_choice_freedom * features.choice_freedom
+        buildaround, buildaround_coverage = _weighted_estimate(
+            (
+                (features.specificity, config.buildaround_specificity),
+                (features.package_coherence, config.buildaround_package_coherence),
+                (features.commitment, config.buildaround_commitment),
+                (features.competitive_proof, config.buildaround_competitive_proof),
+                (features.recurrence, config.buildaround_recurrence),
+                (features.choice_freedom, config.buildaround_choice_freedom),
+            )
         )
 
+    feature_availability = (staple_coverage + buildaround_coverage) / 2.0
+    source_coverage = features.coverage_strength.value or 0.0
     evidence = 100.0 * (
         config.evidence_decks * _saturating_evidence(features.deck_count, scale=8.0)
         + config.evidence_events * _saturating_evidence(features.event_count, scale=4.0)
-        + config.evidence_matches * _saturating_evidence(features.full_field_matches, scale=40.0)
-        + config.evidence_coverage * features.coverage_strength
+        + config.evidence_matches
+        * _saturating_evidence(features.full_field_match_count, scale=40.0)
+        + config.evidence_source_coverage * source_coverage
+        + config.evidence_feature_availability * feature_availability
     )
 
     staple = _round_score(staple)
-    engine = _round_score(engine)
+    buildaround = _round_score(buildaround)
     evidence = _round_score(evidence)
-    uniqueness = round(engine - staple, 1)
 
     return ScoreBreakdown(
         model_version=config.version,
+        model_config_hash=config.fingerprint,
+        dataset_snapshot_id=context.dataset_snapshot_id,
+        feature_pipeline_version=context.feature_pipeline_version,
         staple=staple,
-        engine=engine,
+        buildaround_signal=buildaround,
         evidence=evidence,
-        uniqueness=uniqueness,
+        distinctiveness_delta=round(buildaround - staple, 1),
+        staple_feature_coverage=round(100.0 * staple_coverage, 1),
+        buildaround_feature_coverage=round(100.0 * buildaround_coverage, 1),
     )
 
 
-def _saturating_evidence(count: int, *, scale: float) -> float:
-    """Map count to [0, 1) with large gains early and diminishing returns later."""
+def _weighted_estimate(
+    observations: tuple[tuple[FeatureObservation, float], ...],
+) -> tuple[float, float]:
+    known = tuple(
+        (observation.value, weight) for observation, weight in observations if observation.is_known
+    )
+    covered_weight = sum(weight for _, weight in known)
+    if covered_weight == 0.0:
+        return 0.0, 0.0
+    estimate = sum(value * weight for value, weight in known if value is not None) / covered_weight
+    return 100.0 * estimate, covered_weight
 
+
+def _saturating_evidence(count: int, *, scale: float) -> float:
     if count <= 0:
         return 0.0
     return 1.0 - exp(-count / scale)

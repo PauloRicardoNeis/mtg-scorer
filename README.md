@@ -1,247 +1,257 @@
 # MTG Scorer
 
-Historical Magic: The Gathering analytics for finding cards that are worth building around.
+Historical Magic: The Gathering analytics for finding cards worth building
+around.
 
-The immediate use case is **Forge Adventure / Quest**: given the sets and rarities currently available to a player, surface cards with evidence of competitive potential and explain *why* they are interesting. The broader goal is a historical card-discovery engine that distinguishes ubiquitous good cards from cards that enable distinctive strategies.
+The immediate use case is **Forge Adventure / Quest**: given the sets and
+rarities currently available to a player, surface cards with competitive pedigree
+and explain *why* they are interesting. The broader goal is a historical discovery
+engine that distinguishes ubiquitous good cards from cards belonging to
+distinctive strategies.
 
 ## Project status
 
-This repository is at the **foundation stage**. The data model and scoring boundaries are being established before large-scale ingestion begins.
+The repository is at the **first vertical-slice stage**.
 
-The scoring formulas are **not settled**. Treat every score as a versioned interpretation of historical evidence, not as ground truth. Contributors should preserve raw observations and derived features so formulas can change without re-ingesting the world.
+- Source-independent facts, provenance, coverage, missing-aware features, and
+  reproducible scoring contracts are implemented.
+- Scryfall bulk data can be preserved as an immutable raw snapshot and normalized
+  into Oracle-card and printing Parquet tables.
+- Tournament ingestion and empirical feature computation are next.
+- Score weights remain provisional and must not be treated as ground truth.
+
+Read the [measurement contract](docs/measurement-contract.md) before changing
+feature semantics or scoring. The [implementation plan](docs/implementation-plan.md)
+records what was changed after the foundation release and what remains deliberately
+deferred.
 
 ## Core idea
 
-A single `power` number conflates two different questions:
+A single `power` number conflates distinct questions:
 
-1. **Staple Score** — How broadly and repeatedly has a card proved competitively useful?
-2. **Engine Score** — How much evidence suggests that a card enables, anchors, or is unusually specific to a strategy?
+1. **Staple Score** — How broadly and repeatedly has a card proved competitively
+   useful?
+2. **Build-around Signal** — How specifically and coherently does a card belong to
+   a distinctive strategy package?
+3. **Evidence Score** — How much trustworthy data supports those estimates?
 
-From those we can derive useful views such as:
+A high Build-around Signal makes a card an **Engine Candidate**. It does not prove
+that the card causally generated the deck: decklists alone cannot reliably
+distinguish an engine from a narrow payoff, redundant enabler, or indispensable
+support card.
 
-- **Uniqueness** = Engine Score − Staple Score
-- **Evidence** = how much trustworthy data supports the estimate
-- later: **Generativity** = whether a card appears to spawn multiple packages rather than merely depend on one
-
-A card can therefore be:
-
-| Pattern | Staple | Engine | Interpretation |
+| Pattern | Staple | Build-around | Interpretation |
 | --- | ---: | ---: | --- |
-| Ubiquitous format staple | High | Low | Generally powerful; useful in many decks |
+| Ubiquitous format staple | High | Low | Broadly useful card |
 | Archetype pillar | High | High | Powerful and strategically defining |
-| Rogue / hidden engine | Low | High | Prime build-around candidate |
-| Bulk / unsupported | Low | Low | Little historical evidence of either role |
+| Rogue engine candidate | Low | High | Prime discovery target |
+| Unsupported card | Low | Low | Little historical evidence of either role |
 
-The **low-Staple / high-Engine quadrant** is especially important for Forge: it is where unusual cards with real deckbuilding pedigree should emerge.
+`Build-around - Staple` is exposed as **Distinctiveness Delta**, but it is a
+descriptive coordinate rather than the canonical ranking. A mediocre `50/0` card
+should not automatically outrank a genuine `95/70` archetype pillar.
 
-## Design principles
-
-### 1. Store evidence, not conclusions
+## Epistemic architecture
 
 The durable record is:
 
-> event → deck entry → cards → result
-
-Scores are disposable views over that evidence. The repository should maintain a hard boundary between:
-
 ```text
+RAW SNAPSHOT
+What exactly did the source return?
+
+  ↓
+
 FACTS
-Which decks contained this card? At what event? When? In what quantity?
+Events, deck registrations, standings, matches, and cards
 
   ↓
 
 FEATURES
-How frequent? How concentrated? With what other cards? How successful?
+Incidence, commitment, concentration, recurrence, and proof
 
   ↓
 
 JUDGMENTS
-Staple = 72, Engine = 91, Evidence = 48
+Staple, Build-around, Evidence, and explanations
 ```
 
-### 2. Historical context is first-class
+Scores are disposable views. Raw observations and feature inputs must remain
+rebuildable when a parser, normalization, or formula changes.
 
-We do **not** want only the current metagame. Usage should remain attributable to format and time period so we can detect phenomena such as:
+### Unknown is not zero
 
-- Standard cards that disappear after rotation
-- cards that survive into larger eternal card pools
-- obscure cards that appear only in one successful strategy
-- cards rediscovered years after printing
-- strategies that recur independently across eras
+Unavailable competitive proof is not failed competitive proof. Each semantic
+feature therefore carries:
 
-### 3. Coverage quality matters
+- a normalized value or `None`;
+- supporting observation count;
+- an eligible denominator when meaningful.
 
-Historical Magic sources are heterogeneous. These are not equivalent datasets:
+Scoring reweights known features and reports feature coverage. Sparse data may
+produce a strong signal, but never counterfeit completeness.
 
-- every decklist and result from a 128-player event
-- only the Top 8 from a 128-player event
-- only undefeated / 5-0 lists
-- decklists with no match results
+### Coverage is multidimensional
 
-Every imported event or observation must therefore retain a coverage classification. We must never infer field-wide win rates from a source that only publishes winners.
+Historical sources may contain complete standings, partial decklists, and no
+round data. Coverage is recorded independently for:
 
-Initial coverage vocabulary:
+- decklists;
+- standings;
+- matches.
+
+Each dimension retains a semantic scope (`FULL_FIELD`, `TOP_CUT`, `WINNERS`,
+`PARTIAL`, `NONE`, or `UNKNOWN`) plus measured counts when available. Winners-only
+data can describe published winning decks; it cannot establish field-wide win
+rates or metagame share.
+
+### Provenance is mandatory
+
+Every normalized fact retains:
+
+- source and source record identifier;
+- timezone-aware retrieval timestamp;
+- raw snapshot reference;
+- parser version.
+
+Every score additionally records:
 
 ```text
-FULL_FIELD
-FULL_FIELD_PARTIAL_MATCHES
-TOP_CUT_ONLY
-WINNING_DECKS_ONLY
-UNKNOWN
+dataset_snapshot_id
+feature_pipeline_version
+score_model_version
+score_config_hash
 ```
 
-### 4. Provenance is non-negotiable
+## Historical normalization
 
-Normalized data should retain enough source metadata to audit and rebuild it:
-
-- source name
-- source event/deck identifier when available
-- retrieval timestamp
-- raw source payload or snapshot reference
-- parser version
-
-If a parser assumption later proves wrong, we should be able to regenerate normalized data without guessing what the source originally said.
-
-### 5. Archetypes should not become a prerequisite
-
-Human archetype labels are useful but inconsistent across decades and sources. Initial analytics should work directly from decklists using card incidence, co-occurrence, concentration, and pairwise association.
-
-Later, empirical deck clusters or external archetype labels can augment those signals.
-
-## Planned data sources
-
-The architecture is source-agnostic, but the intended initial sources are:
-
-- **Scryfall** — canonical card identity and metadata; use Oracle identity rather than individual printings for scoring
-- **TopDeck.gg** — structured tournament data where complete standings / decklists / match information are available
-- **MTGTop8 or another deep historical corpus** — historical breadth; ingestion must respect the source's access rules and must record its more limited coverage semantics
-
-No application request should depend on scraping a third-party site live. External data belongs in an ingestion pipeline; the product reads our normalized database.
-
-## Data architecture
-
-We use a simple bronze → silver → gold model:
+Global lifetime incidence is invalid because it conflates age, legality, format
+popularity, tournament volume, and source coverage. Features must first be
+computed inside bounded strata such as:
 
 ```text
-External sources
-      │
-      ▼
-┌───────────────┐
-│ Bronze        │ raw source snapshots / payloads
-└───────┬───────┘
-        ▼
-┌───────────────┐
-│ Silver        │ canonical cards, events, deck entries, results
-└───────┬───────┘
-        ▼
-┌───────────────┐
-│ Gold          │ analytical features and versioned scores
-└───────────────┘
+source + format + era + coverage class
 ```
 
-The intended production stack is deliberately mundane:
+Only eligible decks belong in a card's opportunity denominator. Current legality
+must not be projected backward into historical events.
 
-- **Python** for ingestion, feature computation, and scoring
-- **PostgreSQL** for normalized observations and precomputed analytics
-- **FastAPI** for the eventual read API
-- **Next.js** for the eventual web UI
+Human archetype labels are also inconsistent across decades and sources. Initial
+analytics should work from decklists directly. Empirical deck clusters or
+externally versioned labels can later augment those observations.
 
-We should not introduce distributed infrastructure until the dataset demonstrates a need for it.
+## Co-occurrence and package discovery
 
-## Initial domain model
-
-The first implementation models the analytical atoms rather than a database ORM:
-
-- `Tournament`
-- `DeckEntry`
-- `DeckCard`
-- `CoverageQuality`
-- `CardFeatures`
-- versioned score configuration / score result types
-
-A future persistence layer can map these to PostgreSQL without coupling ingestion and scoring code to SQLAlchemy from day one.
-
-## Scoring philosophy
-
-### Staple Score
-
-Should strongly reward **incidence and breadth**:
-
-- repeated competitive appearances
-- usage across multiple deck families
-- usage across formats / eras
-- competitive performance
-- typical main-deck commitment
-
-Incidence should use diminishing returns (for example logarithmic scaling) so the most ubiquitous cards do not numerically obliterate every merely common card.
-
-### Engine Score
-
-Should reward **strategic specificity** while letting repetition saturate quickly:
-
-- archetype / deck-cluster concentration
-- strong co-occurrence or lift with a distinctive package
-- repeated 3–4-of main-deck commitment
-- competitive proof
-- survival / rediscovery in card pools with greater choice
-
-One successful, highly coherent rogue deck should be allowed to produce a high Engine Score. Sparse evidence should lower **confidence**, not automatically erase the signal.
-
-### Evidence Score
-
-Evidence is deliberately separate from the estimate itself.
-
-For example:
-
-```text
-Engine:   91
-Evidence: 28
-```
-
-means "the observed pattern looks very engine-like, but we have little data." This is preferable to silently forcing every sparse card toward mediocrity.
-
-### Uniqueness
-
-Once Staple and Engine are normalized to comparable scales:
-
-```text
-Uniqueness = Engine − Staple
-```
-
-This should elevate unusual build-arounds without rewarding cards that are merely obscure. A card with no competitive evidence should have neither a meaningful Engine score nor meaningful positive uniqueness.
-
-## Why co-occurrence matters
-
-For cards `A` and `B`, a useful primitive is lift:
+Pairwise lift is useful for exploration:
 
 ```text
 Lift(A, B) = P(A and B) / (P(A) × P(B))
 ```
 
-High lift means the pair occurs together far more often than chance would predict. A card whose competitive appearances repeatedly form a peculiar constellation of high-lift partners is strong evidence of a strategy-specific role.
+Raw lift is unstable for rare cards. A single unique deck makes every pair inside
+it look perfectly associated. Production features must therefore retain support
+and use a regularized statistic such as smoothed log-lift, normalized PMI, or
+prior-adjusted log odds.
 
-This also permits later directional analysis:
+Package discovery should eventually group adjacent engine candidates into one
+strategy fingerprint. Otherwise a rogue deck may become ten apparently separate
+recommendations that all lead to the same list.
+
+## Data architecture
+
+The pipeline follows a bronze → silver → gold model:
 
 ```text
-P(B | A) vs P(A | B)
+External source
+      ↓
+Bronze: immutable payloads and manifests
+      ↓
+Silver: canonical facts in Parquet
+      ↓
+Gold: versioned features, packages, and scores
 ```
 
-which may help distinguish a generative engine from a card that simply depends on another engine.
+The initial analytical store is **Parquet queried through DuckDB**. This workload
+is dominated by scans, aggregations, and co-occurrence computation rather than
+transactions. PostgreSQL remains appropriate later for serving stable,
+precomputed gold tables through an API.
+
+Planned product stack:
+
+- Python for ingestion, analytics, and scoring;
+- Parquet/DuckDB for exploratory and batch computation;
+- PostgreSQL for eventual concurrent serving;
+- FastAPI for the read API;
+- Next.js for the Forge-oriented interface.
+
+No application request should scrape or query a third-party site live. External
+data belongs in the ingestion pipeline.
+
+## Current domain model
+
+- `Provenance`
+- `CoverageDimension` and `CoverageProfile`
+- `OracleCard` and `CardPrinting`
+- `Tournament`
+- `DeckEntry`
+- `Standing`
+- `Match` and `MatchParticipant`
+- `FeatureObservation` and `CardFeatures`
+- `ScoreContext`, `ScoreConfig`, and `ScoreBreakdown`
+
+Deck registration, standing, and match are separate facts. A source aggregate may
+be retained, but round-level evidence must not be irreversibly collapsed into it.
+
+## Data sources
+
+### Scryfall
+
+Scryfall supplies canonical card and printing metadata. Scoring uses Oracle IDs;
+printing rows preserve set, rarity, and release information required by Forge
+filters.
+
+The importer:
+
+1. fetches the current default-cards bulk manifest;
+2. downloads the payload once;
+3. records its checksum, retrieval time, source timestamp, and parser version;
+4. streams JSON arrays or JSONL, including gzip-compressed payloads;
+5. emits `oracle_cards.parquet` and `card_printings.parquet`;
+6. reuses a verified existing snapshot rather than overwriting it.
+
+### TopDeck
+
+TopDeck is the intended first tournament adapter because it can expose standings,
+structured decklists, and optional round data. It requires an API key and visible
+attribution. The adapter will begin with one bounded format-era slice rather than
+pretending that current coverage solves historical breadth.
+
+### Historical corpus
+
+MTGTop8 or another deep corpus may later add historical reach. Ingestion must obey
+the source's access rules and encode its coverage limitations explicitly.
 
 ## Repository layout
 
 ```text
 src/mtg_scorer/
-  domain.py      Source-independent observations and feature types
-  scoring.py     Versioned, replaceable scoring logic
+  domain.py             source-independent facts
+  features.py           missing-aware analytical features
+  scoring.py            versioned, replaceable score model
+  cli.py                local command-line entry point
+  ingest/scryfall.py    immutable Scryfall snapshot pipeline
+
+docs/
+  measurement-contract.md
+  implementation-plan.md
 
 tests/
+  fixtures/
+  test_domain.py
   test_scoring.py
-
-README.md        Product, statistical, and contribution context
+  test_scryfall_ingest.py
 ```
 
-The layout will expand when ingestion and persistence are implemented. Keep new source adapters outside the domain/scoring core.
+Keep source adapters outside the factual domain and scoring core.
 
 ## Development
 
@@ -252,41 +262,43 @@ python -m venv .venv
 source .venv/bin/activate      # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 pytest
+ruff check .
+ruff format --check .
 ```
+
+Ingest the current Scryfall catalog locally:
+
+```bash
+mtg-scorer ingest-scryfall --data-dir data/local
+```
+
+Raw and generated local data are ignored by Git. Commit fixtures and contracts,
+not downloaded corpora.
 
 ## Contributor rules
 
-When adding or changing functionality:
-
-1. **Do not bake source-specific fields into the core domain unless they express a general concept.** Translate source quirks in adapters.
-2. **Do not discard provenance or coverage limitations.** Unknown is preferable to fabricated precision.
-3. **Do not make score formulas irreversible.** Derived values must be reproducible from stored observations/features.
-4. **Version material scoring changes.** A score should be interpretable in terms of the model that produced it.
-5. **Prefer explainable features.** Users should eventually be able to click a score and see why the card received it.
-6. **Add tests for scoring invariants, not only exact fixture numbers.** Example: additional cross-archetype incidence should increase Staple evidence; mere obscurity should not manufacture Engine evidence.
-7. **Keep the product use case in view.** We are ranking cards to help humans discover promising decks, not trying to produce an abstract universal ranking of Magic cards.
+1. Do not bake source-specific quirks into the core domain.
+2. Do not discard provenance or coverage limitations.
+3. Do not turn unavailable features into zeros.
+4. Preserve raw numerators, denominators, and intermediate statistics before
+   normalization.
+5. Version data snapshots, feature pipelines, and score configurations.
+6. Prefer explainable features whose inputs can be shown to a user.
+7. Add tests for invariants and pairwise expectations, not only fixture numbers.
+8. Do not claim that co-occurrence proves causal engine status.
+9. Keep the Forge discovery use case in view.
 
 ## Near-term roadmap
 
-1. Establish domain types and versioned scoring interfaces. **(this foundation PR)**
-2. Import Scryfall bulk card metadata and canonicalize names / Oracle IDs.
-3. Add the first tournament-source adapter with explicit coverage semantics.
-4. Persist normalized events, decks, and deck-card observations in PostgreSQL.
-5. Compute incidence, breadth, commitment, result-quality, and evidence features.
-6. Add card-pair co-occurrence / lift features.
-7. Calibrate Staple and Engine formulas against hand-picked historical examples.
-8. Expose read-only rankings and card explanations through an API.
-9. Add Forge filters for available sets, rarity, format/card-pool constraints, and owned cards.
+1. Import one bounded TopDeck format-era slice with raw snapshots.
+2. Normalize events, decks, standings, matches, and coverage profiles.
+3. Compute incidence, commitment, competitive proof, and evidence features.
+4. Emit an explainable CSV or terminal ranking before building an API.
+5. Add historical card-pool and legality snapshots.
+6. Add deck-family clustering and regularized package association.
+7. Calibrate against sentinel cards and known deck families.
+8. Materialize stable gold tables for a read API.
+9. Add Forge filters for sets, rarity, card pools, and owned cards.
 
-## What is explicitly *not* solved yet
-
-Several important questions are intentionally open:
-
-- the exact weights and nonlinear transforms for Staple / Engine
-- how event prestige and field size should affect competitive proof
-- the best normalization across formats and eras
-- how to measure post-rotation survival without privileging formats with better data coverage
-- how to infer independent archetypes / deck clusters robustly
-- whether `Generativity` deserves its own score or should remain an explanatory feature
-
-Those are research questions for this project, not omissions to hide behind arbitrary constants.
+The unresolved statistical questions are research work, not empty spaces to fill
+with arbitrary constants.
