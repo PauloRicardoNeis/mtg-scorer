@@ -13,6 +13,13 @@ from math import exp
 from .domain import CardFeatures
 
 
+def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
+    if any(weight < 0 for weight in weights):
+        raise ValueError(f"{name} weights cannot be negative")
+    if abs(sum(weights) - 1.0) > 1e-9:
+        raise ValueError(f"{name} weights must sum to 1.0; got {sum(weights)}")
+
+
 @dataclass(frozen=True, slots=True)
 class ScoreConfig:
     """Versioned weights for one interpretation of the historical evidence."""
@@ -150,10 +157,3 @@ def _saturating_evidence(count: int, *, scale: float) -> float:
 
 def _round_score(value: float) -> float:
     return round(min(100.0, max(0.0, value)), 1)
-
-
-def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
-    if any(weight < 0 for weight in weights):
-        raise ValueError(f"{name} weights cannot be negative")
-    if abs(sum(weights) - 1.0) > 1e-9:
-        raise ValueError(f"{name} weights must sum to 1.0; got {sum(weights)}")
