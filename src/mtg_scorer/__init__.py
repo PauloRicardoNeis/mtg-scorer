@@ -16,6 +16,13 @@ from .domain import (
     Tournament,
 )
 from .features import CardFeatures, FeatureObservation
+from .publication import (
+    PublishedCard,
+    PublishedPrinting,
+    build_catalog,
+    build_demonstration_catalog,
+    write_catalog,
+)
 from .scoring import ScoreBreakdown, ScoreConfig, ScoreContext, score_card
 
 __all__ = [
@@ -32,10 +39,15 @@ __all__ = [
     "MatchResult",
     "OracleCard",
     "Provenance",
+    "PublishedCard",
+    "PublishedPrinting",
     "ScoreBreakdown",
     "ScoreConfig",
     "ScoreContext",
     "Standing",
     "Tournament",
+    "build_catalog",
+    "build_demonstration_catalog",
     "score_card",
+    "write_catalog",
 ]

@@ -38,6 +38,18 @@ Python publishes immutable, versioned results. Spring Boot reads those results a
 adds transactional product behavior. Next.js communicates with Spring Boot through
 a versioned HTTP contract.
 
+## First conformance slice
+
+The initial implementation uses a classpath `card-catalog-v1` JSON artifact rather
+than PostgreSQL. Python generates the artifact through the real scoring model from
+synthetic feature observations; both the API and interface label it
+`DEMONSTRATION`.
+
+This is a contract probe, not an architectural exception. The Java repository
+interface will acquire a PostgreSQL implementation when empirical gold tables
+exist. Neither the HTTP response nor the React consumer needs to know which
+repository supplied the published snapshot.
+
 ## Invariants
 
 1. An application request never invokes the Python runtime.

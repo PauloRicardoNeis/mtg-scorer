@@ -17,8 +17,11 @@ The repository is at the **first vertical-slice stage**.
   reproducible scoring contracts are implemented.
 - Scryfall bulk data can be preserved as an immutable raw snapshot and normalized
   into Oracle-card and printing Parquet tables.
+- Python can publish the versioned `card-catalog-v1` product contract; a Java 21
+  API and Next.js discovery screen consume its bundled demonstration snapshot.
 - Tournament ingestion and empirical feature computation are next.
-- Score weights remain provisional and must not be treated as ground truth.
+- The visible demonstration scores are synthetic, and the provisional weights
+  must not be treated as tournament evidence or ground truth.
 
 Read the [measurement contract](docs/measurement-contract.md) before changing
 feature semantics or scoring. The [implementation plan](docs/implementation-plan.md)
@@ -214,9 +217,17 @@ single ranking. A user should be able to:
 - discover coherent card packages rather than lists of near-duplicate candidates;
 - save Forge card pools, searches, and prospective deck packages.
 
-The current repository is still the Python analytical application. The Java API
-and React interface will be introduced only after one empirical vertical slice
-produces a useful, reproducible score snapshot.
+The first product conformance slice now exercises the entire boundary using an
+explicitly synthetic catalog:
+
+```text
+Python scorer -> card-catalog-v1 JSON -> Spring Boot API -> Next.js page
+```
+
+This proves serialization, filtering, ordering, explanations, and lineage without
+pretending that invented fixtures are historical results. PostgreSQL replaces the
+classpath catalog only after an empirical vertical slice produces a useful,
+reproducible score snapshot; the HTTP contract need not change.
 
 ## Current domain model
 
@@ -269,8 +280,12 @@ src/mtg_scorer/
   domain.py             source-independent facts
   features.py           missing-aware analytical features
   scoring.py            versioned, replaceable score model
+  publication.py        versioned product-catalog publisher
   cli.py                local command-line entry point
   ingest/scryfall.py    immutable Scryfall snapshot pipeline
+
+api/                    Java 21 / Spring Boot product API
+web/                    TypeScript / React / Next.js discovery interface
 
 docs/
   adr/
@@ -281,6 +296,7 @@ docs/
 tests/
   fixtures/
   test_domain.py
+  test_publication.py
   test_scoring.py
   test_scryfall_ingest.py
 ```
@@ -289,7 +305,9 @@ Keep source adapters outside the factual domain and scoring core.
 
 ## Development
 
-Requires Python 3.12+.
+Requires Python 3.12+, Java 21 with Maven, and Node.js 20.9+ with npm.
+
+Install and verify the analytical application:
 
 ```bash
 python -m venv .venv
@@ -305,6 +323,25 @@ Ingest the current Scryfall catalog locally:
 ```bash
 mtg-scorer ingest-scryfall --data-dir data/local
 ```
+
+Run the first product slice in separate terminals:
+
+```bash
+# Terminal 1: regenerate the explicitly synthetic contract fixture, then run Java
+mtg-scorer export-demo-catalog
+cd api
+mvn spring-boot:run
+
+# Terminal 2: run the React/Next.js interface
+cd web
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3000`. The Spring Boot API is available at
+`http://localhost:8080/api/v1/cards`. See the
+[API contract](docs/api-contract.md) for filters and response semantics.
 
 Raw and generated local data are ignored by Git. Commit fixtures and contracts,
 not downloaded corpora.
@@ -332,9 +369,10 @@ not downloaded corpora.
 6. Add deck-family clustering and regularized package association.
 7. Calibrate against sentinel cards and known deck families.
 8. Materialize stable gold tables and publish them to PostgreSQL.
-9. Add the Java 21/Spring Boot read API over those immutable score snapshots.
-10. Add the Next.js interface with Forge filters, score explanations, and owned
-    card pools.
+9. Replace the Java classpath catalog adapter with a PostgreSQL adapter while
+   preserving `card-catalog-v1` response semantics.
+10. Replace the React demonstration surface with empirical Forge filters, package
+    discovery, and owned-card pools.
 
 The unresolved statistical questions are research work, not empty spaces to fill
 with arbitrary constants.
