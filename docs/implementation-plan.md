@@ -24,6 +24,24 @@ keeps deferred work explicit.
   canonicalizer that emits Oracle-card and printing Parquet tables.
 - Added Ruff lint and formatting checks to CI.
 
+## Implemented in the first product conformance slice
+
+- Added a Python-owned `card-catalog-v1` publication contract and atomic JSON
+  writer.
+- Added a deterministic demonstration catalog produced by the real score model
+  from explicitly synthetic features.
+- Added a Java 21/Spring Boot 4.1 API that loads the published contract behind a
+  repository interface.
+- Added card-name, set, and rarity filtering plus independent Staple,
+  Build-around, Evidence, and Distinctiveness ordering.
+- Added Oracle-ID lookup and integration tests over the actual HTTP boundary.
+- Added a TypeScript/React/Next.js discovery page with filters, score explanations,
+  demonstration labeling, and snapshot lineage.
+- Added independent Python, Java, and web CI jobs.
+
+This slice proves language and HTTP contracts. It does not constitute an empirical
+score release, a PostgreSQL implementation, or a deployment.
+
 ## Next pull request: first tournament vertical slice
 
 Use one bounded format and era from TopDeck rather than attempting historical
@@ -52,10 +70,10 @@ Deliverables:
 7. Materialize stable, versioned gold tables for publication.
 8. Introduce PostgreSQL when concurrent serving and indexed product queries
    justify an operational database.
-9. Add a Java 21/Spring Boot API for search, filters, score explanations, user
-   collections, and saved searches.
-10. Add a TypeScript/React interface with Next.js only after the vertical slice
-    produces useful explanations.
+9. Replace the demonstration catalog repository with PostgreSQL while preserving
+   the Java API contract; then add user collections and saved searches.
+10. Replace demonstration data in the Next.js interface only after the tournament
+    slice produces useful explanations.
 
 ## Product application sequence
 
@@ -63,19 +81,21 @@ The product layer deliberately follows the analytical proof rather than precedin
 it. See
 [ADR 0001](adr/0001-polyglot-application-boundary.md) for the language boundary.
 
-### 1. Publish one useful snapshot
+### 1. Publish one useful snapshot — empirical work pending
 
 Python computes a bounded, reproducible score snapshot and its explanations.
 DuckDB and Parquet remain the analytical substrate. Before an API exists, the
 snapshot must already be useful as a CSV or terminal report.
 
-### 2. Define the publication contract
+### 2. Define the publication contract — JSON boundary implemented
 
-Create versioned PostgreSQL gold tables for cards, score snapshots, feature
-observations, explanations, and package memberships. Publishing a new snapshot is
-an explicit batch operation; an HTTP request never starts the Python pipeline.
+`card-catalog-v1` now defines cards, printings, scores, explanations, and complete
+snapshot identity. The demonstration file proves the boundary. Versioned
+PostgreSQL gold tables remain pending for cards, score snapshots, feature
+observations, explanations, and package memberships. Publishing a new snapshot
+remains an explicit batch operation; an HTTP request never starts Python.
 
-### 3. Add the Java API
+### 3. Add the Java API — read slice implemented
 
 Introduce a Java 21/Spring Boot application around stable product queries:
 
@@ -85,17 +105,19 @@ Introduce a Java 21/Spring Boot application around stable product queries:
 - owned-card collections, saved searches, and prospective deck packages;
 - authentication, validation, and transactional product state.
 
-The API consumes published results. It does not reimplement experimental feature
-engineering or scoring.
+The API now consumes the JSON publication through a repository interface and does
+not reimplement experimental feature engineering or scoring. PostgreSQL,
+authentication, and transactional user state remain later increments.
 
-### 4. Add the React interface
+### 4. Add the React interface — discovery slice implemented
 
 Introduce a TypeScript/React application using Next.js for routing, public page
 metadata, and server rendering where useful. Its first vertical slice is card
 discovery plus a score explanation—not a broad dashboard shell.
 
-The browser calls a versioned Spring Boot API and never connects directly to
-PostgreSQL, Parquet files, or external MTG sources.
+The browser calls the versioned Spring Boot API and never connects directly to
+PostgreSQL, Parquet files, or external MTG sources. The current interface labels
+its synthetic input prominently; empirical filters follow tournament ingestion.
 
 ## Deliberately unresolved
 

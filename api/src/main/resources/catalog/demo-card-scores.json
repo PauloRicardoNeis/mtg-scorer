@@ -1,0 +1,95 @@
+{
+  "cards": [
+    {
+      "colors": [
+        "R"
+      ],
+      "name": "Example Bolt",
+      "oracleId": "oracle-demo-bolt",
+      "printings": [
+        {
+          "rarity": "common",
+          "releasedAt": "2020-01-01",
+          "setCode": "old"
+        },
+        {
+          "rarity": "uncommon",
+          "releasedAt": "2024-01-01",
+          "setCode": "new"
+        }
+      ],
+      "reasons": [
+        "Broad repeated incidence raises the Staple estimate.",
+        "Recurrence across bounded contexts strengthens the signal."
+      ],
+      "scores": {
+        "buildaroundFeatureCoverage": 100.0,
+        "buildaroundSignal": 50.8,
+        "distinctivenessDelta": -37.7,
+        "evidence": 98.8,
+        "staple": 88.5,
+        "stapleFeatureCoverage": 100.0
+      }
+    },
+    {
+      "colors": [],
+      "name": "Example Engine",
+      "oracleId": "oracle-demo-engine",
+      "printings": [
+        {
+          "rarity": "rare",
+          "releasedAt": "2023-06-01",
+          "setCode": "eng"
+        }
+      ],
+      "reasons": [
+        "Strategy concentration raises the Build-around estimate.",
+        "A coherent supporting package strengthens strategic specificity."
+      ],
+      "scores": {
+        "buildaroundFeatureCoverage": 100.0,
+        "buildaroundSignal": 83.0,
+        "distinctivenessDelta": 57.6,
+        "evidence": 50.7,
+        "staple": 25.4,
+        "stapleFeatureCoverage": 100.0
+      }
+    },
+    {
+      "colors": [
+        "B"
+      ],
+      "name": "Example Recursive Threat",
+      "oracleId": "oracle-demo-recursive-threat",
+      "printings": [
+        {
+          "rarity": "uncommon",
+          "releasedAt": "2021-10-08",
+          "setCode": "rec"
+        }
+      ],
+      "reasons": [
+        "Strategy concentration raises the Build-around estimate.",
+        "A coherent supporting package strengthens strategic specificity.",
+        "Recurrence across bounded contexts strengthens the signal."
+      ],
+      "scores": {
+        "buildaroundFeatureCoverage": 100.0,
+        "buildaroundSignal": 72.9,
+        "distinctivenessDelta": 30.0,
+        "evidence": 96.8,
+        "staple": 42.9,
+        "stapleFeatureCoverage": 100.0
+      }
+    }
+  ],
+  "catalogKind": "DEMONSTRATION",
+  "contractVersion": "card-catalog-v1",
+  "snapshot": {
+    "datasetSnapshotId": "demo-synthetic-v1",
+    "featurePipelineVersion": "demo-features-v1",
+    "publishedAt": "2026-08-28T00:00:00Z",
+    "scoreConfigHash": "e5ea5aa285728144d9f5326d7f5db41532fe0dbe4c62c85e63cd6a1c01402102",
+    "scoreModelVersion": "foundation-v2"
+  }
+}

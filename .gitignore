@@ -13,6 +13,12 @@ venv/
 .coverage
 htmlcov/
 
+# Java / JavaScript build output
+api/target/
+node_modules/
+.next/
+*.tsbuildinfo
+
 # Editors / OS
 .idea/
 .vscode/
@@ -22,6 +28,7 @@ Thumbs.db
 # Local data and secrets
 .env
 .env.*
+!**/.env.example
 data/raw/
 data/local/
 data/silver/
