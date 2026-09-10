@@ -1,0 +1,4 @@
+api/mvnw text eol=lf
+api/mvnw.cmd text eol=crlf
+# These source payloads and manifest are identified by their exact byte hashes.
+analytics/seeds/scryfall-layouts-v1/*.json -text

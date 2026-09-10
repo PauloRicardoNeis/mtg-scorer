@@ -1,0 +1,148 @@
+{
+  "probe_version": "catalog-feasibility-v1",
+  "selection": "purposeful-layout-sample",
+  "records": [
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Lightning+Bolt&set=m11",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:04.536068+00:00",
+      "raw_file": "00.json",
+      "sha256": "89e82011e759f1557128577ed860c50cab19e08ad626ad869a0cc84bbbf7a142",
+      "scryfall_id": "e768c957-3a1f-42f5-853a-96942f645df5",
+      "oracle_id": "4457ed35-7c10-48c8-9776-456485fdf070",
+      "name": "Lightning Bolt",
+      "layout": "normal",
+      "set_code": "m11",
+      "rarity": "common",
+      "face_count": 0,
+      "top_level_missing": [],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Lightning+Bolt&set=2x2",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:05.617271+00:00",
+      "raw_file": "01.json",
+      "sha256": "7bd764315288c5e092d589cdfa26e167b09fd15655c06da5fa72a70ddd1ca7a4",
+      "scryfall_id": "f29ba16f-c8fb-42fe-aabf-87089cb214a7",
+      "oracle_id": "4457ed35-7c10-48c8-9776-456485fdf070",
+      "name": "Lightning Bolt",
+      "layout": "normal",
+      "set_code": "2x2",
+      "rarity": "uncommon",
+      "face_count": 0,
+      "top_level_missing": [],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Delver+of+Secrets",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:06.835455+00:00",
+      "raw_file": "02.json",
+      "sha256": "3f99d6ac91fcb8496d9b35eddd2858f095f608e449e8677cb575ca1384fb3a9a",
+      "scryfall_id": "6904ea20-e504-47da-95a0-08739fdde260",
+      "oracle_id": "edd531b9-f615-4399-8c8c-1c5e18c4acbf",
+      "name": "Delver of Secrets // Insectile Aberration",
+      "layout": "transform",
+      "set_code": "inr",
+      "rarity": "common",
+      "face_count": 2,
+      "top_level_missing": [
+        "mana_cost",
+        "oracle_text",
+        "colors"
+      ],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Fire+%2F%2F+Ice",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:08.078399+00:00",
+      "raw_file": "03.json",
+      "sha256": "0988b1d1e1538f59ec83e301d17614afb35504511b19ffab2b939b200f2b8ede",
+      "scryfall_id": "18303862-4726-4136-814f-157aa7006579",
+      "oracle_id": "ae92942b-919c-4ea9-b693-85fcef765d5a",
+      "name": "Fire // Ice",
+      "layout": "split",
+      "set_code": "dmr",
+      "rarity": "uncommon",
+      "face_count": 2,
+      "top_level_missing": [
+        "oracle_text"
+      ],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Bonecrusher+Giant",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:09.312730+00:00",
+      "raw_file": "04.json",
+      "sha256": "7afef9a5e954fc806b38af36ae9959fc200404500edeeef0e5c19a9bd5cc4dd2",
+      "scryfall_id": "b5b71cd2-de35-451f-b16e-2e3936169407",
+      "oracle_id": "d6d72f5f-8f5d-4180-b514-f22ff5482902",
+      "name": "Bonecrusher Giant // Stomp",
+      "layout": "adventure",
+      "set_code": "clb",
+      "rarity": "rare",
+      "face_count": 2,
+      "top_level_missing": [
+        "oracle_text"
+      ],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Valakut+Awakening",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:10.565092+00:00",
+      "raw_file": "05.json",
+      "sha256": "679b86d3ce4143c46011412a7026d863c637d494a50625924b1f05e59746247d",
+      "scryfall_id": "228e551e-023a-4c9a-8f32-58dae6ffdf7f",
+      "oracle_id": "ff0ab867-b710-4b1a-baed-95fc3cf68f79",
+      "name": "Valakut Awakening // Valakut Stoneforge",
+      "layout": "modal_dfc",
+      "set_code": "znr",
+      "rarity": "rare",
+      "face_count": 2,
+      "top_level_missing": [
+        "mana_cost",
+        "oracle_text",
+        "colors"
+      ],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Erayo%2C+Soratami+Ascendant",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:13.678448+00:00",
+      "raw_file": "06.json",
+      "sha256": "648751d07a9cb012460fbbecdb069b733ed73d267cd8c0a8e5ab50448ee40df4",
+      "scryfall_id": "0b61d772-2d8b-4acf-9dd2-b2e8b03538c8",
+      "oracle_id": "d83bb32d-f409-421a-9d93-bd7ea3240b47",
+      "name": "Erayo, Soratami Ascendant // Erayo's Essence",
+      "layout": "flip",
+      "set_code": "sok",
+      "rarity": "rare",
+      "face_count": 2,
+      "top_level_missing": [
+        "oracle_text"
+      ],
+      "has_display_image": true
+    },
+    {
+      "request_url": "https://api.scryfall.com/cards/named?exact=Bruna%2C+the+Fading+Light",
+      "http_status": 200,
+      "retrieved_at": "2026-09-08T00:46:14.983797+00:00",
+      "raw_file": "07.json",
+      "sha256": "cb766aacd156a3d3ba932084612a249fc8604953a65dc3d17480ea2da259f1f2",
+      "scryfall_id": "6fccdb60-5fce-4a6e-a709-b986f9a4b653",
+      "oracle_id": "bce7e45d-b2c5-43aa-91a6-3a3c24f30850",
+      "name": "Bruna, the Fading Light",
+      "layout": "meld",
+      "set_code": "inr",
+      "rarity": "rare",
+      "face_count": 0,
+      "top_level_missing": [],
+      "has_display_image": true
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "catalog_snapshot_id": "synthetic-catalog-v1",
+  "items": [
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "name": "Fixture Card",
+      "layout": "transform",
+      "color_identity": [
+        "U"
+      ],
+      "eligible_printing_count": 1
+    }
+  ],
+  "next_cursor": null
+}

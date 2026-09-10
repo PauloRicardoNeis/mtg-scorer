@@ -1,7 +1,13 @@
 # ADR 0001: Polyglot application boundary
 
-- **Status:** Accepted for the planned product layer
+- **Status:** Accepted; catalog publication/API/guest browser implemented in milestone 2
 - **Date:** 2026-08-28
+
+**2026-09-07 amendment:** [ADR 0002](0002-catalog-publication-and-delivery-order.md)
+supersedes the sequencing below by delivering the catalog browser before scores.
+It clarifies invariant 5: catalog facts retain catalog/source/parser identity;
+the full feature/model/configuration identity applies to analytical results.
+Language ownership and all other measurement/publication invariants remain intact.
 
 ## Context
 
@@ -28,10 +34,10 @@ Use a polyglot product architecture with the following ownership:
 
 | Component | Technology | Owns |
 | --- | --- | --- |
-| Analytical pipeline | Python | ingestion, feature research, model evaluation, batch scoring, explanations |
+| Analytical pipeline (`analytics/`) | Python | ingestion, feature research, model evaluation, batch scoring, explanations |
 | Analytical store | Parquet and DuckDB | immutable snapshots, scans, aggregations, exploratory queries |
 | Serving store | PostgreSQL | published gold tables, snapshot identity, user and product state |
-| Product API | Java 21 and Spring Boot | search, filtering, validation, authentication, collections, saved searches |
+| Product API (`api/`) | Java 21 and Spring Boot | search, filtering, validation, authentication, collections, saved searches |
 | Web interface | TypeScript, React, and Next.js | discovery flows, score inspection, Forge-oriented interaction |
 
 Python publishes immutable, versioned results. Spring Boot reads those results and
@@ -88,12 +94,17 @@ precomputed.
 
 ## Sequencing
 
-1. Produce one credible score snapshot with Python.
-2. Stabilize and test the publication schema.
-3. Add the narrow Spring Boot read API.
-4. Add the first Next.js discovery and explanation screen.
-5. Introduce authentication and mutable user features only when the read path is
+1. Add a narrow Java 21/Spring Boot skeleton with generated OpenAPI, Swagger UI,
+   health, application info, consistent errors, and tests. This step is complete
+   and needs no database or Python runtime.
+2. Add real catalog and snapshot endpoints over data published by Python.
+3. Produce one credible empirical score snapshot and report with Python.
+4. Stabilize and test the score publication schema before adding score endpoints.
+5. Add the first Next.js discovery and explanation screen.
+6. Introduce authentication and mutable user features only when the read path is
    already useful.
 
-This sequencing keeps the language boundary congruent with a proven data boundary
-instead of creating three empty applications in anticipation of future work.
+The sequence was revised on 2026-08-28 to establish a runnable API and HTTP
+conventions earlier. This does not change analytical ownership or justify mock
+scores: Swagger describes implemented behavior, and score serving still depends
+on a proven publication contract.

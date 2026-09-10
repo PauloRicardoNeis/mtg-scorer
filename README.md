@@ -11,22 +11,166 @@ distinctive strategies.
 
 ## Project status
 
-The repository is at the **first vertical-slice stage**.
+Read the [consolidated progress report](docs/project-status-report.md) for what is
+implemented, what milestone 1 produced, verification limits, remaining work and
+the next milestones. The [implementation plan](docs/implementation-plan.md) contains
+the detailed execution checklist.
 
-- Source-independent facts, provenance, coverage, missing-aware features, and
-  reproducible scoring contracts are implemented.
-- Scryfall bulk data can be preserved as an immutable raw snapshot and normalized
-  into Oracle-card and printing Parquet tables.
-- Tournament ingestion and empirical feature computation are next.
-- Score weights remain provisional and must not be treated as ground truth.
+The local catalog application is implemented: a documented real Scryfall seed
+travels through face-aware Python normalization and immutable export, atomic
+PostgreSQL publication, Spring queries, and three guest Next.js pages.
+
+- Search canonical and face names; filter jointly by printing set, rarity and game.
+- Inspect complete faces, eligible printings, source dates and dataset identity.
+- Share snapshot-pinned URLs that remain stable across publication refreshes.
+- Missing tournament evidence is explicit. No research scores are served.
+
+**To try the program, follow [Run the app on Windows](#run-the-app-on-windows)
+below.** The preview runs on your computer and is not deployed publicly.
 
 Read the [measurement contract](docs/measurement-contract.md) before changing
 feature semantics or scoring. The [implementation plan](docs/implementation-plan.md)
 records what was changed after the foundation release and what remains deliberately
 deferred. The
 [polyglot application boundary](docs/adr/0001-polyglot-application-boundary.md)
-records how the future Python, Java, and React applications will cooperate without
+records how the Python, Java, and Next.js applications cooperate without
 duplicating analytical logic.
+
+## Run the app on Windows
+
+You use MTG Scorer in a browser. One Python command prepares the data and starts
+the database, Java API, and Next.js website for you.
+
+The included demo contains **7 cards and 8 printings**, selected from real
+Scryfall responses to demonstrate different card layouts. You can search cards,
+filter printings, inspect card faces, and check the dataset's origin. It is a
+small catalog demo: tournament evidence, competitive rankings, and automatic
+Forge collection import are not available yet. You do not need Forge installed,
+an MTG account, or a Scryfall/TopDeck API key to run it.
+
+### 1. Check the required tools
+
+Open **PowerShell**. Use these versions to reproduce the repository's local setup:
+
+| Tool | Version | Check in PowerShell |
+| --- | --- | --- |
+| Python | 3.12.10 | `python --version` |
+| Node.js | 24.14.1 | `node --version` |
+| npm | 11.11.0 | `npm.cmd --version` |
+| Java Development Kit (JDK) | 21 | Set and check `JAVA_HOME` in step 2 |
+
+If a tool is missing, install it from the official
+[Python 3.12.10 release page](https://www.python.org/downloads/release/python-31210/),
+[Node.js downloads](https://nodejs.org/en/download), or
+[Temurin JDK Windows installation guide](https://adoptium.net/installation/windows/).
+Select the versions above; download pages may default to a different version.
+Enable Python's PATH option during installation, and reopen PowerShell afterward
+so it can find newly installed tools. Node includes npm; if its version differs,
+run `npm.cmd install --global npm@11.11.0` and check again.
+
+Maven is included through the repository's wrapper. On Windows, the runner can
+download and prepare portable PostgreSQL automatically. You do not need to
+install Maven, PostgreSQL, or Docker separately for the default setup.
+
+### 2. Open the project folder and select Java 21
+
+Run these commands in the same PowerShell window. Replace the paths if your
+project or JDK is installed elsewhere; the paths shown are an example local setup:
+
+```powershell
+Set-Location 'C:\Users\paulo\Documents\work\mtg-scorer'
+$env:JAVA_HOME = 'C:\Users\paulo\.jdks\temurin-21.0.12.1'
+& "$env:JAVA_HOME\bin\java.exe" -version
+& "$env:JAVA_HOME\bin\javac.exe" -version
+```
+
+Both Java commands must report version **21**. `JAVA_HOME` must point to the JDK
+folder itself, not its `bin` folder or `java.exe`. The runner uses this setting;
+having Java 21 installed is not enough if `JAVA_HOME` still points to Java 17.
+This assignment lasts for the current PowerShell session, so repeat it in each
+new terminal you use to start the app.
+
+All remaining commands below run from this project folder, the one containing
+`README.md`, `scripts/`, `analytics/`, `api/`, and `web/`.
+
+### 3. Start the app
+
+```powershell
+python scripts/demo.py up
+```
+
+Leave this terminal open. The first run needs internet and may take several
+minutes while it:
+
+1. Installs the locked Python and web dependencies, plus Chromium for browser tests.
+2. Runs code checks/tests and builds the Java API and website.
+3. Prepares PostgreSQL and the local `mtg_catalog_demo` database.
+4. Loads the included Scryfall sample and starts the API and website.
+
+You do not need to activate a Python virtual environment, start each application
+separately, or download the full Scryfall catalog. The runner handles the Python
+environment and uses source data already in the repository.
+
+Wait until the terminal prints:
+
+```text
+Catalog ready: http://127.0.0.1:3300/cards | API: http://127.0.0.1:18080/swagger-ui.html
+```
+
+The command stays running while you use the app. If it exits with an error before
+`Catalog ready`, use the troubleshooting table below.
+
+### 4. Open the catalog and try a search
+
+Open **[the card catalog](http://127.0.0.1:3300/cards)** in your browser.
+
+1. Enter `Lightning Bolt` in the name field and click **Find cards**.
+2. Open the result to see its metadata and printings.
+3. Return to search and try `Insectile Aberration` to find a card by its back-face name.
+4. Use **Inspect this dataset** to see the source information and coverage limits.
+
+The small sample will not contain most Magic cards. Start with no set, rarity, or
+color filters; an empty result may simply mean that no sample card matches.
+For example, this seed includes Lightning Bolt as **M11 common** and **2X2 uncommon**.
+Set, rarity, and game filters must match the same printing.
+
+Developers can also open **[Swagger UI](http://127.0.0.1:18080/swagger-ui.html)**
+to inspect and try API requests. The catalog link above is the user interface.
+
+### 5. Stop and start again
+
+Press **Ctrl+C** in the runner's terminal to stop the website and API. PostgreSQL,
+the sample data, and logs remain on disk for reuse.
+
+After a successful first run, you can start the existing build more quickly:
+
+```powershell
+python scripts/demo.py up --skip-install --skip-build
+```
+
+Set `JAVA_HOME` again first if you opened a new terminal. After changing code or
+dependencies, use the full `python scripts/demo.py up` command to install and
+rebuild. The fast command serves the previous build.
+
+To stop the background PostgreSQL process as well, follow
+[the database shutdown instructions](docs/local-catalog.md#postgresql-choices-and-credentials).
+
+### If something goes wrong
+
+| Symptom | What to do |
+| --- | --- |
+| `python` or `node` is not recognized | Install the tool from step 1, reopen PowerShell, and check its version. If Python opens the Microsoft Store, try `py -3.12 --version`; if that succeeds, use `py -3.12` instead of `python` in the commands. |
+| `npm.ps1` cannot run because scripts are disabled | Use `npm.cmd` for manual commands, as shown above. The runner already uses `npm.cmd` on Windows. |
+| `Set JAVA_HOME to a JDK 21 installation` or a Java version error | Repeat step 2 in the same terminal, using your actual JDK 21 folder. Check both `java.exe` and `javac.exe`. |
+| Port `18080` or `3300` is already in use | Stop your earlier preview with Ctrl+C in its terminal, then retry. If you intended to use that running preview, open its catalog URL instead. |
+| A dependency download fails | Check internet access and retry the full `up` command. A first-time setup cannot use `--skip-install`. |
+| A code check, test, or build fails | Read the first failing check in the terminal. Startup stops at that failure; fix it before retrying the full command. |
+| `Local server exited` or startup times out | Read `.local/mtg_catalog_demo/api.log` and `.local/mtg_catalog_demo/web.log`. Database startup logs are `.local/postgres-start.log` and `.local/postgres.log`. |
+| Browser cannot connect | Wait for `Catalog ready`, keep the runner's terminal open, and use port `3300` for the website. |
+| A search returns no cards | Clear filters and search for `Lightning Bolt`. Only seven cards are included; this is not the full Magic catalog. |
+
+For database configuration, Linux/macOS setup, publication, retry, and rollback,
+see the [advanced local runbook](docs/local-catalog.md).
 
 ## Core idea
 
@@ -175,10 +319,10 @@ Gold: versioned features, packages, and scores
 
 The initial analytical store is **Parquet queried through DuckDB**. This workload
 is dominated by scans, aggregations, and co-occurrence computation rather than
-transactions. PostgreSQL remains appropriate later for serving stable,
-precomputed gold tables through an API.
+transactions. PostgreSQL now serves immutable catalog snapshots through the Java API;
+analytical score publication remains future work.
 
-Planned product stack:
+Product stack:
 
 - Python for ingestion, feature research, model evaluation, and batch scoring;
 - Parquet/DuckDB for exploratory and batch computation;
@@ -214,9 +358,10 @@ single ranking. A user should be able to:
 - discover coherent card packages rather than lists of near-duplicate candidates;
 - save Forge card pools, searches, and prospective deck packages.
 
-The current repository is still the Python analytical application. The Java API
-and React interface will be introduced only after one empirical vertical slice
-produces a useful, reproducible score snapshot.
+The three applications have independent build roots. Python owns source and
+analytical transformations, Java owns catalog queries and HTTP validation, and
+Next.js consumes the generated Java contract. Tournament/evidence serving remains
+outside the delivered catalog milestone.
 
 ## Current domain model
 
@@ -265,49 +410,53 @@ the source's access rules and encode its coverage limitations explicitly.
 ## Repository layout
 
 ```text
-src/mtg_scorer/
-  domain.py             source-independent facts
-  features.py           missing-aware analytical features
-  scoring.py            versioned, replaceable score model
-  cli.py                local command-line entry point
-  ingest/scryfall.py    immutable Scryfall snapshot pipeline
+analytics/              independent Python 3.12 analytical application
+  pyproject.toml        Python package, dependencies, and tool configuration
+  src/mtg_scorer/       ingestion, facts, features, scoring, and CLI
+  tests/                Python tests and source fixtures
+
+api/                    independent Java 21 / Spring Boot application
+  pom.xml               Maven build and dependencies
+  mvnw, mvnw.cmd        Maven Wrapper (POSIX / Windows)
+  src/main/             catalog/snapshot queries, Flyway, health and OpenAPI
+  src/test/             real HTTP integration tests
+
+web/                    Next.js guest discovery/detail/dataset and browser tests
+contracts/              publication schemas, generated Spring OpenAPI and fixtures
+scripts/                local demo, verification, contract and boundary checks
+
+pom.xml                 repository Maven aggregator for Java module discovery
 
 docs/
   adr/
     0001-polyglot-application-boundary.md
   measurement-contract.md
   implementation-plan.md
-
-tests/
-  fixtures/
-  test_domain.py
-  test_scoring.py
-  test_scryfall_ingest.py
 ```
 
 Keep source adapters outside the factual domain and scoring core.
 
 ## Development
 
-Requires Python 3.12+.
+Complete [the setup above](#run-the-app-on-windows) first. Keep the same toolchain
+and `JAVA_HOME` setting when running developer commands from the repository root.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate      # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-pytest
-ruff check .
-ruff format --check .
+To check the complete application, run:
+
+```powershell
+python scripts/demo.py verify
 ```
 
-Ingest the current Scryfall catalog locally:
+This runs Python/Java checks, real PostgreSQL publication and API checks, and
+Chromium browser tests. It uses a separate `mtg_verify_<id>` database and ports
+**18081/3301**. Wait for `Verification passed`; this command exits after checking
+the app, whereas `up` keeps the preview running. The test database and evidence
+are retained for diagnosis. Verification is optional for simply browsing the demo.
 
-```bash
-mtg-scorer ingest-scryfall --data-dir data/local
-```
-
-Raw and generated local data are ignored by Git. Commit fixtures and contracts,
-not downloaded corpora.
+See [local setup and recovery](docs/local-catalog.md),
+[analytics development](analytics/README.md), and [API development](api/README.md).
+Downloaded corpora, local databases, build outputs and runtime logs are ignored.
+Retained source fixtures carry exact hashes and attribution; live probes stay outside CI.
 
 ## Contributor rules
 
@@ -324,17 +473,11 @@ not downloaded corpora.
 
 ## Near-term roadmap
 
-1. Import one bounded TopDeck format-era slice with raw snapshots.
-2. Normalize events, decks, standings, matches, and coverage profiles.
-3. Compute incidence, commitment, competitive proof, and evidence features.
-4. Emit an explainable CSV or terminal ranking before building an API.
-5. Add historical card-pool and legality snapshots.
-6. Add deck-family clustering and regularized package association.
-7. Calibrate against sentinel cards and known deck families.
-8. Materialize stable gold tables and publish them to PostgreSQL.
-9. Add the Java 21/Spring Boot read API over those immutable score snapshots.
-10. Add the Next.js interface with Forge filters, score explanations, and owned
-    card pools.
+The [active implementation plan](docs/implementation-plan.md) and
+[progress report](docs/project-status-report.md) record milestone 2's delivery.
+[ADR 0002](docs/adr/0002-catalog-publication-and-delivery-order.md) preserves the
+Python/Java/Next.js boundary. The next milestone is traceable tournament evidence;
+it requires permitted source access and evaluated coverage, not invented scores.
+No tournament work, authentication or deployment was added here.
 
-The unresolved statistical questions are research work, not empty spaces to fill
-with arbitrary constants.
+The unresolved statistical questions remain research work.

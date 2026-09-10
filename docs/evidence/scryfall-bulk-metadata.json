@@ -1,0 +1,17 @@
+{
+  "url": "https://api.scryfall.com/bulk-data/default-cards",
+  "http_status": 200,
+  "retrieved_at": "2026-09-08T00:59:41.083478+00:00",
+  "metadata_sha256": "1bf97086490e18c4db28e7d775d7a84efc7a2060c75cc670fa281cb0db1509ed",
+  "metadata": {
+    "type": "default_cards",
+    "updated_at": "2026-09-07T21:05:28.970+00:00",
+    "size": null,
+    "compressed_size": 78058821,
+    "content_type": null,
+    "content_encoding": null,
+    "download_uri": null,
+    "jsonl_download_uri": "https://data.scryfall.io/default-cards/default-cards-20260907210528.jsonl.gz"
+  },
+  "bulk_download_performed": false
+}

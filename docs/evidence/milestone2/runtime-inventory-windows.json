@@ -1,0 +1,13 @@
+{
+  "recorded_at_utc": "2026-09-08T12:46:54.9483056Z",
+  "cpu": {
+    "Name": "AMD Ryzen 7 7800X3D 8-Core Processor           ",
+    "NumberOfCores": 8,
+    "NumberOfLogicalProcessors": 16
+  },
+  "physical_memory_bytes": 33397133312,
+  "jdk": "Temurin 21.0.12.1",
+  "node": "v24.14.1",
+  "npm": "11.11.0",
+  "python": "Python 3.12.10"
+}
