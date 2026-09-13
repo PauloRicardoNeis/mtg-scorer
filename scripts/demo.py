@@ -407,7 +407,9 @@ def main() -> None:
         install()
     if args.command == "install":
         return
-    if Path(sys.executable).resolve() != PYTHON.resolve():
+    # POSIX virtualenv executables can resolve to the global Python binary.
+    # Compare environment roots so imports use the installed project dependencies.
+    if Path(sys.prefix).resolve() != PYTHON.parent.parent.resolve():
         run(
             [
                 PYTHON,
