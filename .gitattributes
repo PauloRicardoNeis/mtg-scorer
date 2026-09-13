@@ -2,3 +2,11 @@ api/mvnw text eol=lf
 api/mvnw.cmd text eol=crlf
 # These source payloads and manifest are identified by their exact byte hashes.
 analytics/seeds/scryfall-layouts-v1/*.json -text
+
+# Keep frontend source and configuration compatible with Prettier on Windows.
+web/*.json text eol=lf
+web/*.ts text eol=lf
+web/src/**/*.css text eol=lf
+web/src/**/*.ts text eol=lf
+web/src/**/*.tsx text eol=lf
+web/tests/**/*.ts text eol=lf

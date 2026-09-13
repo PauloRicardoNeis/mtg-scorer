@@ -2,6 +2,17 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { readFileSync } from "node:fs";
+
+// Deterministic browser journeys verify source URL wiring without relying on a CDN.
+test.beforeEach(async ({ page }) => {
+  await page.route("https://cards.scryfall.io/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="488" height="680"><rect width="488" height="680" fill="#e7e3d8"/></svg>',
+    }),
+  );
+});
 
 function control(action: string, ...args: string[]) {
   const python =
@@ -23,7 +34,14 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
 }) => {
   const outbound: string[] = [];
   page.on("request", (request) => {
-    if (!new URL(request.url()).hostname.match(/^(127\.0\.0\.1|localhost)$/))
+    const url = new URL(request.url());
+    if (
+      !url.hostname.match(/^(127\.0\.0\.1|localhost)$/) &&
+      !(
+        request.resourceType() === "image" &&
+        url.origin === "https://cards.scryfall.io"
+      )
+    )
       outbound.push(request.url());
   });
   await page.goto("/cards");
@@ -252,5 +270,59 @@ test("loading feedback remains visible during a pending filter navigation", asyn
       name: "Erayo, Soratami Ascendant // Erayo's Essence",
       exact: true,
     }),
+  ).toBeVisible();
+});
+
+test("printing scans follow the pool and show both Delver sides", async ({
+  page,
+}) => {
+  const bolt = JSON.parse(
+    readFileSync(
+      path.resolve("../analytics/seeds/scryfall-layouts-v1/00.json"),
+      "utf8",
+    ),
+  );
+  await page.goto("/cards?q=Lightning+Bolt&set=m11");
+  const scan = page.locator(".card-tile img");
+  await expect(scan).toHaveAttribute("src", bolt.image_uris.normal);
+  await expect(scan).toHaveAttribute("alt", /Magic 2011 #149/);
+  await expect(scan).toBeVisible();
+  await expect
+    .poll(() => scan.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  await page.getByRole("link", { name: "Lightning Bolt", exact: true }).click();
+  await expect(page.locator(".printing-list img")).toHaveAttribute(
+    "src",
+    bolt.image_uris.normal,
+  );
+  await page.goto("/cards?q=Insectile");
+  await page
+    .getByRole("link", {
+      name: "Delver of Secrets // Insectile Aberration",
+      exact: true,
+    })
+    .click();
+  const scans = page.locator(".printing-list img");
+  await expect(scans).toHaveCount(2);
+  await expect(scans.nth(0)).toHaveAttribute("src", /\/front\//);
+  await expect(scans.nth(1)).toHaveAttribute("src", /\/back\//);
+  await expect(scans.nth(0)).toHaveAttribute("alt", /face 1/);
+  await expect(scans.nth(1)).toHaveAttribute("alt", /face 2/);
+});
+
+test("failed image requests leave a readable fallback and usable card link", async ({
+  page,
+}) => {
+  await page.route("https://cards.scryfall.io/**", (route) => route.abort());
+  await page.goto("/cards?q=Lightning+Bolt&set=m11");
+  await expect(
+    page.getByText("Image unavailable", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Lightning Bolt", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Eligible printings" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Image unavailable", { exact: true }),
   ).toBeVisible();
 });

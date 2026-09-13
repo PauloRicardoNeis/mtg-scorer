@@ -7,6 +7,7 @@ import {
   type SearchParams,
 } from "@/lib/urls";
 import { Problem } from "@/components/problem";
+import { CardImages } from "@/components/card-image";
 import { redirect } from "next/navigation";
 
 function KnownText({ value }: { value: string | null }) {
@@ -114,6 +115,7 @@ export default async function Card({
             <ul className="printing-list">
               {printings.items.map((printing) => (
                 <li key={printing.scryfall_id}>
+                  <CardImages name={card.name} printing={printing} />
                   <div>
                     <h3>
                       {printing.set_name}{" "}

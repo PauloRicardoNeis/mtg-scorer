@@ -146,6 +146,9 @@
           "oracle_id": {
             "format": "uuid",
             "type": "string"
+          },
+          "preview_printing": {
+            "$ref": "#/components/schemas/Printing"
           }
         },
         "required": [
@@ -153,7 +156,8 @@
           "eligible_printing_count",
           "layout",
           "name",
-          "oracle_id"
+          "oracle_id",
+          "preview_printing"
         ],
         "type": "object"
       },
@@ -286,6 +290,12 @@
             },
             "type": "array"
           },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PrintingImage"
+            },
+            "type": "array"
+          },
           "language": {
             "type": "string"
           },
@@ -316,12 +326,39 @@
         "required": [
           "collector_number",
           "games",
+          "images",
           "language",
           "rarity",
           "released_on",
           "scryfall_id",
           "set_code",
           "set_name",
+          "source_uri"
+        ],
+        "type": "object"
+      },
+      "PrintingImage": {
+        "properties": {
+          "artist": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "face_index": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_uri": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artist",
+          "face_index",
           "source_uri"
         ],
         "type": "object"

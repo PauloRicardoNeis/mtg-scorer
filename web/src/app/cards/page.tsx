@@ -5,6 +5,7 @@ import { colors, queryParams, type SearchParams } from "@/lib/urls";
 import { Filters } from "@/components/filters";
 import { CopySearch } from "@/components/actions";
 import { Problem } from "@/components/problem";
+import { CardImages } from "@/components/card-image";
 
 export default async function Cards({
   searchParams,
@@ -83,6 +84,11 @@ export default async function Cards({
                       {String(index + 1).padStart(2, "0")}{" "}
                       <span>{card.layout.replaceAll("_", " ")}</span>
                     </p>
+                    <CardImages
+                      name={card.name}
+                      printing={card.preview_printing}
+                      preview
+                    />
                     <h3>
                       <Link href={`/cards/${card.oracle_id}?${detailQuery}`}>
                         {card.name}
