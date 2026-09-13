@@ -31,8 +31,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <footer>
-          Card metadata: Scryfall. Magic: The Gathering is a trademark of
-          Wizards of the Coast.
+          Card metadata and images: Scryfall. Magic: The Gathering is a
+          trademark of Wizards of the Coast.
           <br />A bounded catalog sample. Tournament evidence is not available.
         </footer>
       </body>

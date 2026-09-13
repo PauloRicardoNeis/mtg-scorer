@@ -13,7 +13,8 @@ public final class CatalogModels {
       String name,
       String layout,
       @Schema(types = {"array", "null"}) List<String> color_identity,
-      @Schema(minimum = "1") long eligible_printing_count) {}
+      @Schema(minimum = "1") long eligible_printing_count,
+      Printing preview_printing) {}
 
   public record CardPage(
       String catalog_snapshot_id,
@@ -41,6 +42,11 @@ public final class CatalogModels {
       @Schema(types = {"array", "null"}) List<String> color_identity,
       List<Face> faces) {}
 
+  public record PrintingImage(
+      @Schema(types = {"integer", "null"}) Integer face_index,
+      String source_uri,
+      @Schema(types = {"string", "null"}) String artist) {}
+
   public record Printing(
       UUID scryfall_id,
       String set_code,
@@ -53,7 +59,8 @@ public final class CatalogModels {
           LocalDate released_on,
       String language,
       List<String> games,
-      String source_uri) {}
+      String source_uri,
+      List<PrintingImage> images) {}
 
   public record PrintingPage(
       String catalog_snapshot_id,

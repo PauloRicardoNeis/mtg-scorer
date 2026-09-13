@@ -50,7 +50,15 @@ face colors only if every face has known colors; otherwise null. Never default
 missing mana value to zero. Color identity is source-provided and independent
 from colors; missing is null and `[]` means known colorless. Preserve face-specific
 images per printing and whole-card images with `face_index=null`; no image binaries
-in publication JSON or this milestone's HTTP contract.
+in publication JSON or the HTTP contract. Printing responses expose stored image
+URLs, face indices and artist attribution. Search results include `preview_printing`,
+selected only from jointly eligible printings: English first, newest release (null
+last), then smallest Scryfall UUID. This does not change canonical card attributes.
+Images are ordered whole-card first, then source face order. Empty image lists mean
+unavailable; the UI also handles failed loads. Search shows the first scan with its
+edition label; printing details show every scan and artist. The browser loads images
+directly from stored URLs; Java and Next.js do not call the Scryfall API. Image
+availability depends on the image host and is not guaranteed by snapshot pinning.
 
 Known multi-face layouts must include their faces. Do not invent face rows for
 meld pieces with no `card_faces`; keep the piece as its Oracle identity. Meld-part

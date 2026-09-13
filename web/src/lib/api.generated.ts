@@ -159,6 +159,7 @@ export interface components {
             name: string;
             /** Format: uuid */
             oracle_id: string;
+            preview_printing: components["schemas"]["Printing"];
         };
         CatalogError: {
             /** @enum {string} */
@@ -195,6 +196,7 @@ export interface components {
         Printing: {
             collector_number: string;
             games: string[];
+            images: components["schemas"]["PrintingImage"][];
             language: string;
             rarity: string;
             /** Format: date */
@@ -203,6 +205,12 @@ export interface components {
             scryfall_id: string;
             set_code: string;
             set_name: string;
+            source_uri: string;
+        };
+        PrintingImage: {
+            artist: string | null;
+            /** Format: int32 */
+            face_index: number | null;
             source_uri: string;
         };
         PrintingPage: {

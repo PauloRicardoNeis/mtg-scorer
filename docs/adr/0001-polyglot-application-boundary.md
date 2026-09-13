@@ -9,6 +9,14 @@ It clarifies invariant 5: catalog facts retain catalog/source/parser identity;
 the full feature/model/configuration identity applies to analytical results.
 Language ownership and all other measurement/publication invariants remain intact.
 
+**2026-09-13 image delivery amendment:** The catalog browser may load card scans
+directly from the image URLs already published by Python and returned by Java.
+This is a narrow exception to invariant 2 for image delivery: the browser does
+not query the Scryfall API or other external data APIs. Search previews use the
+same jointly eligible printings as the Java query; details retain source face
+order and artist attribution. Image bytes are not stored in the snapshot, so
+availability depends on the image host; missing or failed images show a fallback.
+
 ## Context
 
 MTG Scorer combines two workloads with different rates of change.
@@ -48,7 +56,7 @@ a versioned HTTP contract.
 
 1. An application request never invokes the Python runtime.
 2. The browser never connects directly to PostgreSQL, Parquet, DuckDB, or an
-   external data source.
+   external data source, except published card image URLs as described above.
 3. Python is the single owner of experimental feature and scoring semantics.
 4. Java does not independently reproduce a score formula. If real-time scoring is
    later required, it needs a separately reviewed contract and cross-language

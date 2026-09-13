@@ -3,6 +3,7 @@ import type { components } from "./api.generated";
 export type CardPage = components["schemas"]["CardPage"];
 export type CardDetail = components["schemas"]["CardDetail"];
 export type PrintingPage = components["schemas"]["PrintingPage"];
+export type Printing = components["schemas"]["Printing"];
 export type Snapshot = components["schemas"]["Snapshot"];
 export type SnapshotList = components["schemas"]["SnapshotList"];
 type CatalogError = components["schemas"]["CatalogError"];

@@ -104,6 +104,42 @@ def test_invalid_queries_cursor_tampering_and_unknown_resources():
         assert status == 400 and body["code"] == "invalid_cursor"
 
 
+def test_images_match_retained_printings_faces_and_filtered_previews():
+    """Compare the served URLs/attribution to source data, including shared whole scans."""
+    records = json.loads((SEED / "manifest.json").read_bytes())["records"]
+    sources = [json.loads((SEED / record["raw_file"]).read_bytes()) for record in records]
+    _, page = get("/api/v1/cards")
+    snapshot = page["catalog_snapshot_id"]
+    for source in sources:
+        status, result = get(
+            f"/api/v1/cards/{source['oracle_id']}/printings", catalog_snapshot_id=snapshot
+        )
+        assert status == 200
+        validate(result, "PrintingPage")
+        printing = next(p for p in result["items"] if p["scryfall_id"] == source["id"])
+        expected = [
+            {
+                "face_index": index,
+                "source_uri": face["image_uris"]["normal"],
+                "artist": face.get("artist"),
+            }
+            for index, face in [(None, source), *enumerate(source.get("card_faces", []))]
+            if face.get("image_uris", {}).get("normal")
+        ]
+        assert printing["images"] == expected
+    for set_code in ("m11", "2x2"):
+        status, result = get("/api/v1/cards", q="Lightning Bolt", set=set_code, game="paper")
+        assert status == 200
+        validate(result, "CardPage")
+        preview = result["items"][0]["preview_printing"]
+        assert preview["set_code"] == set_code
+        _, printings = get(f"/api/v1/cards/{BOLT}/printings", set=set_code, game="paper")
+        assert preview == printings["items"][0]
+    # With no pool restriction, the newest English printing supplies the preview.
+    _, result = get("/api/v1/cards", q="Lightning Bolt")
+    assert result["items"][0]["preview_printing"]["set_code"] == "2x2"
+
+
 def test_pagination_and_printings_remain_pinned_across_real_python_refresh(tmp_path):
     _, first = get("/api/v1/cards", limit=2)
     old = first["catalog_snapshot_id"]
@@ -158,6 +194,7 @@ def test_synthetic_unknown_colorless_and_ambiguous_literal_aliases(tmp_path):
         card["colors"] = identity
         if identity is None:
             card.pop("cmc", None)
+            card.pop("image_uris", None)
         raw = json.dumps(card).encode()
         filename = f"{index}.json"
         (source_dir / filename).write_bytes(raw)
@@ -189,6 +226,7 @@ def test_synthetic_unknown_colorless_and_ambiguous_literal_aliases(tmp_path):
         assert len(get("/api/v1/cards", q="%_")[1]["items"]) == 2
         unknown = get("/api/v1/cards", q="unknown")[1]["items"][0]
         assert unknown["color_identity"] is None
+        assert unknown["preview_printing"]["images"] == []
         assert get("/api/v1/cards/" + unknown["oracle_id"])[1]["mana_value"] is None
     finally:
         rollback_catalog(PUBLISH_DSN, previous, artifact.name)

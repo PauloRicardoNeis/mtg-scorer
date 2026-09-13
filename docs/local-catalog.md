@@ -3,7 +3,9 @@
 This guest application serves the eight retained real Scryfall responses in
 `analytics/seeds/scryfall-layouts-v1`. It needs no MTG account or production
 credentials. Python publishes facts; Spring owns product queries; Next.js renders
-the Java responses. Application requests do not run Python or contact MTG sources.
+the Java responses. Application requests do not run Python or query MTG source
+APIs. Browsers load card scans from published image URLs under the image delivery
+exception in [ADR 0001](adr/0001-polyglot-application-boundary.md).
 
 ## Toolchain and first start
 
@@ -100,6 +102,11 @@ pagination; browser discovery/faces/dataset, clipboard/reopened URLs, Back,
 loading, empty/error/retry, mobile overflow and axe checks. Publication and HTTP
 tests skipped in the offline phase are explicitly run in their database phases;
 the no-active test runs before the first publication.
+
+Card image tests compare Java responses with all eight retained source printings
+and check filtered previews, both Delver faces and failed-image fallbacks in the
+browser. Browser tests stub the image host so this workflow stays deterministic;
+real CDN availability and visual image quality need a separate live check.
 
 Evidence is retained under `.local/mtg_verify_<id>/`, `api/target/surefire-reports/`
 and `web/test-results/` / `web/playwright-report/`. The test database is retained

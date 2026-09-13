@@ -8,7 +8,21 @@
       "color_identity": [
         "U"
       ],
-      "eligible_printing_count": 1
+      "eligible_printing_count": 1,
+      "preview_printing": {
+        "scryfall_id": "00000000-0000-4000-8000-000000000011",
+        "set_code": "aaa",
+        "set_name": "Synthetic aaa",
+        "collector_number": "1",
+        "rarity": "rare",
+        "released_on": "2020-01-01",
+        "language": "en",
+        "games": [
+          "paper"
+        ],
+        "source_uri": "https://example.invalid/card/00000000-0000-4000-8000-000000000011",
+        "images": []
+      }
     }
   ],
   "next_cursor": null

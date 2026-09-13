@@ -25,6 +25,18 @@ class CatalogRepository {
 
   record CardRow(CardSummary summary, String nameKey) {}
 
+  // Both list previews and printing details use the same snapshot-scoped image projection.
+  private static final String PRINTING_JSON =
+      """
+      (to_jsonb(p)-'catalog_snapshot_id'-'oracle_id'-'retrieved_at'-'raw_snapshot_ref'-'raw_sha256')
+      || jsonb_build_object('images',
+        (SELECT coalesce(jsonb_agg(jsonb_build_object(
+          'face_index',nullif(i.image_slot,-1),'source_uri',i.source_uri,'artist',i.artist)
+          ORDER BY i.image_slot),'[]'::jsonb)
+         FROM catalog.published_catalog_printing_image i
+         WHERE i.catalog_snapshot_id=p.catalog_snapshot_id AND i.scryfall_id=p.scryfall_id))
+      """;
+
   private String printingPredicate(CatalogQuery query, Map<String, Object> args) {
     List<String> conditions = new ArrayList<>();
     conditions.add("p.catalog_snapshot_id=:snapshot AND p.oracle_id=c.oracle_id");
@@ -68,9 +80,13 @@ class CatalogRepository {
       args.put("lastId", cursor.last_key().getLast());
     }
     String sql =
-        "SELECT c.oracle_id,c.name,c.layout,c.color_identity,c.name_key,eligible.n FROM catalog.published_catalog_card c CROSS JOIN LATERAL (SELECT count(*) n FROM catalog.published_catalog_printing p WHERE "
+        "SELECT c.oracle_id,c.name,c.layout,c.color_identity,c.name_key,eligible.n,preview.printing FROM catalog.published_catalog_card c CROSS JOIN LATERAL (SELECT count(*) n FROM catalog.published_catalog_printing p WHERE "
             + predicate
-            + ") eligible WHERE "
+            + ") eligible CROSS JOIN LATERAL (SELECT ("
+            + PRINTING_JSON
+            + ")::text printing FROM catalog.published_catalog_printing p WHERE "
+            + predicate
+            + " ORDER BY (p.language='en') DESC,p.released_on DESC NULLS LAST,p.scryfall_id LIMIT 1) preview WHERE "
             + where
             + " AND eligible.n>0 ORDER BY c.name_key COLLATE \"C\",c.oracle_id LIMIT :limit";
     return jdbc.query(
@@ -85,7 +101,8 @@ class CatalogRepository {
                     row.getArray("color_identity") == null
                         ? null
                         : List.of((String[]) row.getArray("color_identity").getArray()),
-                    row.getLong("n")),
+                    row.getLong("n"),
+                    mapper.readValue(row.getString("printing"), Printing.class)),
                 row.getString("name_key")));
   }
 
@@ -126,7 +143,9 @@ class CatalogRepository {
       args.put("lastId", cursor.last_key().getFirst());
     }
     return jdbc.query(
-        "SELECT (to_jsonb(p)-'catalog_snapshot_id'-'oracle_id'-'retrieved_at'-'raw_snapshot_ref'-'raw_sha256')::text FROM catalog.published_catalog_printing p JOIN catalog.published_catalog_card c ON c.catalog_snapshot_id=p.catalog_snapshot_id AND c.oracle_id=p.oracle_id WHERE c.oracle_id=:oracle AND "
+        "SELECT ("
+            + PRINTING_JSON
+            + ")::text FROM catalog.published_catalog_printing p JOIN catalog.published_catalog_card c ON c.catalog_snapshot_id=p.catalog_snapshot_id AND c.oracle_id=p.oracle_id WHERE c.oracle_id=:oracle AND "
             + predicate
             + " ORDER BY p.scryfall_id LIMIT :limit",
         args,

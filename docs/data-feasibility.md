@@ -146,10 +146,11 @@ For milestone 2, use a small derived real catalog seed in the application with
 source links, provenance and attribution, useful joint-printing pool filtering,
 and face-aware detail. Do not ship the full raw database as a download/proxy.
 Keep raw payloads local. Test fixtures must say synthetic when invented; contract
-fixtures contain no tournament evidence. Prefer text-first local rendering until
-image hosting is defined. Serving cached images through owned assets would preserve
-ADR 0001's no-browser-to-source rule; direct Scryfall image requests would require
-an explicit ADR exception. No images are needed to execute the next milestone.
+fixtures contain no tournament evidence. The initial milestone used text-first
+rendering. The 2026-09-13 amendment to [ADR 0001](adr/0001-polyglot-application-boundary.md)
+now permits direct loading of published card image URLs, with attribution and a
+fallback for missing or failed images. Image bytes remain outside the snapshot;
+the application does not query the Scryfall API during a request.
 
 | Dependency | Blocks | Resolution condition |
 | --- | --- | --- |
