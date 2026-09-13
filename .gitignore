@@ -13,8 +13,12 @@ venv/
 .coverage
 htmlcov/
 
+# Java / Maven
+api/target/
+
 # Editors / OS
 .idea/
+*.iml
 .vscode/
 .DS_Store
 Thumbs.db
@@ -22,6 +26,14 @@ Thumbs.db
 # Local data and secrets
 .env
 .env.*
-data/raw/
-data/local/
-data/silver/
+analytics/data/raw/
+analytics/data/local/
+analytics/data/silver/
+
+# Local catalog runtime and web build artifacts
+.local/
+web/node_modules/
+web/.next/
+web/playwright-report/
+web/test-results/
+web/tsconfig.tsbuildinfo

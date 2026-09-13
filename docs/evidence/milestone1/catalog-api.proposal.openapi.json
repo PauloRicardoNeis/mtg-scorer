@@ -1,0 +1,1016 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MTG Scorer proposed catalog API",
+    "version": "1.0.0-draft",
+    "description": "Design contract only. Current server implements info/health/OpenAPI, not these paths. Replace this proposal with generated Spring OpenAPI as endpoints ship; verify operation semantics against this contract."
+  },
+  "paths": {
+    "/api/v1/cards": {
+      "get": {
+        "operationId": "searchCards",
+        "summary": "Search catalog; no scores or tournament ordering",
+        "parameters": [
+          {
+            "name": "catalog_snapshot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+            },
+            "description": "Omit on first request to resolve active once; provide to pin. Cursor embeds it; conflicting explicit ID is 400."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Literal substring of canonical/face aliases after name-key normalization; trim blank to absent. No query language or wildcard semantics."
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]{2,8}$"
+              },
+              "maxItems": 32
+            },
+            "description": "Repeated parameters, OR within this filter; unknown valid code returns empty.",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "rarity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "common",
+                  "uncommon",
+                  "rare",
+                  "mythic",
+                  "special",
+                  "bonus"
+                ]
+              },
+              "maxItems": 6
+            },
+            "description": "Repeated values, OR within this filter.",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "game",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "paper",
+                "arena",
+                "mtgo"
+              ]
+            },
+            "description": "Printing game membership; omitted means any game."
+          },
+          {
+            "name": "color_identity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(C|[WUBRG]{1,5})$"
+            },
+            "description": "Identity contained within selected colors, including colorless. C means exactly colorless. Reject duplicates; unknown identity never matches."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "name_asc"
+              ],
+              "default": "name_asc"
+            },
+            "description": "Order by name_key COLLATE C then oracle_id UUID."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 24
+            },
+            "description": "Maximum items; bound to cursor identity."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "description": "Opaque versioned base64url cursor; includes snapshot, sort, filter hash, limit and last key. Repeat original filters."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, pinned to one published catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Published snapshot or resource not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No valid active catalog / serving database unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{oracle_id}": {
+      "get": {
+        "operationId": "getCard",
+        "summary": "Oracle detail with ordered faces",
+        "parameters": [
+          {
+            "name": "oracle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Oracle card ID"
+          },
+          {
+            "name": "catalog_snapshot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+            },
+            "description": "Omit on first request to resolve active once; provide to pin. Cursor embeds it; conflicting explicit ID is 400."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, pinned to one published catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Published snapshot or resource not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No valid active catalog / serving database unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{oracle_id}/printings": {
+      "get": {
+        "operationId": "getPrintings",
+        "summary": "Eligible printings of one Oracle card",
+        "parameters": [
+          {
+            "name": "oracle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Oracle card ID"
+          },
+          {
+            "name": "catalog_snapshot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+            },
+            "description": "Omit on first request to resolve active once; provide to pin. Cursor embeds it; conflicting explicit ID is 400."
+          },
+          {
+            "name": "set",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]{2,8}$"
+              },
+              "maxItems": 32
+            },
+            "description": "Repeated parameters, OR within this filter; unknown valid code returns empty.",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "rarity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "common",
+                  "uncommon",
+                  "rare",
+                  "mythic",
+                  "special",
+                  "bonus"
+                ]
+              },
+              "maxItems": 6
+            },
+            "description": "Repeated values, OR within this filter.",
+            "style": "form",
+            "explode": true
+          },
+          {
+            "name": "game",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "paper",
+                "arena",
+                "mtgo"
+              ]
+            },
+            "description": "Printing game membership; omitted means any game."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 24
+            },
+            "description": "Maximum items; bound to cursor identity."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "description": "Opaque versioned base64url cursor; includes snapshot, sort, filter hash, limit and last key. Repeat original filters."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, pinned to one published catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintingPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Published snapshot or resource not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No valid active catalog / serving database unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog-snapshots": {
+      "get": {
+        "operationId": "listCatalogSnapshots",
+        "summary": "Active metadata plus up to 19 most recently published other catalogs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success, pinned to one published catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotList"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No valid active catalog / serving database unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog-snapshots/{catalog_snapshot_id}": {
+      "get": {
+        "operationId": "getCatalogSnapshot",
+        "summary": "Metadata for an explicit published catalog",
+        "parameters": [
+          {
+            "name": "catalog_snapshot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+            },
+            "description": "Published catalog ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success, pinned to one published catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Published snapshot or resource not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No valid active catalog / serving database unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CardSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "oracle_id",
+          "name",
+          "layout",
+          "color_identity",
+          "eligible_printing_count"
+        ],
+        "properties": {
+          "oracle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "layout": {
+            "type": "string"
+          },
+          "color_identity": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "enum": [
+                "W",
+                "U",
+                "B",
+                "R",
+                "G"
+              ]
+            }
+          },
+          "eligible_printing_count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CardPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalog_snapshot_id",
+          "items",
+          "next_cursor"
+        ],
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardSummary"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CardDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalog_snapshot_id",
+          "oracle_id",
+          "name",
+          "layout",
+          "mana_cost",
+          "mana_value",
+          "oracle_text",
+          "type_line",
+          "colors",
+          "color_identity",
+          "faces"
+        ],
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": "string"
+          },
+          "oracle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "layout": {
+            "type": "string"
+          },
+          "mana_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mana_value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "oracle_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type_line": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "colors": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "color_identity": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "faces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Face"
+            }
+          }
+        }
+      },
+      "Face": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "face_index",
+          "name",
+          "mana_cost",
+          "oracle_text",
+          "type_line",
+          "colors"
+        ],
+        "properties": {
+          "face_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "name": {
+            "type": "string"
+          },
+          "mana_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "oracle_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type_line": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "colors": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Printing": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scryfall_id",
+          "set_code",
+          "set_name",
+          "collector_number",
+          "rarity",
+          "released_on",
+          "language",
+          "games",
+          "source_uri"
+        ],
+        "properties": {
+          "scryfall_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "set_code": {
+            "type": "string"
+          },
+          "set_name": {
+            "type": "string"
+          },
+          "collector_number": {
+            "type": "string"
+          },
+          "rarity": {
+            "type": "string"
+          },
+          "released_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "language": {
+            "type": "string"
+          },
+          "games": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_uri": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "PrintingPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalog_snapshot_id",
+          "oracle_id",
+          "items",
+          "next_cursor"
+        ],
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": "string"
+          },
+          "oracle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Printing"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Snapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalog_snapshot_id",
+          "schema_version",
+          "source",
+          "parser_version",
+          "created_at",
+          "published_at",
+          "selection",
+          "card_count",
+          "printing_count",
+          "sets",
+          "attribution",
+          "tournament_evidence",
+          "retrieved_from",
+          "retrieved_to",
+          "excluded_record_counts"
+        ],
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "catalog-publication-v1"
+          },
+          "source": {
+            "const": "scryfall"
+          },
+          "parser_version": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "selection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "description"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "bounded_sample",
+                  "bulk"
+                ]
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          },
+          "card_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "printing_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "set_code",
+                "set_name"
+              ],
+              "properties": {
+                "set_code": {
+                  "type": "string"
+                },
+                "set_name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "attribution": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "url"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "tournament_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "state",
+              "reason_codes"
+            ],
+            "properties": {
+              "state": {
+                "const": "not_available"
+              },
+              "reason_codes": {
+                "type": "array",
+                "items": {
+                  "const": "no_tournament_dataset"
+                },
+                "minItems": 1,
+                "maxItems": 1
+              }
+            }
+          },
+          "retrieved_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "retrieved_to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "excluded_record_counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "SnapshotList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "active_catalog_snapshot_id",
+          "items"
+        ],
+        "properties": {
+          "active_catalog_snapshot_id": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Snapshot"
+            }
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "instance",
+          "code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "code": {
+            "enum": [
+              "invalid_query",
+              "invalid_cursor",
+              "snapshot_not_found",
+              "card_not_found",
+              "catalog_unavailable",
+              "internal_error"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

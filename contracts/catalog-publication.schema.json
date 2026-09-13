@@ -1,0 +1,393 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_snapshot_id",
+    "source",
+    "parser_version",
+    "created_at",
+    "selection",
+    "cards",
+    "faces",
+    "printings",
+    "aliases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "catalog-publication-v1"
+    },
+    "catalog_snapshot_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+    },
+    "source": {
+      "const": "scryfall"
+    },
+    "parser_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "description"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "bounded_sample",
+            "bulk"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/card"
+      },
+      "minItems": 1
+    },
+    "faces": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/face"
+      }
+    },
+    "printings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/printing"
+      },
+      "minItems": 1
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/alias"
+      },
+      "minItems": 1
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtg-scorer.invalid/contracts/catalog-publication-v1",
+  "$defs": {
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oracle_id",
+        "source_scryfall_id",
+        "name",
+        "name_key",
+        "layout",
+        "mana_cost",
+        "mana_value",
+        "oracle_text",
+        "type_line",
+        "colors",
+        "color_identity"
+      ],
+      "properties": {
+        "oracle_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_scryfall_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "layout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mana_cost": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mana_value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "oracle_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type_line": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "colors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "enum": [
+              "W",
+              "U",
+              "B",
+              "R",
+              "G"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "color_identity": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "enum": [
+              "W",
+              "U",
+              "B",
+              "R",
+              "G"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "face": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oracle_id",
+        "face_index",
+        "name",
+        "mana_cost",
+        "oracle_text",
+        "type_line",
+        "colors"
+      ],
+      "properties": {
+        "oracle_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "face_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mana_cost": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "oracle_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type_line": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "colors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "enum": [
+              "W",
+              "U",
+              "B",
+              "R",
+              "G"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "printing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scryfall_id",
+        "oracle_id",
+        "set_code",
+        "set_name",
+        "collector_number",
+        "rarity",
+        "released_on",
+        "language",
+        "games",
+        "source_uri",
+        "retrieved_at",
+        "raw_snapshot_ref",
+        "raw_sha256",
+        "images"
+      ],
+      "properties": {
+        "scryfall_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "oracle_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "set_code": {
+          "type": "string",
+          "pattern": "^[a-z0-9]{2,8}$"
+        },
+        "set_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "collector_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rarity": {
+          "enum": [
+            "common",
+            "uncommon",
+            "rare",
+            "mythic",
+            "special",
+            "bonus"
+          ]
+        },
+        "released_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "games": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "paper",
+              "arena",
+              "mtgo"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "source_uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "raw_snapshot_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "raw_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "face_index",
+              "source_uri",
+              "artist"
+            ],
+            "properties": {
+              "face_index": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "source_uri": {
+                "type": "string",
+                "format": "uri",
+                "pattern": "^https://"
+              },
+              "artist": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "oracle_id",
+        "alias_key",
+        "kind"
+      ],
+      "properties": {
+        "oracle_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "alias_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "canonical",
+            "face"
+          ]
+        }
+      }
+    }
+  },
+  "description": "Logical catalog serving export. The Python producer and streaming publisher validate closed row schemas and semantic references."
+}

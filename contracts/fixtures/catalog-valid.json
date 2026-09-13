@@ -1,0 +1,104 @@
+{
+  "schema_version": "catalog-publication-v1",
+  "catalog_snapshot_id": "synthetic-catalog-v1",
+  "source": "scryfall",
+  "parser_version": "synthetic-contract-v1",
+  "created_at": "2026-09-07T00:00:00Z",
+  "selection": {
+    "kind": "bounded_sample",
+    "description": "SYNTHETIC conformance data, never tournament or catalog access evidence"
+  },
+  "cards": [
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "source_scryfall_id": "00000000-0000-4000-8000-000000000011",
+      "name": "Fixture Card",
+      "name_key": "fixture card",
+      "layout": "transform",
+      "mana_cost": null,
+      "mana_value": 1,
+      "oracle_text": null,
+      "type_line": null,
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ]
+    }
+  ],
+  "faces": [
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "face_index": 0,
+      "name": "Fixture Card",
+      "mana_cost": "{U}",
+      "oracle_text": "Synthetic test face",
+      "type_line": "Creature",
+      "colors": [
+        "U"
+      ]
+    },
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "face_index": 1,
+      "name": "Fixture Back",
+      "mana_cost": "",
+      "oracle_text": "Synthetic test face",
+      "type_line": "Creature",
+      "colors": [
+        "U"
+      ]
+    }
+  ],
+  "printings": [
+    {
+      "scryfall_id": "00000000-0000-4000-8000-000000000011",
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "set_code": "aaa",
+      "set_name": "Synthetic aaa",
+      "collector_number": "1",
+      "rarity": "rare",
+      "released_on": "2020-01-01",
+      "language": "en",
+      "games": [
+        "paper"
+      ],
+      "source_uri": "https://example.invalid/card/00000000-0000-4000-8000-000000000011",
+      "retrieved_at": "2026-09-07T00:00:00Z",
+      "raw_snapshot_ref": "synthetic://fixture/00000000-0000-4000-8000-000000000011",
+      "raw_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "images": []
+    },
+    {
+      "scryfall_id": "00000000-0000-4000-8000-000000000012",
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "set_code": "bbb",
+      "set_name": "Synthetic bbb",
+      "collector_number": "1",
+      "rarity": "common",
+      "released_on": "2020-01-01",
+      "language": "en",
+      "games": [
+        "paper"
+      ],
+      "source_uri": "https://example.invalid/card/00000000-0000-4000-8000-000000000012",
+      "retrieved_at": "2026-09-07T00:00:00Z",
+      "raw_snapshot_ref": "synthetic://fixture/00000000-0000-4000-8000-000000000012",
+      "raw_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "images": []
+    }
+  ],
+  "aliases": [
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "alias_key": "fixture card",
+      "kind": "canonical"
+    },
+    {
+      "oracle_id": "00000000-0000-4000-8000-000000000001",
+      "alias_key": "fixture back",
+      "kind": "face"
+    }
+  ]
+}

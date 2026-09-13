@@ -1,0 +1,35 @@
+{
+  "name": "mtg-scorer-web",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24.14.1 <25",
+    "npm": ">=11 <12"
+  },
+  "packageManager": "npm@11.11.0",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3300",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3300",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "generate:api": "openapi-typescript ../contracts/catalog-api.openapi.json -o src/lib/api.generated.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.3",
+    "openapi-typescript": "7.13.0",
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.13.0",
+    "prettier": "3.9.6"
+  }
+}

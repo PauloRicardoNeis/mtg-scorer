@@ -1,0 +1,78 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_snapshot_id",
+    "publication_schema_version",
+    "export_file",
+    "export_sha256",
+    "export_bytes",
+    "row_counts",
+    "source_manifest_sha256",
+    "excluded_record_counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "catalog-manifest-v1"
+    },
+    "catalog_snapshot_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,95}$"
+    },
+    "publication_schema_version": {
+      "const": "catalog-publication-v1"
+    },
+    "export_file": {
+      "const": "catalog.json"
+    },
+    "export_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "export_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "row_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cards",
+        "faces",
+        "printings",
+        "aliases"
+      ],
+      "properties": {
+        "cards": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "faces": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "printings": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aliases": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "source_manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "excluded_record_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
