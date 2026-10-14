@@ -150,10 +150,44 @@ def test_interrupted_download_has_no_success_manifest_and_retry_works(tmp_path, 
     assert list(tmp_path.iterdir()) == []
     monkeypatch.setattr(adapter, "urlopen", lambda *a, **k: io.BytesIO(FIXTURE.read_bytes()))
     first = adapter.download_default_cards_snapshot(tmp_path)
+    monkeypatch.setattr(
+        adapter, "urlopen", lambda *a, **k: pytest.fail("unchanged snapshot downloaded again")
+    )
+    assert adapter.download_default_cards_snapshot(tmp_path) == first
+    monkeypatch.setattr(
+        adapter,
+        "_fetch_json",
+        lambda _: {
+            "updated_at": "2026-09-08T00:00:00Z",
+            "download_uri": "https://example.invalid/new-url",
+        },
+    )
     assert adapter.download_default_cards_snapshot(tmp_path) == first
     first.raw_file.write_bytes(b"corrupt")
     with pytest.raises(ValueError, match="checksum"):
         adapter.download_default_cards_snapshot(tmp_path)
+
+
+def test_truncated_gzip_is_not_retained_as_a_completed_download(tmp_path, monkeypatch):
+    import io
+
+    import mtg_scorer.ingest.scryfall as adapter
+
+    monkeypatch.setattr(
+        adapter,
+        "_fetch_json",
+        lambda _: {
+            "updated_at": "2026-09-08T00:00:00Z",
+            "download_uri": "https://example.invalid/data",
+        },
+    )
+    compressed = gzip.compress(FIXTURE.read_bytes())
+    monkeypatch.setattr(adapter, "urlopen", lambda *a, **k: io.BytesIO(compressed[:-10]))
+    with pytest.raises((EOFError, OSError)):
+        adapter.download_default_cards_snapshot(tmp_path)
+    assert list(tmp_path.iterdir()) == []
+    monkeypatch.setattr(adapter, "urlopen", lambda *a, **k: io.BytesIO(compressed))
+    assert adapter.download_default_cards_snapshot(tmp_path).raw_file.exists()
 
 
 def test_failed_legacy_normalization_never_publishes_partial_files(tmp_path, monkeypatch):

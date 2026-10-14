@@ -40,7 +40,11 @@ export default async function Cards({
             </p>
           </div>
           <aside className="sample-note">
-            <span className="badge">Bounded real sample</span>
+            <span className="badge">
+              {snapshot.selection.kind === "bulk"
+                ? "Scryfall default-cards"
+                : "Bounded real sample"}
+            </span>
             <p>
               {snapshot.card_count} cards · {snapshot.printing_count} printings
             </p>

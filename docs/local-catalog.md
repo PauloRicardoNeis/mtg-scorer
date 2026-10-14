@@ -1,8 +1,10 @@
 # Local catalog: run, verify and recover
 
-This guest application serves the eight retained real Scryfall responses in
-`analytics/seeds/scryfall-layouts-v1`. It needs no MTG account or production
-credentials. Python publishes facts; Spring owns product queries; Next.js renders
+This guest application serves the active published PostgreSQL catalog. Full
+Scryfall default-cards imports and the optional eight-response sample in
+`analytics/seeds/scryfall-layouts-v1` use the same publication protocol. It needs
+no MTG account or production credentials. Python publishes facts; Spring owns
+product queries; Next.js renders
 the Java responses. Application requests do not run Python or query MTG source
 APIs. Browsers load card scans from published image URLs under the image delivery
 exception in [ADR 0001](adr/0001-polyglot-application-boundary.md).
@@ -25,7 +27,7 @@ python scripts/demo.py up
 
 The entry point installs the locked Python and npm environments, obtains the
 Playwright Chromium runtime, runs language checks/tests, builds both applications,
-starts PostgreSQL if needed, migrates a local database, publishes the real seed,
+starts PostgreSQL if needed, migrates a local database, reuses its active catalog,
 and starts the preview. First setup needs internet for tool dependencies; catalog
 verification uses retained bytes and never fetches live Scryfall or TopDeck.
 
@@ -71,8 +73,11 @@ Alternatively set `POSTGRES_BIN` to a directory containing `initdb` and `pg_ctl`
 The admin account needs database/role creation and migration privileges on this
 local test service. The application connects as `catalog_api_local`, a member of
 `catalog_reader`; the publisher connects as `catalog_publisher_local`, a member
-of `catalog_publisher`. The demo creates these login roles with the development
-password `local-catalog-only` if absent. Existing roles are not reset. Migrations
+of `catalog_publisher`. The API login also receives `catalog_import_admin`, which
+can only enqueue/read import jobs through restricted functions. `catalog_reader`
+itself cannot enqueue imports or read job records. The demo creates these login
+roles with the development password `local-catalog-only` if absent. Existing roles
+are not reset. Migrations
 use the separate admin connection. The reader cannot access staging tables or
 write the active pointer; the publisher cannot alter published rows or schemas.
 
@@ -82,6 +87,116 @@ cluster after stopping the preview:
 ```powershell
 & .local/tools/postgresql-17.11/pgsql/bin/pg_ctl.exe -D .local/postgres-data stop -m fast
 ```
+
+## Full catalog import worker and administration
+
+Normal `up` reuses the active database and never enqueues an import, downloads
+Scryfall, or reactivates the seed. An empty database returns 503
+`catalog_unavailable`; liveness stays healthy and the browser shows an unavailable
+state. To deliberately activate the sample use `up --seed-sample`. `verify`
+always seeds its own disposable database, independent of the preview.
+
+### Start the server and worker
+
+Before starting the API, set a random server credential of at least 32 characters.
+For example, in PowerShell 7:
+
+```powershell
+$env:CATALOG_IMPORT_ADMIN_TOKEN = [Convert]::ToHexString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+python scripts/demo.py up --skip-install --skip-build
+```
+
+Set the token in the environment of the actual API process; changing a different
+terminal's environment does not reconfigure an already-running server. Retain the
+same value privately in your administrative client. Never commit it, put it in
+`NEXT_PUBLIC_*`, or add it to browser code. No token or a token shorter than 32
+characters gives 503 `admin_unavailable`; missing/wrong client credentials give
+401 `unauthorized`. This shared credential is for trusted local administration.
+Bind local servers to loopback; use TLS and a secret manager if adapting this to
+a remote environment. The local PostgreSQL trust setup remains development-only.
+
+In a separate terminal, run the worker using the publisher role:
+
+```powershell
+$env:CATALOG_PUBLISH_DSN = 'postgresql://catalog_publisher_local:local-catalog-only@127.0.0.1:55432/mtg_catalog_demo'
+analytics/.venv/Scripts/python.exe -m mtg_scorer.import_worker --data-dir .local/catalog-imports
+```
+
+The worker polls every two seconds; it does no source work until a job is queued.
+It needs the DSN, not the HTTP bearer token. `--once` consumes at most one queued
+job and exits, which also supports an externally supervised batch invocation.
+Migrations must run first. For manually managed logins, grant `catalog_reader`
+and `catalog_import_admin` to the API login and `catalog_publisher` to the worker
+login. The importer schema and functions are owned by the migration account.
+
+### Request, inspect, and refresh
+
+From a trusted client with the same private token in its environment:
+
+```powershell
+$base = 'http://127.0.0.1:18080'
+$headers = @{ Authorization = "Bearer $env:CATALOG_IMPORT_ADMIN_TOKEN" }
+$job = Invoke-RestMethod -Method Post -Uri "$base/api/v1/admin/catalog-imports" -Headers $headers
+$job
+Invoke-RestMethod -Uri "$base$($job.status_url)" -Headers $headers
+```
+
+POST has no request body. It returns HTTP 202 and a Location header. Concurrent
+requests reuse the queued/running job ID. GET is also protected. Stages are
+`queued`, `source` (metadata/download or retained-file verification), `normalizing`,
+`validating`, `publishing`, `promoting`, and `complete`. Counts appear when known;
+empty maps mean not yet available. There is no estimated percentage. Timestamps
+record request, start, latest stage change and finish. `updated_at` is not a
+heartbeat. Very short transaction stages may not be visible while polling.
+
+A successful job has `result=published` or `result=already_published`. Both report
+the resulting catalog/source identity, versions, row counts and exclusions.
+Once complete, open `/cards` without an old snapshot parameter to use the new
+active dataset. Existing snapshot-pinned URLs continue to use their original data.
+
+To deliberately refresh, POST again. The worker checks current source metadata,
+verifies an existing raw checksum, and avoids downloading unchanged bulk bytes.
+The same source content and processing versions are a no-op even after a pointer
+rollback; a no-op never moves the active pointer. New source/version identities
+are fully validated before atomic promotion. No scheduled refresh is installed.
+
+### Retry, rebuild retained data, and roll back
+
+On failure, GET returns `state=failed`, the last stage and a sanitized
+`error_code`: `import_failed` or `worker_interrupted`. Read worker stderr for the
+underlying exception. GET/POST or the next worker detects an abandoned session
+and finalizes its running job; a live worker's advisory lock prevents takeover.
+After fixing the cause, POST creates a new job and verified artifacts are reused.
+A crash after successful publication but before job completion is safe: retry
+discovers the published identity and returns `already_published`.
+
+For an offline rebuild after a parser change, stop other workers and run:
+
+```powershell
+analytics/.venv/Scripts/python.exe -m mtg_scorer.import_worker --once --data-dir .local/catalog-imports --source-dir .local/catalog-imports/raw/scryfall/SOURCE_TIMESTAMP
+```
+
+Queue a job first; replace `SOURCE_TIMESTAMP` with a retained raw directory.
+The effective parser version includes normalization and bulk pipeline versions;
+bump the relevant version when processing semantics change. Identity also includes
+the publication schema and selection. Source checksums are always verified.
+Never edit completed source/artifact directories. If integrity checks report
+corruption, preserve the affected directory for diagnosis and restore known-good
+bytes or move it aside before a deliberate redownload. Process kills can leave
+temporary `.download-*`/`.bulk-*` folders; these are never treated as completed
+artifacts. Remove only such abandoned folders after stopping workers.
+
+Use the existing guarded `rollback-catalog --target ... --expected ...` command
+below to reactivate a retained published snapshot. It uses the same publication
+lock and does not rewrite or delete rows. Published snapshots are retained; there
+is no automatic cleanup policy.
+
+Scope: **Scryfall default-cards**, English printings plus their available printed
+language when English is unavailable, with supported Oracle identities. It is
+not all languages or every Scryfall object. Missing top-level Oracle IDs and
+missing required faces are explicit exclusions. All retained source game values
+are preserved, including `astral` and `sega`; current UI game filters offer
+paper/Arena/MTGO. See [actual bulk verification](full-catalog-import-verification.md).
 
 ## Complete deterministic verification
 
@@ -193,11 +308,16 @@ analytics/.venv/Scripts/python.exe scripts/api_contract.py --url http://127.0.0.
 Review the resulting OpenAPI and `web/src/lib/api.generated.ts` together. Normal
 verification compares live OpenAPI and regenerated TypeScript for drift.
 
-The bounded exporter uses in-memory source projection; the publisher streams
-table rows and keeps compact relationship indexes. Neither is claimed to have
-constant memory or proven full-catalog throughput. The benchmark records exact
+The sample exporter uses in-memory source projection. The bulk exporter sorts
+source records in SQLite with an 8 MiB page cache, projects one printing at a time,
+and emits the same JSON row contract and Parquet tables. DuckDB uses a 128 MiB
+buffer pool and two threads. Publication validation uses SQLite for provenance
+and relationship indexes and checks one Oracle group at a time; heap use depends
+on the largest group, not all catalog text. The publisher streams PostgreSQL COPY
+inside the existing guarded transaction. These settings bound working buffers,
+not total process RSS. The seed benchmark records exact
 seed, runtime, import wall time, process peak RSS, disk usage, EXPLAIN ANALYZE and
 100 warm loopback requests at 20 readers. It proves this small integration only.
-Full-catalog scale, public hosting, costs, backup restore, broad browser/screen-reader
+See the full-import evidence for actual bulk measurements. Public hosting, costs, backup restore, broad browser/screen-reader
 coverage, tournament quality, public data/code licensing and Forge mapping remain
 outside the verified local milestone.

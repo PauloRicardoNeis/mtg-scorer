@@ -13,6 +13,9 @@ Completion evidence and remaining verification limits are in the
 | 5. Portfolio release | Planned | Public guest application, deployment evidence, demo and case study |
 
 Read [milestone 3](#milestone-3-traceable-tournament-evidence) for the next work.
+The 2026-09-28 catalog extension adds durable administrative import jobs and full
+default-cards publication; see [ADR 0003](adr/0003-asynchronous-catalog-import.md),
+the [runbook](local-catalog.md), and [real import evidence](full-catalog-import-verification.md).
 The completed catalog checklist and older roadmaps are expandable references below.
 
 ## Active delivery sequence (2026-09-07)

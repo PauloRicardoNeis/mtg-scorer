@@ -307,7 +307,9 @@
             "enum": [
               "paper",
               "arena",
-              "mtgo"
+              "mtgo",
+              "astral",
+              "sega"
             ]
           },
           "uniqueItems": true

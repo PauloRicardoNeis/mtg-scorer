@@ -56,6 +56,9 @@ def maven(*arguments: str) -> None:
     )
 
 
+# Prepare the dependencies needed by the local demo and verification commands.
+# Install pinned uv, sync Python dependencies including development tools, then
+# install web dependencies from the lockfile and Chromium for browser tests.
 def install() -> None:
     run([sys.executable, "-m", "pip", "install", "uv==0.8.22"])
     run(
@@ -76,8 +79,11 @@ def install() -> None:
     run(["node", ROOT / "web/node_modules/playwright/cli.js", "install", "chromium"])
 
 
+# Return an admin connection string, preferring a supplied DSN or running local service.
+# Otherwise, locate PostgreSQL binaries or obtain a checksum-verified Windows archive
+# and start the local cluster. Reuse an initialized data directory so databases and
+# published data survive later runs; initialize it only when PG_VERSION is absent.
 def postgres_admin_dsn() -> str:
-    """Use a supplied local service, native PostgreSQL, or verified portable Windows binaries."""
     if os.environ.get("CATALOG_ADMIN_DSN"):
         return os.environ["CATALOG_ADMIN_DSN"]
     import psycopg
@@ -162,6 +168,10 @@ def postgres_admin_dsn() -> str:
     return dsn
 
 
+# Create missing local login roles and the named database, then return a copy of the
+# environment configured for the API, migrations, publication, and tests. Java needs
+# a JDBC URL with separate credentials, while Python uses PostgreSQL connection strings
+# with the appropriate database and role. Both point to the same PostgreSQL service.
 def database(admin: str, name: str) -> dict[str, str]:
     import psycopg
     from psycopg import sql
@@ -209,10 +219,15 @@ def grant_runtime_roles(admin: str) -> None:
 
     with psycopg.connect(admin) as connection:
         connection.execute("GRANT catalog_reader TO catalog_api_local")
+        connection.execute("GRANT catalog_import_admin TO catalog_api_local")
         connection.execute("GRANT catalog_publisher TO catalog_publisher_local")
 
 
 @contextmanager
+# Start a server with its output captured in a log and yield the process to the caller.
+# Leaving the context triggers cleanup even after an error or Ctrl+C. If the process
+# is still running, request termination, wait up to ten seconds, then force it to stop
+# if necessary. The surrounding file context also closes the log.
 def server(command: list[str | Path], env: dict[str, str], log: Path):
     with log.open("w", encoding="utf-8") as output:
         process = subprocess.Popen(
@@ -250,6 +265,9 @@ def wait_http(url: str, process: subprocess.Popen, timeout: float = 45) -> None:
     raise RuntimeError(f"Timed out waiting for local server at {url}; inspect .local logs.")
 
 
+# Export the bundled seed catalog with a fixed timestamp and publish it to PostgreSQL.
+# If another snapshot is active, switch back to the seed snapshot so the demo and tests
+# use the expected catalog. Print the publication result and return the artifact directory.
 def seed(env: dict[str, str], output_root: Path) -> Path:
     import psycopg
     from mtg_scorer.publish.artifact import export_catalog
@@ -267,6 +285,14 @@ def seed(env: dict[str, str], output_root: Path) -> Path:
     return artifact
 
 
+# Prepare the database and run the API and web app with the retained catalog.
+# Copy the JAR before launching Java to avoid locking Maven's build output on Windows.
+# Check API liveness before any explicit seed, then readiness after seeding. Verification
+# checks the empty catalog first because publication tests add data to that database.
+# "up" reuses the demo database and keeps serving until interrupted or a server stops.
+# "verify" uses a fresh database and separate ports, runs publication, API, and browser
+# checks, saves measurements, and exits. Server contexts clean up the API and web
+# processes; PostgreSQL, databases, and run files remain available for inspection.
 def serve_and_verify(args: argparse.Namespace) -> None:
     admin = postgres_admin_dsn()
     verify = args.command == "verify"
@@ -284,10 +310,13 @@ def serve_and_verify(args: argparse.Namespace) -> None:
     api_url, web_url = f"http://127.0.0.1:{api_port}", f"http://127.0.0.1:{web_port}"
     env.update(
         SERVER_PORT=api_port,
+        SERVER_ADDRESS="127.0.0.1",
         CATALOG_API_URL=api_url,
         CATALOG_TEST_API_URL=api_url,
         WEB_TEST_URL=web_url,
     )
+    if verify:
+        env["CATALOG_IMPORT_ADMIN_TOKEN"] = uuid4().hex + uuid4().hex
     run_dir = LOCAL / name
     run_dir.mkdir(parents=True, exist_ok=True)
     runtime_jar = run_dir / ("api-" + uuid4().hex[:8] + ".jar")
@@ -315,6 +344,10 @@ def serve_and_verify(args: argparse.Namespace) -> None:
             )
             print("Checkpoint: real PostgreSQL publication and failure tests", flush=True)
             run(
+                [PYTHON, "-m", "pytest", "analytics/tests/test_catalog_import_jobs.py", "-q"],
+                env=env,
+            )
+            run(
                 [
                     PYTHON,
                     "-m",
@@ -324,8 +357,9 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 ],
                 env=env,
             )
-        artifact = seed(env, run_dir / "catalog")
-        wait_http(api_url + "/actuator/health/readiness", api_process)
+        if verify or args.seed_sample:
+            artifact = seed(env, run_dir / "catalog")
+            wait_http(api_url + "/actuator/health/readiness", api_process)
         if verify:
             print(
                 "Checkpoint: Python -> PostgreSQL -> Java contracts and refresh",
@@ -346,7 +380,7 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 "--port",
                 web_port,
             ],
-            env,
+            {key: value for key, value in env.items() if key != "CATALOG_IMPORT_ADMIN_TOKEN"},
             run_dir / "web.log",
         ) as web_process:
             wait_http(web_url + "/", web_process)
@@ -388,9 +422,17 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 raise RuntimeError("A local server stopped; inspect logs.")
 
 
+# Parse the command and skip options, prepare the local directory, and install
+# dependencies unless skipped. The "install" command ends there; "up" and "verify"
+# rerun in the project Python environment when needed so its dependencies are available.
+# Unless builds are skipped, run language and contract checks, tests, and production
+# builds before handing control to the demo or verification flow.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=["install", "up", "verify"])
+    parser.add_argument(
+        "--seed-sample", action="store_true", help="Explicitly activate the seven-card sample"
+    )
     parser.add_argument(
         "--skip-install", action="store_true", help="Use existing locked dependencies"
     )
@@ -417,6 +459,7 @@ def main() -> None:
                 args.command,
                 "--skip-install",
                 *(["--skip-build"] if args.skip_build else []),
+                *(["--seed-sample"] if args.seed_sample else []),
             ]
         )
         return

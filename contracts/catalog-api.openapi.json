@@ -252,6 +252,173 @@
         ],
         "type": "object"
       },
+      "ImportError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "status": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "detail",
+          "instance",
+          "request_id",
+          "status",
+          "title",
+          "type"
+        ],
+        "type": "object"
+      },
+      "ImportJob": {
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_code": {
+            "enum": [
+              "import_failed",
+              "worker_interrupted"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excluded_record_counts": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "finished_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "job_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "parser_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requested_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "published",
+              "already_published"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "row_counts": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "schema_version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_snapshot_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "enum": [
+              "queued",
+              "source",
+              "normalizing",
+              "validating",
+              "publishing",
+              "promoting",
+              "complete"
+            ],
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "status_url": {
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog_snapshot_id",
+          "error_code",
+          "excluded_record_counts",
+          "finished_at",
+          "job_id",
+          "parser_version",
+          "requested_at",
+          "result",
+          "row_counts",
+          "schema_version",
+          "source_snapshot_id",
+          "stage",
+          "started_at",
+          "state",
+          "status_url",
+          "updated_at"
+        ],
+        "type": "object"
+      },
       "InfoResponse": {
         "description": "Application identity and capabilities implemented by this API build.",
         "properties": {
@@ -542,6 +709,12 @@
         ],
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "catalogAdmin": {
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
   },
   "info": {
@@ -579,6 +752,186 @@
         "summary": "Actuator web endpoint 'health'",
         "tags": [
           "Actuator"
+        ]
+      }
+    },
+    "/api/v1/admin/catalog-imports": {
+      "post": {
+        "operationId": "request",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "security": [
+          {
+            "catalogAdmin": []
+          }
+        ],
+        "summary": "Queue an import of the current Scryfall default-cards snapshot",
+        "tags": [
+          "catalog-import-controller"
+        ]
+      }
+    },
+    "/api/v1/admin/catalog-imports/{job_id}": {
+      "get": {
+        "operationId": "get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "security": [
+          {
+            "catalogAdmin": []
+          }
+        ],
+        "summary": "Inspect durable import status and available counts",
+        "tags": [
+          "catalog-import-controller"
         ]
       }
     },

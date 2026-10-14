@@ -22,8 +22,10 @@ by that runner; the offline Python phase reports them as skipped intentionally.
 The catalog producer is in `normalize/` and `publish/`. It preserves top-level
 missing values and ordered faces, chooses one deterministic representative, retains
 printing images/provenance and ambiguous aliases, writes immutable JSON/Parquet,
-and publishes through guarded PostgreSQL functions. Streaming import retains
-compact relationship indexes; full-catalog performance is not established.
+and publishes through guarded PostgreSQL functions. The full serving exporter in
+`publish/bulk.py` uses SQLite staging and streams the same logical contract;
+validation uses disk indexes and PostgreSQL loading uses transactional COPY.
+See [measured full import evidence](../docs/full-catalog-import-verification.md).
 
 The real eight-response seed and its source hashes are under
 `seeds/scryfall-layouts-v1`. See [the local runbook](../docs/local-catalog.md) for
@@ -36,9 +38,13 @@ The legacy analytical bulk command remains available for an explicit online refr
 python -m uv run --project analytics mtg-scorer ingest-scryfall --data-dir analytics/data/local
 ```
 
-It preserves raw bytes and legacy analytical Parquet. The bounded catalog producer
-is the verified milestone-2 serving path; neither a full bulk download nor broad
-layout/performance coverage is claimed by the small seed. Live probes are not CI.
+It preserves raw bytes and legacy analytical Parquet. To populate the serving
+catalog, operate `python -m mtg_scorer.import_worker` with `CATALOG_PUBLISH_DSN`
+and enqueue through the protected administrative API. The worker connects raw
+bulk data to face-aware normalization, immutable serving exports and atomic
+publication. `--once` handles one queued job; `--source-dir` selects retained
+source data for an offline rebuild. The [runbook](../docs/local-catalog.md)
+documents credentials, refresh, retries and rollback. Live probes are not CI.
 
 See the repository [README](../README.md),
 [measurement contract](../docs/measurement-contract.md), and

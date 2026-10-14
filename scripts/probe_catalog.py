@@ -27,6 +27,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
+    print("args:", args)
     # Exclusive directory creation prevents overwriting an earlier observation.
     args.output.mkdir(parents=True, exist_ok=False)
     records = []

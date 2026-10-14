@@ -2,6 +2,12 @@
 
 Status: **2026-09-08 — milestone 2 complete as a verified local catalog application.**
 
+**2026-09-28 update:** the catalog now also supports protected asynchronous
+default-cards imports and a separately operated Python worker. Normal startup
+reuses the active database. The [full-import report](full-catalog-import-verification.md)
+records real source counts and measurements; the milestone-2 evidence below
+remains the historical sample verification.
+
 Retained real Scryfall bytes now pass through face-aware Python normalization,
 immutable JSON/Parquet export, atomic PostgreSQL publication, Spring catalog and
 snapshot APIs, and three guest Next.js views. This delivers the active milestone-2

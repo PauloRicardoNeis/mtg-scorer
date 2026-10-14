@@ -84,6 +84,9 @@ analytical store; JSON is a deliberately simple serving export for the bounded
 first slice. Parse large arrays with streaming I/O on import. Benchmark before
 changing the serving transport to JSONL/Parquet; preserve logical row contracts.
 The fixture verifier loads small files in memory and is not the production importer.
+The bulk exporter now builds this same envelope using disk staging and streaming
+output; production validation stores provenance and relationship indexes in SQLite.
+It checks one Oracle group at a time instead of retaining every printing in memory.
 
 [Manifest v1](../contracts/catalog-manifest.schema.json) has exactly these required fields:
 
@@ -96,7 +99,7 @@ The fixture verifier loads small files in memory and is not the production impor
 | `source_manifest_sha256` | Full hash of retained immutable source manifest |
 | `excluded_record_counts` | Map of reason code to nonnegative count; empty means none excluded |
 
-Publication identity is `catalog-` plus full SHA-256 of canonical UTF-8 JSON
+Sample publication identity is `catalog-` plus full SHA-256 of canonical UTF-8 JSON
 containing `source_manifest_sha256`, `parser_version`, `publication_schema_version`
 and `selection` (sorted object keys, compact separators, no ASCII escaping).
 The source manifest records the actual retrieval timestamps; `created_at` is fixed
@@ -147,6 +150,16 @@ does not make a catalog API unready. Liveness stays process-only. Startup withou
 publication returns a 503 catalog problem, not a successful empty result.
 
 ## HTTP semantics beyond the schema
+
+Administrative import endpoints and their server credential, durable job, source
+identity and recovery contracts are defined in
+[ADR 0003](adr/0003-asynchronous-catalog-import.md) and the
+[runbook](local-catalog.md#full-catalog-import-worker-and-administration).
+For bulk artifacts, identity hashes source type, timestamp and verified raw
+checksum plus parser/schema/selection; it excludes retrieval time and transport
+URL. The sample's manifest-based identity remains unchanged. Both paths verify
+the exact retained source manifest hash. Game metadata additionally retains
+`astral` and `sega`; existing UI/API game filters remain paper/Arena/MTGO.
 
 `GET /api/v1/cards` accepts literal name/face search, repeated set and rarity
 filters, optional game and color identity, `name_asc`, limit 1–100 (default 24),
