@@ -6,6 +6,8 @@ import { Filters } from "@/components/filters";
 import { CopySearch } from "@/components/actions";
 import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
+import { Icon } from "@/components/icon";
+import { ColorDots } from "@/components/mana";
 
 export default async function Cards({
   searchParams,
@@ -26,33 +28,48 @@ export default async function Cards({
     if (page.next_cursor) next.set("cursor", page.next_cursor);
     return (
       <>
-        <section className="intro">
-          <div>
-            <p className="eyebrow">The card catalog</p>
-            <h1>
-              Find something
-              <br />
-              <em>worth building around.</em>
-            </h1>
-            <p>
-              Start with the cards in your pool. Explore names, faces and the
-              printings that fit.
-            </p>
+        <section className="intro band">
+          <div className="intro-inner band-inner">
+            <div className="intro-copy">
+              <p className="eyebrow">The card catalog</p>
+              <h1>
+                Find something
+                <br />
+                <em>worth building around.</em>
+              </h1>
+              <p className="lead">
+                Start with the cards in your pool. Explore names, faces and the
+                printings that fit.
+              </p>
+            </div>
+            <aside className="sample-note">
+              <span className="tag">
+                {snapshot.selection.kind === "bulk"
+                  ? "Scryfall default-cards"
+                  : "Bounded real sample"}
+              </span>
+              <dl className="stat-strip">
+                <div>
+                  <dt>Cards</dt>
+                  <dd>{snapshot.card_count}</dd>
+                </div>
+                <div>
+                  <dt>Printings</dt>
+                  <dd>{snapshot.printing_count}</dd>
+                </div>
+                <div>
+                  <dt>Source retrieved</dt>
+                  <dd>{snapshot.retrieved_to.slice(0, 10)}</dd>
+                </div>
+              </dl>
+              <Link
+                className="inline-link"
+                href={`/datasets/${page.catalog_snapshot_id}`}
+              >
+                Inspect this dataset <Icon name="arrow-up-right" size={14} />
+              </Link>
+            </aside>
           </div>
-          <aside className="sample-note">
-            <span className="badge">
-              {snapshot.selection.kind === "bulk"
-                ? "Scryfall default-cards"
-                : "Bounded real sample"}
-            </span>
-            <p>
-              {snapshot.card_count} cards · {snapshot.printing_count} printings
-            </p>
-            <p>Source retrieved {snapshot.retrieved_to.slice(0, 10)}</p>
-            <Link href={`/datasets/${page.catalog_snapshot_id}`}>
-              Inspect this dataset <span aria-hidden="true">↗</span>
-            </Link>
-          </aside>
         </section>
         <Filters
           key={query.toString()}
@@ -74,6 +91,7 @@ export default async function Cards({
                 Try another name or broaden your set, rarity and color filters.
               </p>
               <Link
+                className="button secondary sm"
                 href={`/cards?catalog_snapshot_id=${page.catalog_snapshot_id}`}
               >
                 Clear filters
@@ -86,7 +104,9 @@ export default async function Cards({
                   <article className="card-tile">
                     <p className="card-index" aria-hidden="true">
                       {String(index + 1).padStart(2, "0")}{" "}
-                      <span>{card.layout.replaceAll("_", " ")}</span>
+                      <span className="tag">
+                        {card.layout.replaceAll("_", " ")}
+                      </span>
                     </p>
                     <CardImages
                       name={card.name}
@@ -98,7 +118,10 @@ export default async function Cards({
                         {card.name}
                       </Link>
                     </h3>
-                    <p className="color-label">{colors(card.color_identity)}</p>
+                    <p className="color-label">
+                      <ColorDots values={card.color_identity} />
+                      {colors(card.color_identity)}
+                    </p>
                     <div className="tile-bottom">
                       <span>
                         {card.eligible_printing_count} eligible{" "}
@@ -106,7 +129,7 @@ export default async function Cards({
                           ? "printing"
                           : "printings"}
                       </span>
-                      <span aria-hidden="true">↗</span>
+                      <Icon name="arrow-up-right" size={14} />
                     </div>
                   </article>
                 </li>
@@ -115,16 +138,19 @@ export default async function Cards({
           )}
           <div className="pagination">
             {page.next_cursor ? (
-              <Link className="button" href={`/cards?${next}`}>
-                Next page <span aria-hidden="true">→</span>
+              <Link className="button secondary" href={`/cards?${next}`}>
+                Next page <Icon name="arrow-right" size={14} />
               </Link>
             ) : (
-              page.items.length > 0 && <p>End of these results</p>
+              page.items.length > 0 && (
+                <p className="end-note">End of these results</p>
+              )
             )}
             <CopySearch />
           </div>
         </section>
         <aside className="method-note">
+          <Icon name="info" size={18} />
           <strong>Catalog facts, with their limits.</strong>
           <p>
             Tournament evidence is not available for this dataset. Pool
