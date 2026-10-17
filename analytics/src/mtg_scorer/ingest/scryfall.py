@@ -68,6 +68,10 @@ def download_default_cards_snapshot(raw_root: Path) -> ScryfallSnapshot:
 
     if manifest_file.exists() and raw_file.exists():
         manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+        if manifest.get("source_updated_at") != updated_at or manifest.get(
+            "source_type"
+        ) != metadata.get("type", "default_cards"):
+            raise ValueError("source metadata conflicts with retained snapshot")
         actual_digest = _file_sha256(raw_file)
         if actual_digest != manifest.get("content_sha256"):
             raise ValueError(f"existing snapshot checksum mismatch: {raw_file}")
@@ -83,6 +87,16 @@ def download_default_cards_snapshot(raw_root: Path) -> ScryfallSnapshot:
         )
         with urlopen(request, timeout=120) as response, temporary_file.open("wb") as destination:
             shutil.copyfileobj(response, destination)
+            destination.flush()
+            length = (
+                response.headers.get("Content-Length") if hasattr(response, "headers") else None
+            )
+            if length is not None and temporary_file.stat().st_size != int(length):
+                raise ValueError("incomplete bulk download")
+        # Check JSON framing and gzip CRC/end-of-stream before retaining a successful
+        # source manifest. A truncated transfer must be downloadable again on retry.
+        if not sum(1 for _ in _iter_cards(temporary_file)):
+            raise ValueError("empty bulk download")
         retrieved_at = datetime.now(UTC).isoformat()
         content_digest = _file_sha256(temporary_file)
         snapshot_id = f"scryfall-default-cards-{timestamp}-{content_digest[:12]}"
@@ -328,7 +342,7 @@ def _iter_cards(path: Path) -> Iterator[dict[str, Any]]:
 
     if first_character == "[":
         with _open_binary(path) as stream:
-            for card in ijson.items(stream, "item"):
+            for card in ijson.items(stream, "item", use_float=True):
                 if isinstance(card, dict):
                     yield card
         return

@@ -68,7 +68,7 @@ export default async function Dataset({
             <h2>What this can tell you</h2>
             <p>
               Card and face text, color identity, and printings present in this
-              sample. Set, rarity and game filters apply to the same printing.
+              snapshot. Set, rarity and game filters apply to the same printing.
             </p>
             <h3>What remains unknown</h3>
             <p>
@@ -89,7 +89,7 @@ export default async function Dataset({
           </section>
         </div>
         <section className="dataset-panel">
-          <h2>Sets in this sample</h2>
+          <h2>Sets in this snapshot</h2>
           <ul className="set-list">
             {snapshot.sets.map((set) => (
               <li key={set.set_code}>

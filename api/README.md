@@ -28,6 +28,8 @@ migration/reader/publisher roles, exact environment variables, retry and rollbac
 | `/api/v1/snapshots` | Active catalog first, then up to 19 retained published catalogs |
 | `/api/v1/snapshots/{catalog_snapshot_id}` | Provenance, set vocabulary, counts and explicit unavailable tournament evidence |
 | `/api/v1/info` | Build version and implemented capabilities |
+| `POST /api/v1/admin/catalog-imports` | Bearer-protected durable import enqueue; 202 and status URL |
+| `GET /api/v1/admin/catalog-imports/{job_id}` | Bearer-protected job state, stages, timestamps, counts and result |
 | `/v3/api-docs`, `/swagger-ui.html` | Generated OpenAPI and interactive documentation |
 | `/actuator/health/liveness` | Process liveness |
 | `/actuator/health/readiness` | Database and active published catalog readiness |
@@ -54,9 +56,14 @@ Spring dispatch remain outside the application error-handler contract.
 The root Maven aggregator supports IDE discovery; `api/pom.xml` remains the
 independent Java build. On POSIX use `bash ./api/mvnw`. Maven Wrapper 3.9.16 checks
 its download checksum. Enforcer requires JDK 21; Spotless uses Google Java Format.
-The Java suite contains 15 query/cursor and real embedded-HTTP checks. The full
+The Java suite covers query/cursor rules, real embedded HTTP and disabled admin credentials. The full
 `python scripts/demo.py verify` command adds actual Flyway/PostgreSQL publication,
 Java HTTP behavior across refreshes, and browser checks. H2 is not used.
+Import job checks use real PostgreSQL and fixture-backed Python workers, including
+unauthorized requests, concurrent enqueue, source reuse and disconnected-worker
+recovery. Set `CATALOG_IMPORT_ADMIN_TOKEN` only on the server and trusted clients;
+the default disables both administrative endpoints. See the
+[import runbook](../docs/local-catalog.md#full-catalog-import-worker-and-administration).
 
 For intentional formatting or HTTP contract changes:
 

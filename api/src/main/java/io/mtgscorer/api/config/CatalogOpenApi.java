@@ -69,6 +69,36 @@ public class CatalogOpenApi {
                       "catalog_unavailable",
                       "internal_error")));
       api.getComponents().addSchemas("CatalogError", problem);
+      var adminProblem = new ObjectSchema();
+      for (String field : List.of("type", "title", "detail", "instance", "request_id", "code"))
+        adminProblem.addProperty(field, new StringSchema());
+      adminProblem.addProperty("status", new IntegerSchema());
+      api.getComponents().addSchemas("ImportError", adminProblem);
+      api.getPaths()
+          .forEach(
+              (path, item) -> {
+                if (!path.startsWith("/api/v1/admin/catalog-imports")) return;
+                item.readOperations()
+                    .forEach(
+                        operation -> {
+                          for (String status : List.of("400", "401", "404", "503", "500"))
+                            operation
+                                .getResponses()
+                                .addApiResponse(
+                                    status,
+                                    new ApiResponse()
+                                        .description("Sanitized Problem Details with a stable code")
+                                        .content(
+                                            new Content()
+                                                .addMediaType(
+                                                    "application/problem+json",
+                                                    new MediaType()
+                                                        .schema(
+                                                            new Schema<>()
+                                                                .$ref(
+                                                                    "#/components/schemas/ImportError")))));
+                        });
+              });
       // Record DTOs always serialize every component, including explicit nulls.
       api.getComponents()
           .getSchemas()

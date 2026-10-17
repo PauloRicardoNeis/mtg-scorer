@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from contextlib import nullcontext
 from hashlib import file_digest
 from itertools import chain
 from pathlib import Path
@@ -48,28 +49,25 @@ def _load_rows(connection: psycopg.Connection, payload: dict[str, Any], export_f
         if first is None:
             continue
         columns = [key for key in first if key != "images"]
-        statement = sql.SQL("INSERT INTO catalog.{} ({}) VALUES ({})").format(
+        statement = sql.SQL("COPY catalog.{} ({}) FROM STDIN").format(
             sql.Identifier(table),
             sql.SQL(",").join(map(sql.Identifier, ["catalog_snapshot_id", *columns])),
-            sql.SQL(",").join(sql.Placeholder() for _ in range(len(columns) + 1)),
         )
-        with connection.cursor() as cursor:
-            cursor.executemany(
-                statement,
-                ((snapshot, *(row[key] for key in columns)) for row in chain([first], records)),
-            )
-    for printing in rows(export_file, "printings"):
-        for image in printing["images"]:
-            connection.execute(
-                "INSERT INTO catalog.catalog_printing_image VALUES(%s,%s,%s,%s,%s)",
-                (
-                    snapshot,
-                    printing["scryfall_id"],
-                    -1 if image["face_index"] is None else image["face_index"],
-                    image["source_uri"],
-                    image["artist"],
-                ),
-            )
+        with connection.cursor().copy(statement) as copy:
+            for row in chain([first], records):
+                copy.write_row((snapshot, *(row[key] for key in columns)))
+    with connection.cursor().copy("COPY catalog.catalog_printing_image FROM STDIN") as copy:
+        for printing in rows(export_file, "printings"):
+            for image in printing["images"]:
+                copy.write_row(
+                    (
+                        snapshot,
+                        printing["scryfall_id"],
+                        -1 if image["face_index"] is None else image["face_index"],
+                        image["source_uri"],
+                        image["artist"],
+                    )
+                )
 
 
 def publish_catalog(
@@ -78,13 +76,19 @@ def publish_catalog(
     dsn: str,
     *,
     before_promote: Callable[[str], None] | None = None,
+    before_load: Callable[[], None] | None = None,
+    connection: psycopg.Connection | None = None,
 ) -> dict[str, str]:
     """Validate external bytes before entering the database; failed attempts remain diagnosable."""
     payload, manifest = verify_publication(directory, source_dir)
+    if before_load:
+        before_load()
     attempt = uuid4()
     snapshot = payload["catalog_snapshot_id"]
     header = {key: value for key, value in payload.items() if key not in TABLES}
-    with psycopg.connect(dsn, autocommit=True) as connection:
+    with (
+        nullcontext(connection) if connection else psycopg.connect(dsn, autocommit=True)
+    ) as connection:
         connection.execute("SELECT pg_advisory_lock(%s)", (LOCK_ID,))
         try:
             previous = connection.execute(

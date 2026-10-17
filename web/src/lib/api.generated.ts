@@ -21,6 +21,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/catalog-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Queue an import of the current Scryfall default-cards snapshot */
+        post: operations["request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/catalog-imports/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspect durable import status and available counts */
+        get: operations["get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cards": {
         parameters: {
             query?: never;
@@ -181,6 +215,47 @@ export interface components {
             oracle_text: string | null;
             type_line: string | null;
         };
+        ImportError: {
+            code: string;
+            detail: string;
+            instance: string;
+            request_id: string;
+            /** Format: int32 */
+            status: number;
+            title: string;
+            type: string;
+        };
+        ImportJob: {
+            catalog_snapshot_id: string | null;
+            /** @enum {string|null} */
+            error_code: "import_failed" | "worker_interrupted" | null;
+            excluded_record_counts: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            finished_at: string | null;
+            /** Format: uuid */
+            job_id: string;
+            parser_version: string | null;
+            /** Format: date-time */
+            requested_at: string;
+            /** @enum {string|null} */
+            result: "published" | "already_published" | null;
+            row_counts: {
+                [key: string]: number;
+            };
+            schema_version: string | null;
+            source_snapshot_id: string | null;
+            /** @enum {string} */
+            stage: "queued" | "source" | "normalizing" | "validating" | "publishing" | "promoting" | "complete";
+            /** Format: date-time */
+            started_at: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "succeeded" | "failed";
+            status_url: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         /** @description Application identity and capabilities implemented by this API build. */
         InfoResponse: {
             /** @description Available capabilities; does not advertise planned functionality. */
@@ -288,6 +363,142 @@ export interface operations {
                     "application/json": Record<string, never>;
                     "application/vnd.spring-boot.actuator.v2+json": Record<string, never>;
                     "application/vnd.spring-boot.actuator.v3+json": Record<string, never>;
+                };
+            };
+        };
+    };
+    request: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ImportJob"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+        };
+    };
+    get: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ImportJob"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ImportError"];
                 };
             };
         };

@@ -16,9 +16,10 @@ implemented, what milestone 1 produced, verification limits, remaining work and
 the next milestones. The [implementation plan](docs/implementation-plan.md) contains
 the detailed execution checklist.
 
-The local catalog application is implemented: a documented real Scryfall seed
-travels through face-aware Python normalization and immutable export, atomic
-PostgreSQL publication, Spring queries, and three guest Next.js pages.
+The local catalog supports Scryfall default-cards bulk imports through a protected
+asynchronous administrative API and a separate Python worker. Face-aware Python
+normalization and immutable exports feed atomic PostgreSQL publication, Spring
+queries, and three guest Next.js pages. A small retained seed supports demos/tests.
 
 - Search canonical and face names; filter jointly by printing set, rarity and game.
 - Inspect complete faces, eligible printings, source dates and dataset identity.
@@ -38,13 +39,13 @@ duplicating analytical logic.
 
 ## Run the app on Windows
 
-You use MTG Scorer in a browser. One Python command prepares the data and starts
+You use MTG Scorer in a browser. One Python command prepares the database and starts
 the database, Java API, and Next.js website for you.
 
-The included demo contains **7 cards and 8 printings**, selected from real
+The optional sample contains **7 cards and 8 printings**, selected from real
 Scryfall responses to demonstrate different card layouts. You can search cards,
 filter printings, inspect card faces, and check the dataset's origin. It is a
-small catalog demo: tournament evidence, competitive rankings, and automatic
+catalog application: tournament evidence, competitive rankings, and automatic
 Forge collection import are not available yet. You do not need Forge installed,
 an MTG account, or a Scryfall/TopDeck API key to run it.
 
@@ -105,11 +106,14 @@ minutes while it:
 1. Installs the locked Python and web dependencies, plus Chromium for browser tests.
 2. Runs code checks/tests and builds the Java API and website.
 3. Prepares PostgreSQL and the local `mtg_catalog_demo` database.
-4. Loads the included Scryfall sample and starts the API and website.
+4. Starts the API and website using the database's active catalog.
 
-You do not need to activate a Python virtual environment, start each application
-separately, or download the full Scryfall catalog. The runner handles the Python
-environment and uses source data already in the repository.
+Startup does not download or publish catalog data. An empty database shows
+**Catalog unavailable** until an import completes. Follow the
+[full import runbook](docs/local-catalog.md#full-catalog-import-worker-and-administration)
+to configure the administrative credential, start the worker, and request an import.
+For an immediate small demo, explicitly run `python scripts/demo.py up --seed-sample`;
+that option deliberately switches the active catalog to the bundled sample.
 
 Wait until the terminal prints:
 
@@ -129,8 +133,8 @@ Open **[the card catalog](http://127.0.0.1:3300/cards)** in your browser.
 3. Return to search and try `Insectile Aberration` to find a card by its back-face name.
 4. Use **Inspect this dataset** to see the source information and coverage limits.
 
-The small sample will not contain most Magic cards. Start with no set, rarity, or
-color filters; an empty result may simply mean that no sample card matches.
+The optional sample will not contain most Magic cards. Start with no set, rarity,
+or color filters; an empty result may simply mean that no sample card matches.
 For example, this seed includes Lightning Bolt as **M11 common** and **2X2 uncommon**.
 Set, rarity, and game filters must match the same printing.
 
@@ -140,7 +144,7 @@ to inspect and try API requests. The catalog link above is the user interface.
 ### 5. Stop and start again
 
 Press **Ctrl+C** in the runner's terminal to stop the website and API. PostgreSQL,
-the sample data, and logs remain on disk for reuse.
+the active catalog, retained snapshots, and logs remain on disk for reuse.
 
 After a successful first run, you can start the existing build more quickly:
 
@@ -167,7 +171,8 @@ To stop the background PostgreSQL process as well, follow
 | A code check, test, or build fails | Read the first failing check in the terminal. Startup stops at that failure; fix it before retrying the full command. |
 | `Local server exited` or startup times out | Read `.local/mtg_catalog_demo/api.log` and `.local/mtg_catalog_demo/web.log`. Database startup logs are `.local/postgres-start.log` and `.local/postgres.log`. |
 | Browser cannot connect | Wait for `Catalog ready`, keep the runner's terminal open, and use port `3300` for the website. |
-| A search returns no cards | Clear filters and search for `Lightning Bolt`. Only seven cards are included; this is not the full Magic catalog. |
+| A search returns no cards | Clear filters and inspect the dataset scope. The optional sample contains only seven cards. |
+| Catalog unavailable | Start the import worker and request an import, or explicitly use `up --seed-sample` for the demo. |
 
 For database configuration, Linux/macOS setup, publication, retry, and rollback,
 see the [advanced local runbook](docs/local-catalog.md).

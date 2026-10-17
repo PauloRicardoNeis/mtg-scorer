@@ -5,7 +5,7 @@ import "./styles.css";
 export const metadata: Metadata = {
   title: "MTG Scorer · Card discovery",
   description:
-    "Explore a real, bounded Magic card catalog and its source dataset. Guest access; no tournament scores.",
+    "Explore a versioned Magic card catalog and its source dataset. Guest access; no tournament scores.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,7 +33,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <footer>
           Card metadata and images: Scryfall. Magic: The Gathering is a
           trademark of Wizards of the Coast.
-          <br />A bounded catalog sample. Tournament evidence is not available.
+          <br />A versioned card catalog. Tournament evidence is not available.
         </footer>
       </body>
     </html>
