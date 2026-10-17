@@ -1,29 +1,39 @@
-:root {
-  --paper: #f5f3ec;
-  --ink: #202c29;
-  --muted: #53635b;
-  --line: #c8d0c5;
-  --accent: #27553d;
-  --pale: #e7ecdf;
-  --white: #fffef8;
+/* Base elements. Every value comes from tokens.css. */
+html {
+  color-scheme: dark;
 }
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 16px;
-  line-height: 1.55;
+  background: var(--bg-page);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
 }
 a {
-  color: var(--accent);
-  text-underline-offset: 4px;
+  color: var(--link);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 a:hover {
-  text-decoration-thickness: 2px;
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+::selection {
+  background: var(--selection-bg);
+  color: var(--text-1);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-3);
+  opacity: 1;
 }
 button,
 input,
@@ -33,30 +43,31 @@ select {
 button,
 .button {
   display: inline-flex;
-  gap: 18px;
+  gap: var(--space-2);
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: var(--accent);
-  color: white;
-  padding: 11px 19px;
-  font-weight: 600;
+  color: var(--text-on-accent);
+  padding: 0 var(--space-4);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
   text-decoration: none;
-  min-height: 46px;
+  height: 38px;
 }
 button:disabled {
-  opacity: 0.7;
-  cursor: wait;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .secondary {
   background: transparent;
-  color: var(--accent);
+  color: var(--text-1);
+  border-color: var(--line-1);
 }
 :focus-visible {
-  outline: 3px solid #a45616;
-  outline-offset: 4px;
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .site-header {
   display: flex;
@@ -65,26 +76,26 @@ button:disabled {
   max-width: 1240px;
   margin: auto;
   padding: 24px 32px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-1);
 }
 .brand {
   display: flex;
   gap: 10px;
   align-items: center;
   text-decoration: none;
-  color: var(--ink);
+  color: var(--text-1);
   font-weight: 700;
   letter-spacing: -0.4px;
 }
 .brand-mark {
   display: grid;
   place-items: center;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--text-1);
+  color: var(--bg-page);
   width: 32px;
   height: 36px;
   border-radius: 3px;
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
 }
 .site-header nav {
   display: flex;
@@ -96,7 +107,7 @@ button:disabled {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1.3px;
-  color: var(--muted);
+  color: var(--text-3);
 }
 main {
   max-width: 1240px;
@@ -110,33 +121,38 @@ h3,
 p {
   margin-top: 0;
 }
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
 h1 {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(36px, 4.4vw, 62px);
-  font-weight: 400;
-  line-height: 1.07;
-  letter-spacing: -1.7px;
-  margin-bottom: 22px;
+  font-size: clamp(40px, 6vw, var(--fs-display-1));
+  font-weight: var(--fw-medium);
+  line-height: 0.95;
+  margin-bottom: var(--space-5);
 }
 h1 em {
-  font-weight: 400;
-  color: var(--accent);
+  font-style: normal;
+  color: var(--text-3);
 }
 h2 {
-  font-size: 24px;
-  line-height: 1.2;
-  letter-spacing: -0.6px;
+  font-size: var(--fs-display-3);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
 }
 h3 {
-  font-size: 18px;
-  line-height: 1.4;
+  font-size: var(--fs-display-4);
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
 }
 .eyebrow {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.8px;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--text-3);
   margin-bottom: 20px;
 }
 .intro {
@@ -147,11 +163,11 @@ h3 {
 }
 .intro > div > p:last-child {
   max-width: 550px;
-  color: var(--muted);
+  color: var(--text-3);
   font-size: 18px;
 }
 .sample-note {
-  border-left: 2px solid var(--line);
+  border-left: 2px solid var(--line-1);
   align-self: center;
   padding: 12px 0 12px 24px;
   min-width: 250px;
@@ -162,7 +178,7 @@ h3 {
 }
 .badge {
   display: inline-block;
-  background: var(--pale);
+  background: var(--surface-1);
   color: var(--accent);
   padding: 4px 9px;
   font-size: 11px;
@@ -172,8 +188,8 @@ h3 {
   border-radius: 3px;
 }
 .filters {
-  background: var(--pale);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
   border-radius: 6px;
   display: grid;
   grid-template-columns: 1.25fr 1fr 1.2fr;
@@ -192,10 +208,10 @@ label {
 input:not([type="hidden"]),
 select {
   width: 100%;
-  border: 1px solid #95a595;
+  border: 1px solid var(--line-1);
   border-radius: 3px;
-  background: var(--white);
-  color: var(--ink);
+  background: var(--surface-1);
+  color: var(--text-1);
   padding: 10px;
   min-height: 44px;
 }
@@ -208,7 +224,7 @@ select[multiple] option {
 }
 small {
   display: block;
-  color: var(--muted);
+  color: var(--text-3);
   font-size: 12px;
   margin-top: 6px;
 }
@@ -234,7 +250,7 @@ small {
 }
 .results-heading p {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-3);
 }
 .card-grid {
   display: grid;
@@ -248,8 +264,8 @@ small {
 }
 .card-tile {
   width: 100%;
-  background: var(--white);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
   border-top: 3px solid var(--accent);
   border-radius: 4px;
   padding: 22px;
@@ -260,25 +276,23 @@ small {
 .card-index {
   display: flex;
   justify-content: space-between;
-  font-family: Georgia, serif;
-  color: var(--muted);
+  font-family: var(--font-display);
+  color: var(--text-3);
   font-size: 18px;
   margin-bottom: 26px;
 }
 .card-index span {
-  font:
-    11px Arial,
-    sans-serif;
+  font: var(--type-data);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 .card-tile h3 {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 23px;
   line-height: 1.25;
 }
 .card-tile h3 a {
-  color: var(--ink);
+  color: var(--text-1);
   text-decoration: none;
 }
 .card-tile h3 a:hover {
@@ -286,13 +300,13 @@ small {
 }
 .color-label {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-3);
   margin-bottom: 23px;
 }
 .tile-bottom {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
   padding-top: 15px;
   margin-top: auto;
   font-size: 12px;
@@ -316,12 +330,12 @@ small {
 .method-note {
   padding: 25px 28px;
   border-left: 3px solid var(--accent);
-  background: var(--pale);
+  background: var(--surface-1);
   margin-top: 42px;
 }
 .method-note p {
   margin: 8px 0 0;
-  color: var(--muted);
+  color: var(--text-3);
   max-width: 850px;
 }
 .method-note a {
@@ -330,8 +344,8 @@ small {
 }
 .state {
   padding: 42px 28px;
-  background: var(--white);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
   border-radius: 5px;
   margin: 30px 0;
 }
@@ -355,7 +369,7 @@ small {
   max-width: 900px;
 }
 .detail-intro > p:last-child {
-  color: var(--muted);
+  color: var(--text-3);
   max-width: 720px;
 }
 .faces {
@@ -365,12 +379,12 @@ small {
 }
 .face {
   padding: 30px;
-  background: var(--white);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  border: 1px solid var(--line-1);
   border-radius: 6px;
 }
 .face h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-display);
   font-size: 29px;
   font-weight: 400;
 }
@@ -378,7 +392,7 @@ small {
   font-size: 14px;
 }
 .rules {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
   margin-top: 24px;
   padding-top: 24px;
 }
@@ -389,7 +403,7 @@ small {
   margin-top: 50px;
 }
 .printings > p {
-  color: var(--muted);
+  color: var(--text-3);
 }
 .printing-list {
   list-style: none;
@@ -401,7 +415,7 @@ small {
   justify-content: space-between;
   gap: 25px;
   padding: 25px 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
 }
 .printing-list p {
   margin: 5px 0;
@@ -421,8 +435,8 @@ small {
 }
 .dataset-panel {
   padding: 30px;
-  border: 1px solid var(--line);
-  background: var(--white);
+  border: 1px solid var(--line-1);
+  background: var(--surface-1);
   border-radius: 5px;
   margin-bottom: 25px;
   min-width: 0;
@@ -440,11 +454,11 @@ dt {
 }
 dd {
   margin: 4px 0;
-  color: var(--muted);
+  color: var(--text-3);
   overflow-wrap: anywhere;
 }
 .identity {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
 }
 .set-list {
@@ -453,22 +467,22 @@ dd {
 }
 .set-list span {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--text-3);
 }
 footer {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line-1);
   max-width: 1176px;
   margin: auto;
   padding: 25px 0 40px;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-3);
 }
 .skip-link {
   position: absolute;
   left: 24px;
   top: -80px;
   padding: 12px;
-  background: var(--white);
+  background: var(--surface-1);
   z-index: 10;
 }
 .skip-link:focus {
@@ -487,7 +501,7 @@ footer {
 }
 .skeleton {
   height: 140px;
-  background: var(--pale);
+  background: var(--surface-1);
   border-radius: 4px;
 }
 @media (max-width: 800px) {
@@ -514,7 +528,7 @@ footer {
   .sample-note {
     align-self: stretch;
     border-left: 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--line-1);
     padding: 18px 0;
     display: flex;
     align-items: center;
@@ -635,9 +649,9 @@ footer {
 .card-image-fallback {
   display: grid;
   place-content: center;
-  background: var(--pale);
-  color: var(--muted);
-  border: 1px solid var(--line);
+  background: var(--surface-1);
+  color: var(--text-3);
+  border: 1px solid var(--line-1);
   text-align: center;
   padding: 16px;
 }
@@ -645,7 +659,7 @@ footer {
 .image-edition {
   margin: 8px 0 0;
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-3);
 }
 .printing-list li {
   flex-wrap: wrap;
