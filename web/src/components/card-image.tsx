@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Printing } from "@/lib/api";
 
 function Scan({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
+  const image = useRef<HTMLImageElement>(null);
+  // A server-rendered scan can fail before hydration attaches onError.
+  // Deferred lazy images report complete=false, so this only catches real failures.
+  useEffect(() => {
+    const scan = image.current;
+    if (scan?.complete && scan.naturalWidth === 0 && scan.currentSrc)
+      setFailed(true);
+  }, []);
   return failed ? (
     <div className="card-image-fallback" role="img" aria-label={alt}>
       Image unavailable
     </div>
   ) : (
     <img
+      ref={image}
       className="card-image"
       src={src}
       alt={alt}

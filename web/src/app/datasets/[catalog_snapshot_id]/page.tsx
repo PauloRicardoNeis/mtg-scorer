@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Problem } from "@/components/problem";
+import { Icon } from "@/components/icon";
 
 export default async function Dataset({
   params,
@@ -13,8 +14,12 @@ export default async function Dataset({
     return (
       <>
         <div className="breadcrumbs">
-          <Link href={`/cards?catalog_snapshot_id=${catalog_snapshot_id}`}>
-            ← Discover this catalog
+          <Link
+            className="button secondary sm back"
+            href={`/cards?catalog_snapshot_id=${catalog_snapshot_id}`}
+          >
+            <Icon name="arrow-left" size={14} />
+            Discover this catalog
           </Link>
         </div>
         <section className="detail-intro">
@@ -24,44 +29,58 @@ export default async function Dataset({
             <br />
             <em>you are looking at.</em>
           </h1>
-          <p>{snapshot.selection.description}</p>
+          <p className="lead">{snapshot.selection.description}</p>
         </section>
         <div className="dataset-grid">
           <section className="dataset-panel">
             <h2>A traceable catalog</h2>
-            <dl>
-              <dt>Catalog snapshot</dt>
-              <dd className="identity">{snapshot.catalog_snapshot_id}</dd>
-              <dt>Scope</dt>
-              <dd>{snapshot.selection.kind.replaceAll("_", " ")}</dd>
-              <dt>Cards / printings</dt>
-              <dd>
-                {snapshot.card_count} / {snapshot.printing_count}
-              </dd>
-              <dt>Source retrieved from</dt>
-              <dd>
-                <time dateTime={snapshot.retrieved_from}>
-                  {snapshot.retrieved_from}
-                </time>
-              </dd>
-              <dt>Source retrieved through</dt>
-              <dd>
-                <time dateTime={snapshot.retrieved_to}>
-                  {snapshot.retrieved_to}
-                </time>
-              </dd>
-              <dt>Published</dt>
-              <dd>
-                <time dateTime={snapshot.published_at}>
-                  {snapshot.published_at}
-                </time>
-              </dd>
-              <dt>Parser / schema</dt>
-              <dd>
-                {snapshot.parser_version}
-                <br />
-                {snapshot.schema_version}
-              </dd>
+            <dl className="facts">
+              <div className="wide">
+                <dt>Catalog snapshot</dt>
+                <dd className="identity">{snapshot.catalog_snapshot_id}</dd>
+              </div>
+              <div>
+                <dt>Scope</dt>
+                <dd>{snapshot.selection.kind.replaceAll("_", " ")}</dd>
+              </div>
+              <div>
+                <dt>Cards / printings</dt>
+                <dd>
+                  {snapshot.card_count} / {snapshot.printing_count}
+                </dd>
+              </div>
+              <div>
+                <dt>Source retrieved from</dt>
+                <dd>
+                  <time dateTime={snapshot.retrieved_from}>
+                    {snapshot.retrieved_from}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>Source retrieved through</dt>
+                <dd>
+                  <time dateTime={snapshot.retrieved_to}>
+                    {snapshot.retrieved_to}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>Published</dt>
+                <dd>
+                  <time dateTime={snapshot.published_at}>
+                    {snapshot.published_at}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>Parser / schema</dt>
+                <dd>
+                  {snapshot.parser_version}
+                  <br />
+                  {snapshot.schema_version}
+                </dd>
+              </div>
             </dl>
           </section>
           <section className="dataset-panel">
@@ -104,7 +123,7 @@ export default async function Dataset({
               establish full-catalog coverage.
             </p>
           ) : (
-            <ul>
+            <ul className="plain-list">
               {Object.entries(snapshot.excluded_record_counts).map(
                 ([reason, count]) => (
                   <li key={reason}>
@@ -115,7 +134,7 @@ export default async function Dataset({
             </ul>
           )}
           <h3>Source attribution</h3>
-          <ul>
+          <ul className="plain-list">
             {snapshot.attribution.map((source) => (
               <li key={source.url}>
                 <a href={source.url}>{source.label}</a>

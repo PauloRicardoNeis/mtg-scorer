@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteNav } from "@/components/site-nav";
+import "./tokens.css";
 import "./styles.css";
 
 export const metadata: Metadata = {
@@ -15,25 +17,41 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           Skip to content
         </a>
         <header className="site-header">
-          <Link className="brand" href="/cards">
-            <span aria-hidden="true" className="brand-mark">
-              M
-            </span>
-            MTG Scorer
-          </Link>
-          <nav aria-label="Main">
-            <Link href="/cards">Discovery</Link>
-            <Link href="/datasets">Dataset &amp; method</Link>
-          </nav>
-          <span className="guest">Guest catalog</span>
+          <div className="site-header-inner">
+            <div className="brand-group">
+              <Link className="brand" href="/cards">
+                MTG Scorer
+              </Link>
+              <span aria-hidden="true" className="brand-divider" />
+              <span className="guest">Guest catalog</span>
+            </div>
+            <SiteNav />
+          </div>
         </header>
         <main id="main" tabIndex={-1}>
           {children}
         </main>
-        <footer>
-          Card metadata and images: Scryfall. Magic: The Gathering is a
-          trademark of Wizards of the Coast.
-          <br />A versioned card catalog. Tournament evidence is not available.
+        <footer className="site-footer">
+          <div className="site-footer-inner">
+            <div>
+              <p className="footer-mark">MTG Scorer</p>
+              <p>
+                A versioned card catalog. Tournament evidence is not available.
+              </p>
+            </div>
+            <div>
+              <p>
+                Card metadata and images: Scryfall. Magic: The Gathering is a
+                trademark of Wizards of the Coast.
+              </p>
+              <p>
+                MTG Scorer is unofficial Fan Content permitted under the Fan
+                Content Policy. Not approved/endorsed by Wizards. Portions of
+                the materials used are property of Wizards of the Coast.
+                ©Wizards of the Coast LLC.
+              </p>
+            </div>
+          </div>
         </footer>
       </body>
     </html>

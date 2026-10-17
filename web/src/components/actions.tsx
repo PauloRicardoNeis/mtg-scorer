@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "./icon";
 
 export function CopySearch() {
   const [status, setStatus] = useState("");
@@ -19,6 +20,7 @@ export function CopySearch() {
           }
         }}
       >
+        <Icon name="copy" size={14} />
         Copy this search URL
       </button>
       <span role="status">{status}</span>
@@ -30,6 +32,7 @@ export function Retry() {
   const router = useRouter();
   return (
     <button type="button" onClick={() => router.refresh()}>
+      <Icon name="rotate-cw" size={14} />
       Retry
     </button>
   );
