@@ -23,7 +23,9 @@ export function Problem({ error }: { error: ApiError }) {
       </p>
       <div className="actions">
         <Retry />
-        <Link href="/cards">Return to discovery</Link>
+        <Link className="button secondary" href="/cards">
+          Return to discovery
+        </Link>
       </div>
     </section>
   );
