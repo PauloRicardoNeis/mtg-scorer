@@ -1,15 +1,22 @@
 import copy
 import json
+import shutil
 from concurrent.futures import ThreadPoolExecutor
+from hashlib import sha256
 from pathlib import Path
 
 import duckdb
 import pytest
 from jsonschema import ValidationError
 
-from mtg_scorer.normalize.catalog import project_catalog
+from mtg_scorer.normalize.catalog import MULTIFACE_LAYOUTS, project_catalog
 from mtg_scorer.normalize.names import name_key
-from mtg_scorer.publish.artifact import export_catalog, verified_source, verify_artifact
+from mtg_scorer.publish.artifact import (
+    canonical_bytes,
+    export_catalog,
+    verified_source,
+    verify_artifact,
+)
 from mtg_scorer.publish.validation import validate_catalog
 
 SEED = Path(__file__).resolve().parents[1] / "seeds/scryfall-layouts-v1"
@@ -136,3 +143,144 @@ def test_streaming_publication_validation_matches_the_bounded_export(tmp_path):
     (directory / "faces.parquet").write_bytes(b"damaged")
     with pytest.raises(ValueError, match="analytical artifact checksum"):
         verify_artifact(directory, SEED)
+
+
+@pytest.mark.parametrize("layout", sorted(MULTIFACE_LAYOUTS))
+def test_multiface_layouts_without_two_faces_are_excluded_and_counted(layout):
+    _, records = verified_source(SEED)
+    card, provenance = copy.deepcopy(
+        next(record for record in records if record[0]["layout"] == "transform")
+    )
+    card["layout"] = layout
+    card["card_faces"] = card["card_faces"][:1]
+
+    tables, excluded = project_catalog([(card, provenance)])
+
+    assert excluded == {"missing_required_faces": 1}
+    assert all(rows == [] for rows in tables.values())
+
+
+def test_identical_duplicate_printing_is_projected_once():
+    _, records = verified_source(SEED)
+
+    assert project_catalog([records[0], records[0]]) == project_catalog([records[0]])
+
+
+def edit_source_manifest(directory, change):
+    manifest = json.loads((directory / "manifest.json").read_bytes())
+    change(manifest["records"][0])
+    (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        pytest.param(
+            lambda record: record.update(raw_file="../00.json"),
+            "invalid raw filename",
+            id="outside-source-dir",
+        ),
+        pytest.param(
+            lambda record: record.update(raw_file="00.txt"),
+            "invalid raw filename",
+            id="not-json",
+        ),
+        pytest.param(
+            lambda record: record.update(scryfall_id="00000000-0000-4000-8000-000000000001"),
+            "source record identity mismatch",
+            id="identity",
+        ),
+    ],
+)
+def test_bounded_source_records_must_name_their_own_raw_file(tmp_path, change, message):
+    source = Path(shutil.copytree(SEED, tmp_path / "seed"))
+    edit_source_manifest(source, change)
+
+    with pytest.raises(ValueError, match=message):
+        export_catalog(source, tmp_path / "output")
+    assert not (tmp_path / "output").exists()
+
+
+def test_single_face_bounded_export_omits_empty_tables_and_still_verifies(tmp_path):
+    from mtg_scorer.publish.stream import verify_publication
+
+    source = tmp_path / "bolts"
+    source.mkdir()
+    manifest = json.loads((SEED / "manifest.json").read_bytes())
+    manifest["records"] = [r for r in manifest["records"] if r["name"] == "Lightning Bolt"]
+    for record in manifest["records"]:
+        shutil.copyfile(SEED / record["raw_file"], source / record["raw_file"])
+    (source / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    selection = {"kind": "bounded_sample", "description": "Lightning Bolt printings only"}
+
+    directory = export_catalog(source, tmp_path / "output", selection=selection)
+
+    payload, verified = verify_artifact(directory, source)
+    assert verify_publication(directory, source)[1] == verified
+    assert verified["row_counts"] == {"cards": 1, "faces": 0, "printings": 2, "aliases": 1}
+    assert payload["faces"] == []
+    assert not (directory / "faces.parquet").exists()
+
+
+def finish_first(competitor_change=None):
+    """Simulate another exporter finalizing the same identity just before this one."""
+
+    def rename(source, destination):
+        shutil.copytree(source, destination)
+        if competitor_change is not None:
+            payload = json.loads((Path(destination) / "catalog.json").read_bytes())
+            competitor_change(payload)
+            raw = canonical_bytes(payload)
+            (Path(destination) / "catalog.json").write_bytes(raw)
+            manifest = json.loads((Path(destination) / "manifest.json").read_bytes())
+            manifest.update(export_sha256=sha256(raw).hexdigest(), export_bytes=len(raw))
+            (Path(destination) / "manifest.json").write_bytes(canonical_bytes(manifest))
+        raise FileExistsError(destination)
+
+    return rename
+
+
+def test_concurrent_export_with_other_content_is_a_conflict(tmp_path, monkeypatch):
+    import mtg_scorer.publish.artifact as artifact
+
+    def reword(payload):
+        payload["cards"][0]["oracle_text"] = "Reworded by a competing exporter."
+
+    monkeypatch.setattr(artifact.os, "rename", finish_first(reword))
+
+    with pytest.raises(ValueError, match="concurrent export content conflict"):
+        export_catalog(SEED, tmp_path)
+    # The competitor's directory is kept; this exporter's staging directory is not.
+    assert len(list(tmp_path.iterdir())) == 1
+    assert not list(tmp_path.glob(".catalog-*"))
+
+
+def test_concurrent_export_differing_only_in_creation_time_is_reused(tmp_path, monkeypatch):
+    import mtg_scorer.publish.artifact as artifact
+
+    monkeypatch.setattr(
+        artifact.os,
+        "rename",
+        finish_first(lambda payload: payload.update(created_at="2026-09-08T00:00:00Z")),
+    )
+
+    directory = export_catalog(SEED, tmp_path, created_at="2026-09-09T00:00:00Z")
+
+    assert json.loads((directory / "catalog.json").read_bytes())["created_at"] == (
+        "2026-09-08T00:00:00Z"
+    )
+    assert list(tmp_path.iterdir()) == [directory]
+
+
+def test_failed_finalize_without_a_competitor_propagates_and_cleans_up(tmp_path, monkeypatch):
+    import mtg_scorer.publish.artifact as artifact
+
+    def denied(source, destination):
+        raise PermissionError(destination)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(artifact.os, "rename", denied)
+        with pytest.raises(PermissionError):
+            export_catalog(SEED, tmp_path)
+    assert list(tmp_path.iterdir()) == []
+    assert export_catalog(SEED, tmp_path).exists()

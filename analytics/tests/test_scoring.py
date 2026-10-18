@@ -155,3 +155,115 @@ def test_distinctiveness_is_exactly_buildaround_minus_staple() -> None:
         scores.buildaround_signal - scores.staple,
         abs=0.05,
     )
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        pytest.param({"value": -0.01}, "between 0 and 1", id="below-zero"),
+        pytest.param({"value": float("nan")}, "between 0 and 1", id="nan"),
+        pytest.param({"value": 0.5, "support": -1}, "support cannot be negative", id="support"),
+        pytest.param(
+            {"value": 0.5, "opportunity_count": -1},
+            "opportunity_count cannot be negative",
+            id="opportunities",
+        ),
+        pytest.param(
+            {"value": 0.5, "support": 3, "opportunity_count": 2},
+            "support cannot exceed opportunity_count",
+            id="support-exceeds-opportunities",
+        ),
+    ],
+)
+def test_feature_observations_reject_impossible_measurements(arguments, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        FeatureObservation(**arguments)
+
+
+def test_feature_bounds_and_full_support_are_valid_measurements() -> None:
+    assert FeatureObservation.known(0.0, support=2, opportunity_count=2).is_known
+    assert FeatureObservation.known(1.0).is_known
+    assert not FeatureObservation.unknown().is_known
+
+
+@pytest.mark.parametrize("count", ["deck_count", "event_count", "full_field_match_count"])
+def test_card_feature_population_counts_cannot_be_negative(count) -> None:
+    with pytest.raises(ValueError, match=f"{count} cannot be negative"):
+        CardFeatures(**{count: -1})
+
+
+@pytest.mark.parametrize(
+    ("weights", "message"),
+    [
+        pytest.param(
+            {"staple_incidence": 0.45, "staple_commitment": -0.05},
+            "staple weights cannot be negative",
+            id="negative-staple",
+        ),
+        pytest.param(
+            {"buildaround_choice_freedom": 0.10},
+            "buildaround weights must sum to 1.0",
+            id="buildaround-overweight",
+        ),
+        pytest.param(
+            {"evidence_feature_availability": 0.0},
+            "evidence weights must sum to 1.0",
+            id="evidence-underweight",
+        ),
+        pytest.param({"version": " "}, "version cannot be blank", id="blank-version"),
+    ],
+)
+def test_score_config_rejects_weights_outside_a_convex_combination(weights, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        replace(ScoreConfig(), **weights)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="scoring._validate_weight_group compares with NaN, so a NaN weight passes validation",
+)
+def test_score_config_rejects_nan_weights() -> None:
+    with pytest.raises(ValueError, match="staple weights"):
+        replace(ScoreConfig(), staple_incidence=float("nan"))
+
+
+@pytest.mark.parametrize("field_name", ["dataset_snapshot_id", "feature_pipeline_version"])
+def test_score_context_requires_reproducible_identities(field_name) -> None:
+    with pytest.raises(ValueError, match=f"{field_name} cannot be blank"):
+        replace(CONTEXT, **{field_name: " "})
+
+
+def test_feature_coverage_reports_the_observable_share_of_each_model() -> None:
+    scores = score_card(
+        CardFeatures(
+            incidence=observed(0.5),
+            competitive_proof=observed(1.0),
+            specificity=observed(0.2),
+            deck_count=1,
+        ),
+        CONTEXT,
+    )
+
+    assert scores.staple_feature_coverage == pytest.approx(100 * (0.35 + 0.20))
+    assert scores.buildaround_feature_coverage == pytest.approx(100 * (0.25 + 0.20))
+    assert scores.staple == pytest.approx(100 * (0.5 * 0.35 + 1.0 * 0.20) / 0.55, abs=0.05)
+
+
+@pytest.mark.parametrize(
+    ("population", "weight"),
+    [
+        ("deck_count", "evidence_decks"),
+        ("event_count", "evidence_events"),
+        ("full_field_match_count", "evidence_matches"),
+    ],
+)
+def test_evidence_grows_with_each_population_and_saturates_at_its_weight(
+    population, weight
+) -> None:
+    evidence = [
+        score_card(CardFeatures(**{population: count}), CONTEXT).evidence
+        for count in (0, 1, 10, 1_000_000)
+    ]
+
+    assert evidence == sorted(set(evidence))
+    assert evidence[-1] == pytest.approx(100 * getattr(ScoreConfig(), weight), abs=0.05)

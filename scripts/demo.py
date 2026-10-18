@@ -471,12 +471,28 @@ def main() -> None:
         print("Checkpoint: Python/language checks and production builds", flush=True)
         run([PYTHON, "-m", "ruff", "check", "analytics", "scripts"])
         run([PYTHON, "-m", "ruff", "format", "--check", "analytics", "scripts"])
-        run([PYTHON, "-m", "pytest", "analytics/tests", "-q"])
+        # Offline tests enforce each layer's coverage floor; reports land in
+        # .local/coverage/python, api/target/site/jacoco and web/coverage.
+        run(
+            [
+                PYTHON,
+                "-m",
+                "pytest",
+                "analytics/tests",
+                "-q",
+                "--cov",
+                "--cov-config=analytics/pyproject.toml",
+                "--cov-report=term-missing",
+                "--cov-report=xml:.local/coverage/python/coverage.xml",
+                "--cov-report=html:.local/coverage/python/html",
+            ]
+        )
         run([PYTHON, "scripts/verify_contracts.py"])
         run([PYTHON, "scripts/check_boundaries.py"])
         maven("verify")
         npm = "npm.cmd" if os.name == "nt" else "npm"
         run([npm, "--prefix", "web", "run", "format:check"])
+        run([npm, "--prefix", "web", "run", "test:unit"])
         run([npm, "--prefix", "web", "run", "build"])
         run([npm, "--prefix", "web", "run", "typecheck"])
     serve_and_verify(args)

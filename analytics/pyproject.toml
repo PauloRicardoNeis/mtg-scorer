@@ -21,6 +21,7 @@ mtg-scorer = "mtg_scorer.cli:main"
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3",
+  "pytest-cov==7.1.0",
   "ruff>=0.9",
   "openapi-spec-validator==0.7.2",
 ]
@@ -29,7 +30,24 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
+# Coverage is opt-in (--cov); single-file database stages must not trip fail_under.
 testpaths = ["tests"]
+
+# From the repository root coverage.py does not find this file on its own:
+#   python -m pytest analytics/tests --cov --cov-config=analytics/pyproject.toml
+[tool.coverage.run]
+branch = true
+# Measure the imported package, so the result does not depend on the working directory.
+source_pkgs = ["mtg_scorer"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_also = [
+  'if __name__ == "__main__":',
+]
+# Offline suite (PostgreSQL/API modules skipped) measured 95.33% statement+branch.
+fail_under = 95
 
 [tool.ruff]
 target-version = "py312"
