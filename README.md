@@ -459,6 +459,24 @@ Chromium browser tests. It uses a separate `mtg_verify_<id>` database and ports
 the app, whereas `up` keeps the preview running. The test database and evidence
 are retained for diagnosis. Verification is optional for simply browsing the demo.
 
+### Test coverage
+
+The offline test stage of `up` and `verify` measures coverage and fails below each
+layer's floor. The floors are the achieved coverage rounded down, so raise them as
+coverage grows:
+
+| Layer | Run alone from the repository root | Floor | Report |
+| --- | --- | --- | --- |
+| Python | `analytics/.venv/Scripts/python.exe -m pytest analytics/tests -q --cov --cov-config=analytics/pyproject.toml` | `fail_under` in `analytics/pyproject.toml` | `.local/coverage/python/` (via `demo.py`) |
+| Java | `.\api\mvnw.cmd -f api/pom.xml --batch-mode verify` | `jacoco.minimum.*` in `api/pom.xml` | `api/target/site/jacoco/index.html` |
+| Web | `npm.cmd --prefix web run test:unit` | `thresholds` in `web/vitest.config.ts` | `web/coverage/index.html` |
+
+The offline floors cover what runs without PostgreSQL. The SQL behind PostgreSQL
+publication (Python) and catalog queries (Java) is exercised by the database stage
+of `verify`, which those numbers do not include. Next.js pages are covered by the
+Playwright browser tests rather than by unit coverage. CI uploads the reports as
+the `coverage` artifact.
+
 See [local setup and recovery](docs/local-catalog.md),
 [analytics development](analytics/README.md), and [API development](api/README.md).
 Downloaded corpora, local databases, build outputs and runtime logs are ignored.

@@ -33,7 +33,10 @@ async function read<T>(path: string, query?: URLSearchParams): Promise<T> {
     throw new ApiError("catalog_unavailable", 503);
   }
   if (!response.ok) {
-    const problem = (await response.json()) as CatalogError;
+    // A proxy in front of the API can answer with an HTML error page.
+    const problem: Partial<CatalogError> = await response
+      .json()
+      .catch(() => ({}));
     throw new ApiError(problem.code ?? "internal_error", response.status);
   }
   return response.json() as Promise<T>;

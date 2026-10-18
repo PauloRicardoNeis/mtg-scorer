@@ -10,6 +10,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.info.BuildProperties;
@@ -134,6 +135,27 @@ class ApiApplicationTests {
     assertThat(mapper.readTree(response.body()).path("code").asString())
         .isEqualTo("catalog_unavailable");
     assertThat(mapper.readTree(response.body()).path("request_id").asString()).isNotBlank();
+  }
+
+  @Test
+  void problemResponsesCarryEveryFieldTheProblemSchemasRequire() throws Exception {
+    JsonNode schemas = mapper.readTree(get("/v3/api-docs").body()).at("/components/schemas");
+    // One problem from the exception handler, one from a servlet error dispatch.
+    List<JsonNode> problems =
+        List.of(
+            mapper.readTree(get("/api/v1/cards").body()),
+            mapper.readTree(get("/test/errors/unexpected").body()));
+    for (String schema : List.of("CatalogError", "ImportError")) {
+      JsonNode required = schemas.path(schema).path("required");
+      assertThat(required.size()).as(schema).isEqualTo(7);
+      for (JsonNode field : required)
+        for (JsonNode problem : problems)
+          assertThat(problem.hasNonNull(field.asString()))
+              .as("%s.%s in %s", schema, field.asString(), problem)
+              .isTrue();
+    }
+    for (JsonNode problem : problems)
+      assertThat(problem.path("type").asString()).isEqualTo("about:blank");
   }
 
   @Test

@@ -224,7 +224,8 @@ browser. Browser tests stub the image host so this workflow stays deterministic;
 real CDN availability and visual image quality need a separate live check.
 
 Evidence is retained under `.local/mtg_verify_<id>/`, `api/target/surefire-reports/`
-and `web/test-results/` / `web/playwright-report/`. The test database is retained
+and `web/test-results/` / `web/playwright-report/`. Offline coverage reports are in
+`.local/coverage/python/`, `api/target/site/jacoco/` and `web/coverage/`. The test database is retained
 for diagnosis; no existing database is cleared. CI runs this same entry point
 against PostgreSQL 17.11 and uploads its evidence. It needs no live MTG service.
 

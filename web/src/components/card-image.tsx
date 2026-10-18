@@ -29,7 +29,11 @@ function Scan({
       setFailed(true);
   }, []);
   return failed ? (
-    <div className="card-image-fallback" role="img" aria-label={alt}>
+    <div
+      className="card-image-fallback"
+      role="img"
+      aria-label={`${alt}: image unavailable`}
+    >
       Image unavailable
     </div>
   ) : (

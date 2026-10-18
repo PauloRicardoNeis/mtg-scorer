@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 from json import dumps
-from math import exp
+from math import exp, isfinite
 
 from .features import CardFeatures, FeatureObservation
 
 
 def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
+    if not all(isfinite(weight) for weight in weights):
+        raise ValueError(f"{name} weights must be finite")
     if any(weight < 0 for weight in weights):
         raise ValueError(f"{name} weights cannot be negative")
     if abs(sum(weights) - 1.0) > 1e-9:

@@ -12,8 +12,13 @@ From the repository root, install the locked analytical environment:
 python -m pip install uv==0.8.22
 python -m uv sync --project analytics --locked --extra dev
 python -m uv run --project analytics python -m pytest analytics/tests -q
+python -m uv run --project analytics python -m pytest analytics/tests -q --cov --cov-config=analytics/pyproject.toml
 python -m uv run --project analytics ruff check analytics scripts
 ```
+
+The `--cov` run fails below `fail_under` in `pyproject.toml`; from the repository
+root it needs `--cov-config`, because coverage only searches the working directory.
+Plain `pytest` measures nothing, so single-file database runs are never gated.
 
 `python scripts/demo.py verify` additionally runs real PostgreSQL publication,
 Java HTTP and browser checks. Their required environment variables are supplied

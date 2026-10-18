@@ -42,9 +42,15 @@ export function Filters({
     !colorOptions.includes(selectedColor)
   )
     colorOptions.push(selectedColor);
-  const pageSizes = [
-    ...new Set([2, 24, 50, 100, Number(current.get("limit") ?? 24)]),
-  ].sort((a, b) => a - b);
+  // The API accepts 1 to 100 cards per page; anything else shows the default.
+  const requestedLimit = Number(current.get("limit"));
+  const limit =
+    Number.isInteger(requestedLimit) &&
+    requestedLimit >= 1 &&
+    requestedLimit <= 100
+      ? requestedLimit
+      : 24;
+  const pageSizes = [...new Set([2, 24, 50, 100, limit])].sort((a, b) => a - b);
   const missingSets = current
     .getAll("set")
     .filter((code) => !snapshot.sets.some((set) => set.set_code === code));
@@ -211,11 +217,7 @@ export function Filters({
           <div>
             <label htmlFor="limit">Cards per page</label>
             <span className="select">
-              <select
-                id="limit"
-                name="limit"
-                defaultValue={current.get("limit") ?? "24"}
-              >
+              <select id="limit" name="limit" defaultValue={String(limit)}>
                 {pageSizes.map((size) => (
                   <option key={size} value={size}>
                     {size}

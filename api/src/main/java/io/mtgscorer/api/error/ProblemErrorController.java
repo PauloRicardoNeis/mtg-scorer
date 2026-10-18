@@ -28,6 +28,7 @@ public class ProblemErrorController implements ErrorController {
             ? "An unexpected error occurred."
             : "The request could not be completed.";
     ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+    problem.setType(CatalogExceptionHandler.BLANK_TYPE);
     Object originalUri = request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
     problem.setInstance(
         URI.create(originalUri instanceof String path ? path : request.getRequestURI()));

@@ -53,10 +53,10 @@ def _verify(directory: Path, source_dir: Path, db) -> tuple[dict[str, Any], dict
                 and event in {"string", "number", "boolean", "null"}
             ):
                 header[prefix] = value
-    with path.open("rb") as source:
-        header["selection"] = next(ijson.items(source, "selection", use_float=True))
     if seen != set(SCHEMA["required"]):
         raise ValueError("missing export field")
+    with path.open("rb") as source:
+        header["selection"] = next(ijson.items(source, "selection", use_float=True))
     header_schema = {
         "type": "object",
         "additionalProperties": False,

@@ -55,3 +55,11 @@ jobs:
             web/playwright-report/
             web/test-results/
             api/target/surefire-reports/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: |
+            .local/coverage/python/
+            api/target/site/jacoco/
+            web/coverage/

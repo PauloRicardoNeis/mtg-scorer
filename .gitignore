@@ -11,7 +11,10 @@ venv/
 
 # Coverage
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+web/coverage/
 
 # Java / Maven
 api/target/
