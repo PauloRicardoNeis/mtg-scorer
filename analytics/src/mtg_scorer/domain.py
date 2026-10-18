@@ -125,12 +125,16 @@ class Tournament:
     player_count: int | None = None
     ended_on: date | None = None
     source_format_name: str | None = None
+    # Players advancing to elimination rounds: 0 when the event had none.
+    top_cut_size: int | None = None
 
     def __post_init__(self) -> None:
         if not self.format_name.strip():
             raise ValueError("format_name cannot be blank")
         if self.player_count is not None and self.player_count <= 0:
             raise ValueError("player_count must be positive when known")
+        if self.top_cut_size is not None and self.top_cut_size < 0:
+            raise ValueError("top_cut_size cannot be negative")
         if self.ended_on is not None and self.ended_on < self.occurred_on:
             raise ValueError("ended_on cannot precede occurred_on")
 
@@ -163,16 +167,25 @@ class DeckCard:
 
 @dataclass(frozen=True, slots=True)
 class DeckEntry:
-    """One registered deck, independent of standings and match results."""
+    """One registered deck, independent of standings and match results.
+
+    ``sideboard_observed`` is False unless the source reported a sideboard zone, so a
+    missing sideboard stays unknown instead of reading as empty. ``archetype_label``
+    is the source's own name for the deck, not an analytical classification.
+    """
 
     provenance: Provenance
     source_event_id: str
     cards: tuple[DeckCard, ...]
     player_name: str | None = None
+    sideboard_observed: bool = False
+    archetype_label: str | None = None
 
     def __post_init__(self) -> None:
         if not self.source_event_id.strip():
             raise ValueError("source_event_id cannot be blank")
+        if self.archetype_label is not None and not self.archetype_label.strip():
+            raise ValueError("archetype_label cannot be blank when present")
         oracle_ids = [card.oracle_id for card in self.cards]
         if len(oracle_ids) != len(set(oracle_ids)):
             raise ValueError("cards must contain at most one entry per oracle_id")
@@ -194,6 +207,8 @@ class Standing:
     losses: int | None = None
     draws: int | None = None
     byes: int | None = None
+    # None when unknown or when the event had no elimination rounds.
+    made_top_cut: bool | None = None
 
     def __post_init__(self) -> None:
         if not self.source_event_id.strip() or not self.source_deck_id.strip():

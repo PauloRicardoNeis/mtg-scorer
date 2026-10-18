@@ -78,6 +78,43 @@ To add a method:
 A new formula setting is a new configuration, not an edit. Changing it changes the
 configuration hash, so existing results remain attributable to what produced them.
 
+## Scoring saved TopDeck responses
+
+`score-topdeck` turns a directory saved by `scripts/probe_tournaments.py` into one
+score-run file. It makes no network calls:
+
+```powershell
+python -m uv run --project analytics mtg-scorer score-topdeck --source-dir analytics/data/local/<probe-dir> --cohort analytics/cohorts/topdeck-modern-2026-03-to-08.json --output-root analytics/data/local/score-runs
+```
+
+1. `ingest/topdeck.py` checks each saved response against its manifest SHA-256. It
+   then parses the responses into source-independent facts: events with separate
+   decklist, standings and match coverage; standings for every player; and decks for
+   structured lists only.
+   - Card lines without an oracle id are quarantined, and a mainboard that contains
+     one counts as incomplete.
+   - A missing sideboard stays unobserved, not empty.
+2. The cohort file (`analytics/cohorts/`) sets the format and the window, the
+   minimum decklist coverage and the events excluded on purpose, each with a reason.
+   `tournament_features.py` applies these rules, leaves out decks whose mainboard is
+   incomplete, and counts each mainboard card's decks, events and top cuts, plus its
+   most common source archetype label. Top cuts count only decks whose result is
+   known, and that denominator is kept with them.
+3. Every registered method scores the population: all mainboard cards except basic
+   lands. The file `<score_run_id>.json` keeps the cohort, every card's usage and
+   each method's scores. The run id hashes the dataset, parser, features, cohort
+   rules, population rule and method identities. A rerun with identical results
+   reuses the file; different results under the same id are refused.
+
+Top-cut membership comes from bracket wins and losses when a response includes
+them. The saved Modern responses do not, so each event's top cut falls back to
+the standings order. That order is undocumented, so it is used only when no player
+below the cut has more wins than one inside it; otherwise the top cut stays
+unknown. Each event records which basis it used.
+
+Raw responses and run files stay under the ignored `analytics/data/local/`. The
+TopDeck credit travels in each run file's `attribution`.
+
 See the repository [README](../README.md),
 [measurement contract](../docs/measurement-contract.md), and
 [application boundary](../docs/adr/0001-polyglot-application-boundary.md) before

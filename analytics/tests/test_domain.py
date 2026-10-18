@@ -188,6 +188,18 @@ RETRIEVED = datetime(2026, 8, 28, tzinfo=UTC)
             id="deck-blank-event",
         ),
         pytest.param(
+            lambda: DeckEntry(provenance("deck-1"), "event-1", (), archetype_label=" "),
+            "archetype_label cannot be blank",
+            id="deck-blank-archetype",
+        ),
+        pytest.param(
+            lambda: Tournament(
+                provenance(), date(2026, 8, 1), "Modern", CoverageProfile(), top_cut_size=-1
+            ),
+            "top_cut_size cannot be negative",
+            id="tournament-negative-top-cut",
+        ),
+        pytest.param(
             lambda: Standing(provenance(), "event-1", " "),
             "identifiers cannot be blank",
             id="standing-blank-deck",

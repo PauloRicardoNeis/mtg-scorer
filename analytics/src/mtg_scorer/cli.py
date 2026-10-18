@@ -39,6 +39,14 @@ def main() -> None:
     )
     rollback_parser.add_argument("--target", required=True)
     rollback_parser.add_argument("--expected", required=True)
+    score_parser = subparsers.add_parser(
+        "score-topdeck", help="score one cohort of saved TopDeck responses into a run file"
+    )
+    score_parser.add_argument(
+        "--source-dir", type=Path, required=True, help="probe output with manifest.json"
+    )
+    score_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
+    score_parser.add_argument("--output-root", type=Path, required=True)
     arguments = parser.parse_args()
 
     if arguments.command == "ingest-scryfall":
@@ -71,6 +79,10 @@ def main() -> None:
 
         rollback_catalog(os.environ["CATALOG_PUBLISH_DSN"], arguments.target, arguments.expected)
         print("Active catalog rolled back; immutable rows retained.")
+    elif arguments.command == "score-topdeck":
+        from .publish.score_run import score_topdeck
+
+        print(score_topdeck(arguments.source_dir, arguments.cohort, arguments.output_root))
 
 
 if __name__ == "__main__":
