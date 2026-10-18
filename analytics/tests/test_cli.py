@@ -36,7 +36,13 @@ def test_help_lists_every_batch_command(monkeypatch, capsys):
 
     assert exited.value.code == 0
     usage = capsys.readouterr().out
-    for command in ("ingest-scryfall", "export-catalog", "publish-catalog", "rollback-catalog"):
+    for command in (
+        "ingest-scryfall",
+        "export-catalog",
+        "publish-catalog",
+        "rollback-catalog",
+        "score-topdeck",
+    ):
         assert command in usage
 
 

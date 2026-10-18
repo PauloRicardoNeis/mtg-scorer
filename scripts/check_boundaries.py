@@ -10,7 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     failures = []
     package = ROOT / "analytics/src/mtg_scorer"
-    core = [package / "domain.py", package / "features.py", *sorted(package.glob("scoring/*.py"))]
+    core = [
+        package / "domain.py",
+        package / "features.py",
+        package / "tournament_features.py",
+        *sorted(package.glob("scoring/*.py")),
+    ]
     for file in core:
         tree = ast.parse(file.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
