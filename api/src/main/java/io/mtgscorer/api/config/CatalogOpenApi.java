@@ -122,6 +122,11 @@ public class CatalogOpenApi {
                   .maxItems(6);
           case "game" -> new StringSchema()._enum(CatalogQuery.GAMES.stream().sorted().toList());
           case "color_identity" -> new StringSchema().pattern("^(C|[WUBRG]{1,5})$");
+          case "color" ->
+              new ArraySchema()
+                  .items(new StringSchema()._enum(CatalogQuery.COLORS))
+                  .maxItems(CatalogQuery.COLORS.size());
+          case "type" -> new StringSchema()._enum(CatalogQuery.TYPES.stream().sorted().toList());
           case "sort" -> new StringSchema()._enum(List.of("name_asc"))._default("name_asc");
           case "limit" ->
               new IntegerSchema()
@@ -132,7 +137,11 @@ public class CatalogOpenApi {
           default -> new StringSchema().pattern("^[a-z0-9][a-z0-9-]{0,95}$");
         };
     Parameter parameter = new Parameter().name(name).in("query").required(false).schema(schema);
-    if (name.equals("set") || name.equals("rarity"))
+    if (name.equals("color"))
+      parameter.description(
+          "Card colors; a card matches any selected one. C selects known colorless cards.");
+    if (name.equals("type")) parameter.description("A card type on any face's type line.");
+    if (Set.of("set", "rarity", "color").contains(name))
       parameter.style(Parameter.StyleEnum.FORM).explode(true);
     return parameter;
   }

@@ -190,10 +190,14 @@ export interface components {
             /** Format: int64 */
             eligible_printing_count: number;
             layout: string;
+            /** @description The card's mana cost; for a double-faced card without one, its front face's. */
+            mana_cost: string | null;
             name: string;
             /** Format: uuid */
             oracle_id: string;
             preview_printing: components["schemas"]["Printing"];
+            /** @description The card's type line; when the source has none, its faces' joined by " // ". */
+            type_line: string | null;
         };
         CatalogError: {
             /** @enum {string} */
@@ -507,6 +511,8 @@ export interface operations {
         parameters: {
             query?: {
                 catalog_snapshot_id?: string;
+                /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
+                color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
                 color_identity?: string;
                 cursor?: string;
                 game?: "arena" | "mtgo" | "paper";
@@ -515,6 +521,8 @@ export interface operations {
                 rarity?: ("bonus" | "common" | "mythic" | "rare" | "special" | "uncommon")[];
                 set?: string[];
                 sort?: "name_asc";
+                /** @description A card type on any face's type line. */
+                type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
             };
             header?: never;
             path?: never;

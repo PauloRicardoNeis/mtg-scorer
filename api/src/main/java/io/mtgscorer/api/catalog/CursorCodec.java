@@ -37,6 +37,9 @@ public final class CursorCodec {
     filters.put("rarities", query.rarities().isEmpty() ? null : query.rarities());
     filters.put("game", query.game());
     filters.put("color_identity", query.colorIdentity());
+    // Added later: hashed only when set, so earlier cursors keep their fingerprint.
+    if (!query.colors().isEmpty()) filters.put("colors", query.colors());
+    if (query.type() != null) filters.put("type", query.type());
     try {
       return HexFormat.of()
           .formatHex(

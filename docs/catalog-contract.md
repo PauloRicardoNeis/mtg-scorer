@@ -161,8 +161,8 @@ URL. The sample's manifest-based identity remains unchanged. Both paths verify
 the exact retained source manifest hash. Game metadata additionally retains
 `astral` and `sega`; existing UI/API game filters remain paper/Arena/MTGO.
 
-`GET /api/v1/cards` accepts literal name/face search, repeated set and rarity
-filters, optional game and color identity, `name_asc`, limit 1–100 (default 24),
+`GET /api/v1/cards` accepts literal name/face search, repeated set, rarity and
+color filters, optional game, color identity and card type, `name_asc`, limit 1–100 (default 24),
 optional snapshot and cursor. Whitelist parameters; reject unknown parameters,
 sorts and duplicate scalar parameters with 400. Repeated set/rarity values are
 deduplicated then sorted for filter identity; enforce max 32 sets / 6 rarities.
@@ -186,7 +186,17 @@ Color-identity filter means known identity is a subset of selected W/U/B/R/G;
 colorless is included in any selected color pool. `C` selects known colorless
 only. Omitted means no restriction, including unknown. UI must label this
 "Color identity". Pool eligibility is not historical tournament eligibility or
-proof of Forge implementation. Query text `%` and `_` are literal characters,
+proof of Forge implementation.
+
+The separate repeated `color` filter (W/U/B/R/G/C, at most six) uses card colors,
+not identity: a card matches if its known colors include any selected color, and
+`C` selects known colorless (`[]`). Unknown colors (null) match no color filter.
+The `type` filter (creature, planeswalker, instant, sorcery, artifact, enchantment
+or land) matches a card type before the subtype dash on any face's type line, as
+Scryfall's `t:` search does; an unknown type line matches no type. Card summaries
+carry `mana_cost` and `type_line`: when the source has no card-level value, the
+cost is the front face's and the type line joins every face's with ` // `. Both
+filters join the cursor's filter hash only when set, so earlier cursors stay valid. Query text `%` and `_` are literal characters,
 not SQL LIKE wildcards. SQL must bind values and escape LIKE metacharacters or
 use a literal substring function.
 
@@ -250,17 +260,18 @@ invented here. Evidence Score remains a heuristic, never a confidence percentage
 
 ```text
 DISCOVERY /cards?catalog_snapshot_id=...&set=...&rarity=...
-[MTG Scorer]                             [Dataset & method]
+[MTG Scorer] DISCOVERY [Discovery] [Methodology]  [Search cards  /]
 Find cards for your pool    [Catalog sample badge / source date]
-[Search card or face name____________________________]
-[Sets v] [Rarity v] [Color identity v] [Game v] [Clear]
-Card name / colors / eligible printing count    [Open]
-Card name / colors / eligible printing count    [Open]
+[Search name______] [W U B R G C] [Card type v] [Find cards] [Clear]  (sticky)
+[Sets v] [Rarity v] [Color identity v] [Game v]
+Card name / cost and type line / identity / eligible printing count    [Open]
+Card name / cost and type line / identity / eligible printing count    [Open]
 [Load more]                         [Copy this search URL]
 Tournament evidence is not available for this dataset.
 
 CARD /cards/{oracle_id}?catalog_snapshot_id=...
-[Back to search]   Card name / layout
+[Back to search]   Card name / layout                     [Methodology]
+First eligible printing, featured | Card name, cost, type line
 Front face name, cost, type, full text
 Back/other face name, cost, type, full text
 Eligible printings: set / rarity / collector number

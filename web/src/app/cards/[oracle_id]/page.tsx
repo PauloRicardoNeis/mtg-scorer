@@ -2,12 +2,13 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import {
   colors,
+  edition,
   printingParams,
   queryParams,
   type SearchParams,
 } from "@/lib/urls";
 import { Problem } from "@/components/problem";
-import { CardImages } from "@/components/card-image";
+import { CardImage, CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
 import { ColorDots, ManaCost, Rarity } from "@/components/mana";
 import { redirect } from "next/navigation";
@@ -56,12 +57,27 @@ export default async function Card({
     }
     const snapshot = query.get("catalog_snapshot_id")!;
     const printingQuery = printingParams(query);
+    // The hero features the first eligible printing, even on later printing pages.
+    const firstQuery = new URLSearchParams(printingQuery);
+    firstQuery.set("limit", "1");
     if (query.has("printing_cursor"))
       printingQuery.set("cursor", query.get("printing_cursor")!);
-    const [card, printings] = await Promise.all([
+    const [card, printings, first] = await Promise.all([
       api.card(oracle_id, snapshot),
       api.printings(oracle_id, printingQuery),
+      query.has("printing_cursor")
+        ? api.printings(oracle_id, firstQuery)
+        : null,
     ]);
+    const featured = (first ?? printings).items[0] ?? null;
+    const manaCost = card.mana_cost ?? card.faces[0]?.mana_cost ?? null;
+    const typeLine =
+      card.type_line ??
+      (card.faces
+        .map((face) => face.type_line)
+        .filter(Boolean)
+        .join(" // ") ||
+        null);
     const back = new URLSearchParams(query);
     back.delete("printing_cursor");
     back.delete("cursor");
@@ -80,21 +96,43 @@ export default async function Card({
           </span>
           <Link className="button ghost sm" href={`/datasets/${snapshot}`}>
             <Icon name="database" size={14} />
-            Dataset &amp; method
+            Methodology
           </Link>
         </div>
-        <section className="detail-intro">
-          <p className="eyebrow">
-            <ColorDots values={card.color_identity} />
-            {card.layout.replaceAll("_", " ")} · {colors(card.color_identity)}
-          </p>
-          <h1>{card.name}</h1>
-          <dl className="stat-strip">
-            <div>
-              <dt>Mana value</dt>
-              <dd>{card.mana_value === null ? "Unknown" : card.mana_value}</dd>
-            </div>
-          </dl>
+        <section className="detail-hero" aria-labelledby="card-name">
+          <div className="detail-art">
+            <CardImage
+              featured
+              eager
+              src={featured?.images[0]?.source_uri ?? null}
+              alt={
+                featured
+                  ? `${card.name} — ${edition(featured)}`
+                  : `${card.name}, no eligible printing`
+              }
+            />
+          </div>
+          <div className="detail-copy">
+            <p className="eyebrow">
+              <ColorDots values={card.color_identity} />
+              {card.layout.replaceAll("_", " ")} · {colors(card.color_identity)}
+            </p>
+            <h1 id="card-name">{card.name}</h1>
+            {(manaCost || typeLine) && (
+              <p className="detail-type">
+                {manaCost && <ManaCost cost={manaCost} size="lg" />}
+                {typeLine && <span className="type-line">{typeLine}</span>}
+              </p>
+            )}
+            <dl className="stat-strip">
+              <div>
+                <dt>Mana value</dt>
+                <dd>
+                  {card.mana_value === null ? "Unknown" : card.mana_value}
+                </dd>
+              </div>
+            </dl>
+          </div>
         </section>
         <section aria-label="Card faces" className="faces">
           {card.faces.length > 0 ? (

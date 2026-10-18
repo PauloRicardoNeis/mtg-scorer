@@ -5,8 +5,21 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/cards", label: "Discovery" },
-  { href: "/datasets", label: "Dataset & method" },
+  { href: "/datasets", label: "Methodology" },
 ];
+
+/** The current section's name after the wordmark, e.g. "DISCOVERY". */
+export function SectionTag() {
+  const pathname = usePathname();
+  const section = links.find(({ href }) => pathname.startsWith(href));
+  if (!section) return null;
+  return (
+    <>
+      <span aria-hidden="true" className="brand-divider" />
+      <span className="section-tag">{section.label}</span>
+    </>
+  );
+}
 
 export function SiteNav() {
   const pathname = usePathname();

@@ -1,9 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { Printing } from "@/lib/api";
+import { edition } from "@/lib/urls";
 
-function Scan({ src, alt }: { src: string; alt: string }) {
+function Scan({
+  src,
+  alt,
+  eager = false,
+}: {
+  src: string;
+  alt: string;
+  eager?: boolean;
+}) {
   const [failed, setFailed] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   // A server-rendered scan can fail before hydration attaches onError.
@@ -25,11 +40,73 @@ function Scan({ src, alt }: { src: string; alt: string }) {
       alt={alt}
       width={488}
       height={680}
-      loading="lazy"
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : undefined}
       decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+/**
+ * One card image with the design's variants: `featured` adds the sigil edge and
+ * glow, `interactive` lifts on hover or focus, `tilt` rotates by degrees, `count`
+ * shows an "n×" chip and `action` appears over the card on hover or focus.
+ */
+export function CardImage({
+  src,
+  alt,
+  eager = false,
+  featured = false,
+  interactive = false,
+  selected = false,
+  foil = false,
+  tilt,
+  count,
+  action,
+}: {
+  src: string | null;
+  alt: string;
+  eager?: boolean;
+  featured?: boolean;
+  interactive?: boolean;
+  selected?: boolean;
+  foil?: boolean;
+  tilt?: number;
+  count?: number;
+  action?: ReactNode;
+}) {
+  const variants = { featured, interactive, selected, foil };
+  return (
+    <div
+      className={[
+        "card-frame",
+        ...Object.entries(variants).flatMap(([name, on]) => (on ? [name] : [])),
+      ].join(" ")}
+      style={tilt ? ({ "--tilt": `${tilt}deg` } as CSSProperties) : undefined}
+    >
+      {src ? (
+        <Scan src={src} alt={alt} eager={eager} />
+      ) : (
+        <div
+          className="card-image-fallback"
+          role="img"
+          aria-label={`${alt}: image unavailable`}
+        >
+          Image unavailable
+        </div>
+      )}
+      {count !== undefined && (
+        <span className="card-count">
+          <span aria-hidden="true">{count}×</span>
+          <span className="sr-only">
+            {count} {count === 1 ? "copy" : "copies"}
+          </span>
+        </span>
+      )}
+      {action && <div className="card-action">{action}</div>}
+    </div>
   );
 }
 
@@ -43,14 +120,14 @@ export function CardImages({
   preview?: boolean;
 }) {
   const images = preview ? printing.images.slice(0, 1) : printing.images;
-  const edition = `${printing.set_name} #${printing.collector_number} (${printing.language.toUpperCase()})`;
+  const label = edition(printing);
   return (
     <div className={preview ? "card-scans card-scans-preview" : "card-scans"}>
       {images.length === 0 ? (
         <div
           className="card-image-fallback"
           role="img"
-          aria-label={`${name} — ${edition}: image unavailable`}
+          aria-label={`${name} — ${label}: image unavailable`}
         >
           Image unavailable
         </div>
@@ -60,7 +137,7 @@ export function CardImages({
             <Scan
               key={image.source_uri}
               src={image.source_uri}
-              alt={`${name}${image.face_index === null ? "" : `, face ${image.face_index + 1}`} — ${edition}`}
+              alt={`${name}${image.face_index === null ? "" : `, face ${image.face_index + 1}`} — ${label}`}
             />
             {!preview && (
               <figcaption>
@@ -73,7 +150,7 @@ export function CardImages({
           </figure>
         ))
       )}
-      {preview && <p className="image-edition">{edition}</p>}
+      {preview && <p className="image-edition">{label}</p>}
     </div>
   );
 }

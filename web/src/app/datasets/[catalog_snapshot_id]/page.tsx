@@ -2,6 +2,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Problem } from "@/components/problem";
 import { Icon } from "@/components/icon";
+import { count } from "@/lib/format";
 
 export default async function Dataset({
   params,
@@ -46,7 +47,8 @@ export default async function Dataset({
               <div>
                 <dt>Cards / printings</dt>
                 <dd>
-                  {snapshot.card_count} / {snapshot.printing_count}
+                  {count(snapshot.card_count)} /{" "}
+                  {count(snapshot.printing_count)}
                 </dd>
               </div>
               <div>
@@ -125,9 +127,9 @@ export default async function Dataset({
           ) : (
             <ul className="plain-list">
               {Object.entries(snapshot.excluded_record_counts).map(
-                ([reason, count]) => (
+                ([reason, records]) => (
                   <li key={reason}>
-                    {reason}: {count}
+                    {reason}: {count(records)}
                   </li>
                 ),
               )}

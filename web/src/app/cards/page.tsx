@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { colors, queryParams, type SearchParams } from "@/lib/urls";
+import { count } from "@/lib/format";
 import { Filters } from "@/components/filters";
 import { CopySearch } from "@/components/actions";
 import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
-import { ColorDots } from "@/components/mana";
+import { ColorDots, ManaCost } from "@/components/mana";
 
 export default async function Cards({
   searchParams,
@@ -51,11 +52,11 @@ export default async function Cards({
               <dl className="stat-strip">
                 <div>
                   <dt>Cards</dt>
-                  <dd>{snapshot.card_count}</dd>
+                  <dd>{count(snapshot.card_count)}</dd>
                 </div>
                 <div>
                   <dt>Printings</dt>
-                  <dd>{snapshot.printing_count}</dd>
+                  <dd>{count(snapshot.printing_count)}</dd>
                 </div>
                 <div>
                   <dt>Source retrieved</dt>
@@ -118,13 +119,19 @@ export default async function Cards({
                         {card.name}
                       </Link>
                     </h3>
+                    {(card.mana_cost || card.type_line) && (
+                      <p className="tile-type">
+                        {card.mana_cost && <ManaCost cost={card.mana_cost} />}
+                        {card.type_line && <span>{card.type_line}</span>}
+                      </p>
+                    )}
                     <p className="color-label">
                       <ColorDots values={card.color_identity} />
                       {colors(card.color_identity)}
                     </p>
                     <div className="tile-bottom">
                       <span>
-                        {card.eligible_printing_count} eligible{" "}
+                        {count(card.eligible_printing_count)} eligible{" "}
                         {card.eligible_printing_count === 1
                           ? "printing"
                           : "printings"}

@@ -91,7 +91,7 @@ body {
   height: 18px;
   background: var(--line-2);
 }
-.guest {
+.section-tag {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--tracking-eyebrow);
@@ -133,6 +133,22 @@ body {
   box-shadow:
     inset 0 -2px 0 var(--accent),
     var(--focus-ring-inset);
+}
+/* Header search: "/" focuses it from anywhere on the page. */
+.header-search {
+  flex: 0 1 280px;
+  min-width: 130px;
+  margin-left: auto;
+}
+.header-search .field {
+  height: 34px;
+  padding: 0 6px 0 11px;
+}
+.header-search .field input {
+  font-size: var(--fs-small);
+}
+.header-search input:not(:placeholder-shown) + .key {
+  display: none;
 }
 /* Page frame: bands run full width, everything else sits in the content column. */
 main {
@@ -379,9 +395,54 @@ button.sm {
   align-items: center;
   gap: var(--space-2_5);
 }
+/* Icon buttons: square and ghost by default. The label lives in aria-label. */
+button.icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-2);
+  box-shadow: none;
+}
+button.icon-button:hover,
+button.icon-button:active {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+button.icon-button[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+button.icon-button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+button.icon-button:disabled:hover {
+  background: transparent;
+  color: var(--text-2);
+}
+button.icon-button.sm {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+button.icon-button.lg {
+  width: 44px;
+  height: 44px;
+}
+/* Key caps, such as the "/" search shortcut */
+.key {
+  padding: 3px 5px;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-xs);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  line-height: 1;
+}
 
 /* Primitives: fields */
-label {
+label,
+.group-label {
   display: block;
   margin-bottom: var(--space-1_5);
   font-family: var(--font-mono);
@@ -496,6 +557,355 @@ select[multiple] option:checked {
   color: var(--accent);
 }
 
+/* Primitives: checkbox, radio and switch. Native inputs keep keyboard and form
+   behavior; .choice is the label that pairs one with its text. */
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-ui);
+  letter-spacing: normal;
+  line-height: var(--lh-ui);
+  text-transform: none;
+  cursor: pointer;
+  user-select: none;
+}
+.choice:has(:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.check,
+.radio,
+.switch,
+.chip input {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  margin: 0;
+  border: 1px solid var(--line-2);
+  background: var(--surface-1);
+  cursor: inherit;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.check,
+.radio {
+  width: 16px;
+  height: 16px;
+}
+.check {
+  border-radius: var(--radius-xs);
+}
+.radio {
+  border-radius: 50%;
+}
+.check:hover:not(:checked, :indeterminate, :disabled),
+.radio:hover:not(:checked, :disabled) {
+  border-color: var(--text-3);
+}
+.check::before,
+.chip input::before {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border-right: 2px solid var(--text-on-accent);
+  border-bottom: 2px solid var(--text-on-accent);
+  transform: rotate(45deg) scale(0);
+}
+.radio::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-on-accent);
+  transform: scale(0);
+}
+.check:checked,
+.check:indeterminate,
+.radio:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: var(--glow-check);
+}
+.check:checked::before,
+.chip input:checked::before {
+  transform: rotate(45deg);
+}
+.check:indeterminate::before {
+  width: 8px;
+  height: 2px;
+  margin: 0;
+  border: 0;
+  border-radius: 1px;
+  background: var(--text-on-accent);
+  transform: none;
+}
+.radio:checked::before {
+  transform: none;
+}
+.check:checked:focus-visible,
+.check:indeterminate:focus-visible,
+.radio:checked:focus-visible {
+  box-shadow: var(--glow-check), var(--focus-ring);
+}
+/* The switch track is the only pill. */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  border-color: var(--line-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+.switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    background var(--dur-base) var(--ease-out);
+}
+.switch:hover:not(:disabled) {
+  border-color: var(--line-2);
+}
+.switch:checked {
+  border-color: var(--sigil-line);
+  background: var(--switch-on);
+}
+.switch:checked::before {
+  background: var(--accent);
+  box-shadow: var(--glow-dot);
+  transform: translateX(14px);
+}
+.switch.compact {
+  width: 28px;
+  height: 16px;
+}
+.switch.compact::before {
+  width: 10px;
+  height: 10px;
+}
+.switch.compact:checked::before {
+  transform: translateX(12px);
+}
+
+/* Primitives: chips for multi-select. The whole chip shows the focus ring. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  margin: 0;
+  padding: 0 11px 0 9px;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.chip:hover {
+  border-color: var(--line-2);
+  color: var(--text-2);
+}
+.chip:has(:checked) {
+  border-color: var(--sigil-line);
+  background: var(--sigil-wash);
+  color: var(--text-1);
+}
+.chip:has(:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+.chip:has(:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.chip input {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+}
+.chip input::before {
+  width: 3px;
+  height: 6px;
+  margin-top: -1px;
+  border-width: 0 1.5px 1.5px 0;
+}
+.chip input:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.chip input:focus-visible {
+  box-shadow: none;
+}
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Primitives: segmented control. Radios inside keep arrow-key selection. */
+.segmented {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-md);
+}
+.segmented > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  margin: 0;
+  padding: 0 var(--space-3);
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.segmented > label + label {
+  border-left: 1px solid var(--line-1);
+}
+.segmented > label:hover {
+  background: var(--segment-hover);
+  color: var(--text-2);
+}
+.segmented > label:has(:checked) {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+.segmented > label:has(:focus-visible) {
+  box-shadow: var(--focus-ring-inset);
+}
+.segmented > label:has(:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.segmented.sm > label {
+  height: 30px;
+  padding: 0 var(--space-2_5);
+}
+.segmented input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Color filter: a mana dot and mono letter per color. The B dot keeps its ring. */
+.color-filter > label {
+  padding: 0 var(--space-2_5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+}
+.filter-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dot);
+  opacity: 0.55;
+}
+.filter-dot[data-color="B"] {
+  box-shadow: inset 0 0 0 1px var(--mana-b-ring);
+  opacity: 1;
+}
+.color-filter > label:has(:checked) .filter-dot {
+  opacity: 1;
+}
+.color-filter > label:has(:checked) .filter-dot:not([data-color="B"]) {
+  box-shadow: 0 0 8px var(--dot);
+}
+
+/* Primitives: underline tabs. Each tab is a link; the current one is marked. */
+.tabs {
+  display: flex;
+  gap: var(--space-6);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-1);
+  scrollbar-width: none;
+}
+.tabs a {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 0;
+  color: var(--text-3);
+  font-size: var(--fs-ui);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+.tabs a:hover {
+  color: var(--text-2);
+  text-decoration: none;
+}
+.tabs a[aria-current="page"] {
+  color: var(--text-1);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.tabs a:focus-visible {
+  box-shadow: var(--focus-ring-inset);
+}
+.tabs a[aria-current="page"]:focus-visible {
+  box-shadow:
+    inset 0 -2px 0 var(--accent),
+    var(--focus-ring-inset);
+}
+.tabs a[aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.tab-count {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+}
+.tabs a[aria-current="page"] .tab-count {
+  color: var(--accent);
+}
+
 /* Primitives: badges and tags */
 .badge {
   display: inline-flex;
@@ -521,6 +931,33 @@ select[multiple] option:checked {
   background: var(--sigil-wash);
   color: var(--accent);
 }
+.badge.success {
+  border-color: var(--success-line);
+  background: var(--success-wash);
+  color: var(--success);
+}
+.badge.warning {
+  border-color: var(--warning-line);
+  background: var(--warning-wash);
+  color: var(--warning);
+}
+.badge.danger {
+  border-color: var(--danger-line);
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+.badge.outline {
+  background: transparent;
+}
+/* A glowing status dot in the badge's own tone. */
+.badge-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
 .tag {
   display: inline-flex;
   align-items: center;
@@ -538,11 +975,251 @@ select[multiple] option:checked {
 
 /* Primitives: panels and states */
 .panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   min-width: 0;
   padding: var(--space-5);
   border: 1px solid var(--line-1);
   border-radius: var(--radius-frame);
   background: var(--surface-1);
+}
+.panel.grid-pattern {
+  background: var(--bg-glow), var(--bg-grid), var(--surface-1);
+}
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.panel-header .eyebrow {
+  margin-bottom: 5px;
+}
+.panel-header h2 {
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: var(--lh-title);
+}
+.panel > :is(p, ul, ol, dl) {
+  margin: 0;
+}
+
+/* Primitives: tooltip. Opens on hover and focus; Esc closes it. */
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: -8px;
+  z-index: 50;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 2 * var(--page-pad)));
+  padding: 12px 14px 13px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-pop);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
+  letter-spacing: normal;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+}
+.tooltip[hidden] {
+  display: none;
+}
+/* An invisible bridge keeps the tooltip open while the pointer crosses the gap. */
+.tooltip::before {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 11px;
+}
+.tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 18px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+  background: var(--surface-2);
+  transform: rotate(45deg);
+}
+.tooltip.below {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+.tooltip.below::before {
+  inset: auto 0 100%;
+}
+.tooltip.below::after {
+  top: -5px;
+  bottom: auto;
+  transform: rotate(225deg);
+}
+.tooltip.end {
+  right: -8px;
+  left: auto;
+}
+.tooltip.end::after {
+  right: 18px;
+  left: auto;
+}
+.tooltip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.tooltip-eyebrow {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-col);
+  letter-spacing: var(--tracking-col);
+  text-transform: uppercase;
+}
+.tooltip-title {
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+.tooltip-body {
+  display: block;
+}
+/* The "i" trigger is 13px; a larger invisible area keeps it easy to hit. */
+button.info-trigger {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: var(--fw-medium);
+  box-shadow: none;
+}
+button.info-trigger::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+button.info-trigger:hover,
+button.info-trigger:active,
+button.info-trigger[data-open] {
+  border-color: var(--text-3);
+  background: transparent;
+  color: var(--text-1);
+}
+button.info-trigger:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Primitives: toast, bottom-right. The region is a live status message. */
+.toast-region {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 12px 10px 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-pop);
+  pointer-events: auto;
+  animation: toast-in var(--dur-slow) var(--ease-out);
+}
+.toast-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+  color: var(--accent);
+}
+.toast.success .toast-dot {
+  color: var(--success);
+}
+.toast.warning .toast-dot {
+  color: var(--warning);
+}
+.toast.danger .toast-dot {
+  color: var(--danger);
+}
+.toast.neutral .toast-dot {
+  color: var(--text-2);
+}
+.toast-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.toast-title,
+.toast-message {
+  margin: 0;
+}
+.toast-title {
+  color: var(--text-1);
+  font-size: var(--fs-ui);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-ui);
+}
+.toast-message {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+}
+button.toast-action {
+  flex: none;
+  height: auto;
+  margin-top: 1px;
+  padding: 2px 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--fs-small);
+  box-shadow: none;
+}
+button.toast-action:hover,
+button.toast-action:active {
+  background: transparent;
+  color: var(--accent-hover);
+}
+button.toast-action:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.toast .icon-button {
+  margin: -4px -2px -4px 0;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .state {
   display: flex;
@@ -726,6 +1403,91 @@ select[multiple] option:checked {
   line-height: 1.4;
   color: var(--text-3);
 }
+/* Card image variants: featured, hover lift, selected, tilt, foil, count, action. */
+.card-frame {
+  position: relative;
+  min-width: 0;
+  border-radius: var(--radius-card);
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.card-frame.featured :is(.card-image, .card-image-fallback) {
+  box-shadow: var(--glow-featured);
+}
+.card-frame.selected :is(.card-image, .card-image-fallback) {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    var(--glow-card);
+}
+.card-frame.interactive:is(:hover, :focus-within) {
+  transform: translateY(var(--lift)) rotate(var(--tilt, 0deg));
+}
+.card-frame.interactive:is(:hover, :focus-within)
+  :is(.card-image, .card-image-fallback) {
+  box-shadow:
+    0 0 0 1px var(--sigil-edge-strong),
+    var(--glow-card),
+    var(--shadow-lift);
+}
+.card-frame.foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--foil-sheen);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.card-count {
+  position: absolute;
+  top: 5%;
+  right: 6%;
+  padding: 3px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-xs);
+  background: var(--count-bg);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+  line-height: 1;
+}
+.card-action {
+  position: absolute;
+  bottom: 7%;
+  left: 50%;
+  z-index: 1;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.card-frame:is(:hover, :focus-within) .card-action {
+  opacity: 1;
+}
+
+/* Data: tones from lib/format.ts for grades (A–F) and deltas */
+.tone-a,
+.tone-positive {
+  color: var(--accent);
+}
+.tone-a {
+  text-shadow: var(--glow-text);
+}
+.tone-b {
+  color: var(--text-1);
+}
+.tone-c {
+  color: var(--text-3);
+}
+.tone-neutral {
+  color: var(--text-2);
+}
+.tone-d {
+  color: var(--warning);
+}
+.tone-f,
+.tone-negative {
+  color: var(--danger);
+}
 
 /* Data: mana pips, color identity dots, rarity gems */
 .mana-cost {
@@ -903,6 +1665,70 @@ select[multiple] option:checked {
 .detail-intro .stat-strip {
   margin-top: var(--space-3);
 }
+/* Card detail hero: the featured printing on two concentric rings, then the name. */
+.detail-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(28px, 4vw, 52px);
+  margin-top: var(--space-7);
+  padding-bottom: var(--space-10);
+  border-bottom: 1px solid var(--line-1);
+}
+.detail-art {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: min(420px, 100%);
+  aspect-ratio: 1;
+}
+.detail-art::before,
+.detail-art::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.detail-art::before {
+  inset: 0;
+  border: 1px solid var(--sigil-line);
+}
+.detail-art::after {
+  inset: 9.5%;
+  border: 1px dashed var(--sigil-ring-dashed);
+}
+/* 300px on the 420px ring */
+.detail-art .card-frame {
+  z-index: 1;
+  width: 71.5%;
+}
+.detail-copy {
+  display: flex;
+  flex: 1 1 360px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 26px;
+  min-width: 0;
+}
+.detail-copy > * {
+  margin: 0;
+}
+.detail-copy .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2_5);
+}
+.detail-copy h1 {
+  font-size: clamp(40px, 5.5vw, var(--fs-display-detail));
+  line-height: 0.98;
+}
+.detail-type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2_5) var(--space-4);
+}
 .method-note {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -966,7 +1792,33 @@ select[multiple] option:checked {
   gap: var(--space-3);
 }
 
-/* Discovery: filter toolbar band */
+/* Sticky toolbar under the header. Discovery puts its name search and actions
+   here; the taller pool filters scroll away in the band below. */
+.toolbar {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 30;
+  border-bottom: 1px solid var(--line-1);
+  background: var(--toolbar-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.toolbar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px var(--space-4);
+  min-height: 58px;
+  padding-block: var(--space-2_5);
+}
+/* Keep focused fields clear of the header and stuck toolbar. */
+@media (min-width: 641px) {
+  html:has(.toolbar) {
+    scroll-padding-top: calc(var(--header-h) + 90px);
+  }
+}
+
+/* Discovery: filter band */
 .filters {
   border-bottom: 1px solid var(--line-1);
   background: var(--bg-band);
@@ -974,14 +1826,18 @@ select[multiple] option:checked {
 .filters-inner {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr)
+    minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr)
     minmax(0, 0.8fr);
   gap: var(--space-4) var(--space-5);
   padding-block: var(--space-5);
 }
-.search-field,
-.filter-actions {
-  grid-column: 1 / -1;
+.search-field {
+  flex: 1 1 280px;
+  max-width: 560px;
+}
+.toolbar-field {
+  flex: none;
+  width: 170px;
 }
 .filter-actions {
   display: flex;
@@ -1083,6 +1939,16 @@ select[multiple] option:checked {
 .card-tile h3 a:hover {
   color: var(--accent);
   text-decoration: none;
+}
+.tile-type {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1_5) var(--space-2);
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+  color: var(--text-2);
 }
 .color-label {
   display: flex;
@@ -1317,6 +2183,50 @@ main > .dataset-panel {
   letter-spacing: 0.06em;
 }
 
+/* Primitives gallery (development only) */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  align-items: start;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+}
+.gallery .wide {
+  grid-column: 1 / -1;
+}
+.gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.gallery-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+fieldset.gallery-stack {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.gallery-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-8) var(--space-5);
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  list-style: none;
+}
+.gallery-cards figcaption {
+  margin-top: var(--space-3);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+
 /* Narrower screens: keep the existing single-column behavior, restyled. */
 @media (max-width: 1100px) {
   .filters-inner {
@@ -1325,7 +2235,7 @@ main > .dataset-panel {
 }
 @media (max-width: 800px) {
   .brand-divider,
-  .guest {
+  .section-tag {
     display: none;
   }
   .intro-inner {
@@ -1341,6 +2251,17 @@ main > .dataset-panel {
   }
   .breadcrumbs .crumb {
     display: none;
+  }
+}
+/* Phones keep the existing flow: no header search and no sticky toolbar. */
+@media (max-width: 640px) {
+  .header-search {
+    display: none;
+  }
+  .toolbar {
+    position: static;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 @media (max-width: 500px) {
@@ -1388,5 +2309,8 @@ main > .dataset-panel {
   .card-tile:hover .card-image,
   .card-tile:focus-within .card-image {
     transform: none;
+  }
+  .card-frame.interactive:is(:hover, :focus-within) {
+    transform: rotate(var(--tilt, 0deg));
   }
 }

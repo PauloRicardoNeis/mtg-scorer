@@ -162,6 +162,8 @@
   --ring-track: oklch(0.3 0.02 255);
   --selection-bg: oklch(0.86 0.1 195 / 0.3);
   --on-accent-line: oklch(0.165 0.014 255 / 0.3);
+  --switch-on: oklch(0.86 0.1 195 / 0.22);
+  --count-bg: oklch(0.165 0.014 255 / 0.88);
 
   /* Semantic aliases */
   --bg-page: var(--night-900);
@@ -295,6 +297,8 @@
   --glow-thumb: 0 0 12px -2px oklch(0.86 0.1 195 / 0.7);
   --glow-dot: 0 0 8px var(--sigil-glow);
   --glow-text: 0 0 18px oklch(0.86 0.1 195 / 0.7);
+  --glow-check: 0 0 10px -2px var(--sigil-glow);
+  --glow-featured: 0 0 0 1px var(--sigil-edge), var(--shadow-featured);
   --focus-ring: 0 0 0 2px var(--bg-page), 0 0 0 3.5px var(--accent);
   /* For controls clipped by their container (header nav). */
   --focus-ring-inset: inset 0 0 0 1.5px var(--accent);
@@ -331,6 +335,14 @@
     var(--ph-b) 3px 6px
   );
   --fade-to-page: linear-gradient(180deg, transparent, var(--bg-page));
+  --foil-sheen: linear-gradient(
+    115deg,
+    transparent 20%,
+    oklch(0.9 0.08 195 / 0.22) 38%,
+    oklch(0.9 0.08 330 / 0.18) 50%,
+    oklch(0.92 0.08 95 / 0.2) 62%,
+    transparent 80%
+  );
 
   /* Motion */
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
