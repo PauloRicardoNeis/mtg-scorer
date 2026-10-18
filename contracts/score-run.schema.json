@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Score-run file v1",
+  "description": "One cohort's card usage and every score method's results, as written by mtg-scorer score-topdeck.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_run_id",
+    "dataset_snapshot_id",
+    "parser_version",
+    "feature_pipeline_version",
+    "cohort_rules_hash",
+    "population_rule",
+    "method_identities",
+    "source",
+    "attribution",
+    "raw_files",
+    "cohort",
+    "population",
+    "cards",
+    "runs"
+  ],
+  "properties": {
+    "schema_version": { "const": "score-run-file-v1" },
+    "score_run_id": { "type": "string", "pattern": "^scores-[0-9a-f]{64}$" },
+    "dataset_snapshot_id": { "$ref": "#/$defs/text" },
+    "parser_version": { "$ref": "#/$defs/text" },
+    "feature_pipeline_version": { "$ref": "#/$defs/text" },
+    "cohort_rules_hash": { "$ref": "#/$defs/sha256" },
+    "population_rule": { "$ref": "#/$defs/text" },
+    "method_identities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          { "$ref": "#/$defs/method_id" },
+          { "$ref": "#/$defs/text" },
+          { "$ref": "#/$defs/sha256" }
+        ],
+        "items": false,
+        "minItems": 3
+      }
+    },
+    "source": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "attribution": { "$ref": "#/$defs/text" },
+    "raw_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "sha256", "bytes", "retrieved_at", "retrieved_at_basis"],
+        "properties": {
+          "name": { "$ref": "#/$defs/text" },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "retrieved_at": { "type": "string", "format": "date-time" },
+          "retrieved_at_basis": { "enum": ["manifest", "file_mtime"] }
+        }
+      }
+    },
+    "cohort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rules", "events", "excluded_events", "totals"],
+      "properties": {
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "format_name",
+            "starts_on",
+            "ends_before",
+            "min_decklist_coverage",
+            "excluded_events",
+            "hash"
+          ],
+          "properties": {
+            "version": { "$ref": "#/$defs/text" },
+            "format_name": { "$ref": "#/$defs/text" },
+            "starts_on": { "type": "string", "format": "date" },
+            "ends_before": { "type": "string", "format": "date" },
+            "min_decklist_coverage": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "excluded_events": { "type": "array", "items": { "$ref": "#/$defs/excluded_event" } },
+            "hash": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "source_event_id",
+              "occurred_on",
+              "players",
+              "decklists",
+              "top_cut_size",
+              "top_cut_basis"
+            ],
+            "properties": {
+              "source_event_id": { "$ref": "#/$defs/text" },
+              "occurred_on": { "type": "string", "format": "date" },
+              "players": { "type": ["integer", "null"], "minimum": 1 },
+              "decklists": { "type": ["integer", "null"], "minimum": 0 },
+              "top_cut_size": { "type": ["integer", "null"], "minimum": 0 },
+              "top_cut_basis": {
+                "enum": ["bracket_record", "standing_order", "inconsistent_order", "no_top_cut"]
+              }
+            }
+          }
+        },
+        "excluded_events": { "type": "array", "items": { "$ref": "#/$defs/excluded_event" } },
+        "totals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "events",
+            "players",
+            "decks",
+            "incomplete_decks_excluded",
+            "top_cut_players",
+            "top_cut_decks",
+            "quarantined_card_lines_in_source"
+          ],
+          "properties": {
+            "events": { "$ref": "#/$defs/count" },
+            "players": { "$ref": "#/$defs/count" },
+            "decks": { "$ref": "#/$defs/count" },
+            "incomplete_decks_excluded": { "$ref": "#/$defs/count" },
+            "top_cut_players": { "$ref": "#/$defs/count" },
+            "top_cut_decks": { "$ref": "#/$defs/count" },
+            "quarantined_card_lines_in_source": { "$ref": "#/$defs/count" }
+          }
+        }
+      }
+    },
+    "population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "scored_cards", "excluded_cards"],
+      "properties": {
+        "rule": { "$ref": "#/$defs/text" },
+        "scored_cards": { "$ref": "#/$defs/count" },
+        "excluded_cards": { "type": "array", "items": { "$ref": "#/$defs/text" } }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "oracle_id",
+          "name",
+          "scored",
+          "deck_count",
+          "event_count",
+          "top_cut_count",
+          "top_cut_known_decks",
+          "archetype"
+        ],
+        "properties": {
+          "oracle_id": { "$ref": "#/$defs/oracle_id" },
+          "name": { "$ref": "#/$defs/text" },
+          "scored": { "type": "boolean" },
+          "deck_count": { "type": "integer", "minimum": 1 },
+          "event_count": { "type": "integer", "minimum": 1 },
+          "top_cut_count": { "type": ["integer", "null"], "minimum": 0 },
+          "top_cut_known_decks": { "$ref": "#/$defs/count" },
+          "archetype": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "deck_count", "labelled_deck_count"],
+            "properties": {
+              "label": { "anyOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }] },
+              "deck_count": { "$ref": "#/$defs/count" },
+              "labelled_deck_count": { "$ref": "#/$defs/count" }
+            }
+          }
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method_id",
+          "method_version",
+          "method_config_hash",
+          "label",
+          "description",
+          "outputs",
+          "scores"
+        ],
+        "properties": {
+          "method_id": { "$ref": "#/$defs/method_id" },
+          "method_version": { "$ref": "#/$defs/text" },
+          "method_config_hash": { "$ref": "#/$defs/sha256" },
+          "label": { "$ref": "#/$defs/text" },
+          "description": { "$ref": "#/$defs/text" },
+          "outputs": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/text" }
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["card_id", "values", "inputs"],
+              "properties": {
+                "card_id": { "$ref": "#/$defs/oracle_id" },
+                "values": { "$ref": "#/$defs/named_numbers" },
+                "inputs": { "$ref": "#/$defs/named_numbers" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "count": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "method_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "oracle_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "named_numbers": {
+      "type": "object",
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": { "type": ["number", "null"] }
+    },
+    "excluded_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_event_id", "reason"],
+      "properties": {
+        "source_event_id": { "$ref": "#/$defs/text" },
+        "reason": { "$ref": "#/$defs/text" }
+      }
+    }
+  }
+}

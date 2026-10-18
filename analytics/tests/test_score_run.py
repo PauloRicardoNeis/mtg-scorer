@@ -139,7 +139,8 @@ def test_writing_names_the_file_after_its_identity(tmp_path) -> None:
 def test_rewriting_identical_results_reuses_the_file(tmp_path) -> None:
     run = document(tmp_path)
     first = write_score_run(run, tmp_path / "runs")
-    copied = {**run, "raw_files": [{**run["raw_files"][0], "retrieved_at": "elsewhere"}]}
+    copy_time = "2026-01-01T00:00:00+00:00"
+    copied = {**run, "raw_files": [{**run["raw_files"][0], "retrieved_at": copy_time}]}
 
     assert write_score_run(copied, tmp_path / "runs") == first
 
@@ -147,7 +148,7 @@ def test_rewriting_identical_results_reuses_the_file(tmp_path) -> None:
 def test_different_results_under_the_same_identity_are_refused(tmp_path) -> None:
     run = document(tmp_path)
     write_score_run(run, tmp_path / "runs")
-    changed = {**run, "cards": []}
+    changed = {**run, "attribution": "A different credit"}
 
     with pytest.raises(ValueError, match="different results for the same identity"):
         write_score_run(changed, tmp_path / "runs")
@@ -191,3 +192,20 @@ def test_the_cli_prints_the_written_run_file(monkeypatch, capsys, tmp_path) -> N
     printed = Path(capsys.readouterr().out.strip())
     assert printed.parent == tmp_path / "runs"
     assert printed.name.startswith("scores-")
+
+
+def test_the_database_header_counts_every_row_it_will_load(tmp_path) -> None:
+    from mtg_scorer.publish.score_postgres import score_run_header
+    from mtg_scorer.publish.score_run import results_sha256
+
+    run = document(tmp_path)
+    header = score_run_header(run)
+
+    assert header["format_name"] == "Modern"
+    assert (header["window_starts_on"], header["window_ends_before"]) == (
+        "2026-03-01",
+        "2026-09-01",
+    )
+    assert header["row_counts"] == {"cards": 3, "methods": 2, "scores": 14, "inputs": 4}
+    assert header["results_sha256"] == results_sha256(run)
+    assert header["summary"]["cohort"] == run["cohort"]

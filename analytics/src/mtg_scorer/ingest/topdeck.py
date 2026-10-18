@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from ..domain import (
     CoverageDimension,
@@ -206,6 +207,14 @@ def _top_cut(rows: list[dict[str, Any]], size: int) -> tuple[list[bool | None], 
     return [position < size for position in range(len(rows))], STANDING_ORDER
 
 
+def _oracle_id(value: object) -> str | None:
+    # TopDeck card ids are Scryfall oracle ids; anything else cannot be joined to a card.
+    try:
+        return str(UUID(value)) if isinstance(value, str) else None
+    except ValueError:
+        return None
+
+
 def _mainboard(row: Mapping[str, Any]) -> Mapping[str, Any]:
     deck = row.get("deckObj") or {}
     return deck.get("Mainboard") or {}
@@ -224,9 +233,9 @@ def _deck(
     skipped = [0, 0]
     for slot, zone in enumerate(("Mainboard", "Sideboard")):
         for name, line in (deck.get(zone) or {}).items():
-            oracle_id = (line or {}).get("id")
+            oracle_id = _oracle_id((line or {}).get("id"))
             count = (line or {}).get("count")
-            if not oracle_id or not isinstance(count, int) or count <= 0:
+            if oracle_id is None or not isinstance(count, int) or count <= 0:
                 skipped[slot] += 1
                 continue
             copies.setdefault(oracle_id, [name, 0, 0])[1 + slot] += count

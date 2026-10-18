@@ -4,11 +4,12 @@ import json
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from uuid import NAMESPACE_URL, uuid5
 
-BOLT = "synthetic-oracle-bolt"
-COUNTERSPELL = "synthetic-oracle-counterspell"
-ISLAND = "synthetic-oracle-island"
-THOUGHTSEIZE = "synthetic-oracle-thoughtseize"
+# Oracle ids are UUIDs; these are derived from names so they are clearly invented.
+BOLT = str(uuid5(NAMESPACE_URL, "synthetic-oracle-bolt"))
+COUNTERSPELL = str(uuid5(NAMESPACE_URL, "synthetic-oracle-counterspell"))
+ISLAND = str(uuid5(NAMESPACE_URL, "synthetic-oracle-island"))
 
 
 def start(day: str) -> int:

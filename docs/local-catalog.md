@@ -129,6 +129,21 @@ Migrations must run first. For manually managed logins, grant `catalog_reader`
 and `catalog_import_admin` to the API login and `catalog_publisher` to the worker
 login. The importer schema and functions are owned by the migration account.
 
+Score runs use the same pattern in a separate `scores` schema. Grant `score_reader`
+to the API login and `score_publisher` to the publisher login (the demo does both).
+Publish a run file written by `score-topdeck`, which then becomes the active run for
+its source and format:
+
+```powershell
+$env:SCORE_PUBLISH_DSN = 'postgresql://catalog_publisher_local:local-catalog-only@127.0.0.1:55432/mtg_catalog_demo'
+analytics/.venv/Scripts/python.exe -m mtg_scorer.cli publish-scores --run-file analytics/data/local/score-runs/<score_run_id>.json
+```
+
+Republishing the same file reports `already_published`. A different file under the
+same run id is refused as `score_run_content_conflict`. `rollback-scores --target
+<older run> --expected <active run>` moves the active pointer back without
+rewriting any published run.
+
 ### Request, inspect, and refresh
 
 From a trusted client with the same private token in its environment:

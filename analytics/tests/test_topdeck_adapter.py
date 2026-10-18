@@ -106,6 +106,14 @@ def test_unreadable_lines_are_quarantined_and_mark_the_mainboard_incomplete(tmp_
     assert [card.oracle_id for card in snapshot.decks[0].cards] == [BOLT]
 
 
+def test_card_ids_that_are_not_oracle_uuids_are_quarantined(tmp_path) -> None:
+    listed = deck({"Bolt": (BOLT, 4), "Typo": ("not-a-uuid", 1), "Number": (7, 1)})
+    snapshot = read(tmp_path, event("synthetic-ids", [row(1, deck_obj=listed)]))
+
+    assert snapshot.quarantined_card_lines == 2
+    assert snapshot.incomplete_mainboards == frozenset({"synthetic-ids#1"})
+
+
 def test_a_bad_sideboard_line_does_not_make_the_mainboard_incomplete(tmp_path) -> None:
     listed = deck({"Bolt": (BOLT, 4)}, {"Odd": (None, 1)})
     snapshot = read(tmp_path, event("synthetic-side", [row(1, deck_obj=listed)]))

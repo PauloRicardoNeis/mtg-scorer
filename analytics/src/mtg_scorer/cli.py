@@ -47,6 +47,15 @@ def main() -> None:
     )
     score_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
     score_parser.add_argument("--output-root", type=Path, required=True)
+    publish_scores_parser = subparsers.add_parser(
+        "publish-scores", help="atomically publish a score-run file and make it active"
+    )
+    publish_scores_parser.add_argument("--run-file", type=Path, required=True)
+    rollback_scores_parser = subparsers.add_parser(
+        "rollback-scores", help="guarded rollback to a published score run"
+    )
+    rollback_scores_parser.add_argument("--target", required=True)
+    rollback_scores_parser.add_argument("--expected", required=True)
     arguments = parser.parse_args()
 
     if arguments.command == "ingest-scryfall":
@@ -83,6 +92,15 @@ def main() -> None:
         from .publish.score_run import score_topdeck
 
         print(score_topdeck(arguments.source_dir, arguments.cohort, arguments.output_root))
+    elif arguments.command == "publish-scores":
+        from .publish.score_postgres import publish_score_run
+
+        print(json.dumps(publish_score_run(arguments.run_file, os.environ["SCORE_PUBLISH_DSN"])))
+    elif arguments.command == "rollback-scores":
+        from .publish.score_postgres import rollback_score_run
+
+        rollback_score_run(os.environ["SCORE_PUBLISH_DSN"], arguments.target, arguments.expected)
+        print("Active score run rolled back; published runs retained.")
 
 
 if __name__ == "__main__":

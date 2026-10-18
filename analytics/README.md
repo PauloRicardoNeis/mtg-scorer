@@ -115,6 +115,16 @@ unknown. Each event records which basis it used.
 Raw responses and run files stay under the ignored `analytics/data/local/`. The
 TopDeck credit travels in each run file's `attribution`.
 
+Every run file must satisfy
+[`contracts/score-run.schema.json`](../contracts/score-run.schema.json) plus the
+relationship checks in `publish/score_validation.py` before it is written or
+published. `publish-scores` (`publish/score_postgres.py`) loads one file into the
+`scores` schema and makes it the active run for its source and format. Like catalog
+publication, rows can change only while the run is staging, and promotion verifies
+row counts and that every method scored every scored card. See the
+[runbook](../docs/local-catalog.md#full-catalog-import-worker-and-administration)
+for roles and commands.
+
 See the repository [README](../README.md),
 [measurement contract](../docs/measurement-contract.md), and
 [application boundary](../docs/adr/0001-polyglot-application-boundary.md) before
