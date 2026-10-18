@@ -171,6 +171,20 @@ describe("Filters", () => {
       expect(select("Cards per page")).toHaveValue("10");
     });
 
+    it.each(["abc", "", "0", "101", "10.5"])(
+      "shows the default page size for limit=%s",
+      (limit) => {
+        render(<Filters snapshot={snapshot} query={`limit=${limit}`} />);
+        expect(optionLabels(select("Cards per page"))).toEqual([
+          "2",
+          "24",
+          "50",
+          "100",
+        ]);
+        expect(select("Cards per page")).toHaveValue("24");
+      },
+    );
+
     it("offers the rarities and games", () => {
       render(<Filters snapshot={snapshot} query="" />);
       expect(optionLabels(select("Rarity"))).toEqual([
@@ -227,6 +241,15 @@ describe("Filters", () => {
       await user.click(screen.getByRole("button", { name: "Find cards" }));
       expect(router.push).toHaveBeenCalledWith(
         "/cards?catalog_snapshot_id=snap-1&limit=50",
+      );
+    });
+
+    it("submits the default page size in place of an unusable limit", async () => {
+      const user = userEvent.setup();
+      render(<Filters snapshot={snapshot} query="limit=abc" />);
+      await user.click(screen.getByRole("button", { name: "Find cards" }));
+      expect(router.push).toHaveBeenCalledWith(
+        "/cards?catalog_snapshot_id=snap-1&limit=24",
       );
     });
 

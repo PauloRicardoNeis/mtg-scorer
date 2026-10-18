@@ -216,11 +216,6 @@ def test_streaming_verifier_rejects_framing_and_provenance_drift(artifact, tampe
         verify_publication(artifact, SEED)
 
 
-@pytest.mark.xfail(
-    raises=StopIteration,
-    strict=True,
-    reason="stream._verify reads selection with next() before checking required fields",
-)
 def test_streaming_verifier_reports_missing_selection_as_a_missing_field(artifact):
     edit_export(lambda payload: payload.pop("selection"))(artifact)
 

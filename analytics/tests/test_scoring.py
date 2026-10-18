@@ -218,13 +218,10 @@ def test_score_config_rejects_weights_outside_a_convex_combination(weights, mess
         replace(ScoreConfig(), **weights)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="scoring._validate_weight_group compares with NaN, so a NaN weight passes validation",
-)
-def test_score_config_rejects_nan_weights() -> None:
-    with pytest.raises(ValueError, match="staple weights"):
-        replace(ScoreConfig(), staple_incidence=float("nan"))
+@pytest.mark.parametrize("weight", [float("nan"), float("inf"), float("-inf")])
+def test_score_config_rejects_non_finite_weights(weight) -> None:
+    with pytest.raises(ValueError, match="staple weights must be finite"):
+        replace(ScoreConfig(), staple_incidence=weight)
 
 
 @pytest.mark.parametrize("field_name", ["dataset_snapshot_id", "feature_pipeline_version"])

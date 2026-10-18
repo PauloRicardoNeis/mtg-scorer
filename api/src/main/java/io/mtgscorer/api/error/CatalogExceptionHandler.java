@@ -17,6 +17,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class CatalogExceptionHandler {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogExceptionHandler.class);
 
+  /**
+   * RFC 9457's default type, set explicitly: Spring 7 omits an unset type, but the published
+   * problem schemas require one.
+   */
+  static final URI BLANK_TYPE = URI.create("about:blank");
+
   @ExceptionHandler(CatalogProblem.class)
   ProblemDetail catalog(CatalogProblem error, HttpServletRequest request) {
     return problem(error.status(), error.code(), error.getMessage(), request);
@@ -55,6 +61,7 @@ public class CatalogExceptionHandler {
     ProblemDetail result =
         ProblemDetail.forStatusAndDetail(
             org.springframework.http.HttpStatusCode.valueOf(status), detail);
+    result.setType(BLANK_TYPE);
     result.setInstance(URI.create(request.getRequestURI()));
     result.setProperty("code", code);
     result.setProperty("request_id", UUID.randomUUID().toString());

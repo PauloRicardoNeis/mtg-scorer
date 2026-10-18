@@ -61,7 +61,9 @@ describe("CardImage", () => {
   it("swaps a scan that fails to load for a labelled fallback", () => {
     render(<CardImage src={scan} alt="Lightning Bolt" />);
     fireEvent.error(screen.getByRole("img", { name: "Lightning Bolt" }));
-    const fallback = screen.getByRole("img", { name: "Lightning Bolt" });
+    const fallback = screen.getByRole("img", {
+      name: "Lightning Bolt: image unavailable",
+    });
     expect(fallback.tagName).toBe("DIV");
     expect(fallback).toHaveClass("card-image-fallback");
     expect(fallback).toHaveTextContent("Image unavailable");
@@ -71,9 +73,10 @@ describe("CardImage", () => {
   it("shows the fallback for a scan that failed before hydration", () => {
     brokenBeforeHydration();
     render(<CardImage src={scan} alt="Lightning Bolt" />);
-    expect(screen.getByRole("img", { name: "Lightning Bolt" }).tagName).toBe(
-      "DIV",
-    );
+    expect(
+      screen.getByRole("img", { name: "Lightning Bolt: image unavailable" })
+        .tagName,
+    ).toBe("DIV");
   });
 
   it("keeps a deferred lazy scan that has not loaded yet", () => {
@@ -252,7 +255,7 @@ describe("CardImages", () => {
     expect(document.querySelectorAll("img")).toHaveLength(1);
     expect(
       screen.getByRole("img", {
-        name: "Delver of Secrets, face 2 — Magic 2011 #149 (EN)",
+        name: "Delver of Secrets, face 2 — Magic 2011 #149 (EN): image unavailable",
       }),
     ).toHaveClass("card-image-fallback");
   });

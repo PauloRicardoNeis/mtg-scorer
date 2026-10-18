@@ -20,6 +20,7 @@ class ProblemErrorControllerTests {
   void clientErrorsKeepTheirStatusWithAGenericDetail() {
     ProblemDetail problem = controller.error(dispatch(404, "/api/v1/cards/missing"));
 
+    assertThat(problem.getType()).isEqualTo(URI.create("about:blank"));
     assertThat(problem.getStatus()).isEqualTo(404);
     assertThat(problem.getTitle()).isEqualTo("Not Found");
     assertThat(problem.getDetail()).isEqualTo("The request could not be completed.");
@@ -52,6 +53,7 @@ class ProblemErrorControllerTests {
   void anUnusableStatusIsAnInternalError(String name, Object status) {
     ProblemDetail problem = controller.error(dispatch(status, "/api/v1/info"));
 
+    assertThat(problem.getType()).isEqualTo(URI.create("about:blank"));
     assertThat(problem.getStatus()).isEqualTo(500);
     assertThat(problem.getTitle()).isEqualTo("Internal Server Error");
     assertThat(problem.getProperties()).containsEntry("code", "internal_error");

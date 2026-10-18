@@ -129,6 +129,18 @@ describe("responses", () => {
     expect(error).toMatchObject({ code: "card_not_found", status: 404 });
   });
 
+  it("reports a non-JSON error page by its HTTP status", async () => {
+    fetchMock.mockResolvedValue(
+      new Response("<html><body>502 Bad Gateway</body></html>", {
+        status: 502,
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+    const error = await api.snapshots().catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ code: "internal_error", status: 502 });
+  });
+
   it("falls back to internal_error when the problem has no code", async () => {
     fetchMock.mockResolvedValue(Response.json({}, { status: 500 }));
     await expect(api.cards(new URLSearchParams())).rejects.toMatchObject({

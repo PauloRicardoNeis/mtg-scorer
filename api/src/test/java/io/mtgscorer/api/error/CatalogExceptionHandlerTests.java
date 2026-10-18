@@ -29,6 +29,7 @@ class CatalogExceptionHandlerTests {
         handler.catalog(
             new CatalogProblem(404, "card_not_found", "Card not found in this catalog."), request);
 
+    assertThat(problem.getType()).isEqualTo(URI.create("about:blank"));
     assertThat(problem.getStatus()).isEqualTo(404);
     assertThat(problem.getTitle()).isEqualTo("Not Found");
     assertThat(problem.getDetail()).isEqualTo("Card not found in this catalog.");
@@ -81,6 +82,7 @@ class CatalogExceptionHandlerTests {
       String name, DataAccessException error) {
     ProblemDetail problem = handler.database(error, request);
 
+    assertThat(problem.getType()).isEqualTo(URI.create("about:blank"));
     assertThat(problem.getStatus()).isEqualTo(503);
     assertThat(problem.getProperties()).containsEntry("code", "catalog_unavailable");
     assertThat(problem.getDetail())
@@ -103,6 +105,7 @@ class CatalogExceptionHandlerTests {
   void otherDatabaseFailuresAreSanitizedInternalErrors(String name, DataAccessException error) {
     ProblemDetail problem = handler.database(error, request);
 
+    assertThat(problem.getType()).isEqualTo(URI.create("about:blank"));
     assertThat(problem.getStatus()).isEqualTo(500);
     assertThat(problem.getProperties()).containsEntry("code", "internal_error");
     assertThat(problem.getDetail()).isEqualTo("An unexpected error occurred.");

@@ -200,9 +200,15 @@ describe("HeaderSearch", () => {
       window.history.pushState(null, "", "/datasets");
       render(<HeaderSearch />);
       await user.type(searchBox(), "   {Enter}");
-      const url = pushed();
-      expect(url.pathname).toBe("/cards");
-      expect(url.searchParams.size).toBe(0);
+      expect(router.push).toHaveBeenCalledExactlyOnceWith("/cards");
+    });
+
+    it("searches without a dataset when the dataset path is malformed", async () => {
+      const user = userEvent.setup();
+      window.history.pushState(null, "", "/datasets/%E0%A4%A/sets");
+      render(<HeaderSearch />);
+      await user.type(searchBox(), "bolt{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith("/cards?q=bolt");
     });
 
     it("keeps the dataset for a blank search", async () => {

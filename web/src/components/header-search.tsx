@@ -6,11 +6,21 @@ import { Icon } from "./icon";
 
 // The dataset a page shows: in the query on card pages, in the path on dataset pages.
 function currentSnapshot(): string | null {
-  const dataset = location.pathname.match(/^\/datasets\/([^/]+)/);
   return (
     new URLSearchParams(location.search).get("catalog_snapshot_id") ??
-    (dataset ? decodeURIComponent(dataset[1]) : null)
+    datasetInPath()
   );
+}
+
+// A malformed escape cannot name a dataset, so the search falls back to the default.
+function datasetInPath(): string | null {
+  const dataset = location.pathname.match(/^\/datasets\/([^/]+)/);
+  if (!dataset) return null;
+  try {
+    return decodeURIComponent(dataset[1]);
+  } catch {
+    return null;
+  }
 }
 
 /** Catalog-wide name search. "/" focuses it from anywhere outside a field. */
@@ -49,7 +59,7 @@ export function HeaderSearch() {
         if (snapshot) query.set("catalog_snapshot_id", snapshot);
         const name = input.current?.value.trim();
         if (name) query.set("q", name);
-        router.push(`/cards?${query}`);
+        router.push(query.size ? `/cards?${query}` : "/cards");
       }}
     >
       <label className="sr-only" htmlFor="site-search">
