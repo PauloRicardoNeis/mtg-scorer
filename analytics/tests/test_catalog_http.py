@@ -74,12 +74,55 @@ def test_real_contract_faces_filters_literal_search_and_dataset():
     }
 
 
+def names(**query):
+    status, page = get("/api/v1/cards", **query)
+    assert status == 200
+    validate(page, "CardPage")
+    return {card["name"] for card in page["items"]}
+
+
+def test_summary_cost_type_line_and_color_and_type_filters():
+    _, page = get("/api/v1/cards")
+    shown = {c["name"]: (c["mana_cost"], c["type_line"]) for c in page["items"]}
+    # Double-faced cards without a card-level cost show their front face's.
+    assert shown["Delver of Secrets // Insectile Aberration"] == (
+        "{U}",
+        "Creature — Human Wizard // Creature — Human Insect",
+    )
+    assert shown["Valakut Awakening // Valakut Stoneforge"] == ("{2}{R}", "Instant // Land")
+    assert shown["Fire // Ice"] == ("{1}{R} // {1}{U}", "Instant // Instant")
+    # A type matches on any face, before the subtype dash.
+    assert names(type="land") == {"Valakut Awakening // Valakut Stoneforge"}
+    assert names(type="enchantment") == {"Erayo, Soratami Ascendant // Erayo's Essence"}
+    assert names(type="instant") == {
+        "Lightning Bolt",
+        "Fire // Ice",
+        "Bonecrusher Giant // Stomp",
+        "Valakut Awakening // Valakut Stoneforge",
+    }
+    assert names(type="planeswalker") == set()
+    # Any selected color matches; colors differ from color identity.
+    assert names(color="W") == {"Bruna, the Fading Light"}
+    assert names(color=["W", "U"]) == {
+        "Bruna, the Fading Light",
+        "Delver of Secrets // Insectile Aberration",
+        "Fire // Ice",
+        "Erayo, Soratami Ascendant // Erayo's Essence",
+    }
+    assert names(color="R", type="creature") == {"Bonecrusher Giant // Stomp"}
+    assert names(color="C") == set()
+    assert names(color="U", type="instant", set="dmr") == {"Fire // Ice"}
+
+
 def test_invalid_queries_cursor_tampering_and_unknown_resources():
     for query in (
         {"q": ["one", "two"]},
         {"limit": 101},
         {"unknown": "x"},
         {"color_identity": "RR"},
+        {"color": "X"},
+        {"type": "battle"},
+        {"type": ["land", "creature"]},
         {"sort": "power"},
     ):
         status, body = get("/api/v1/cards", **query)
@@ -223,6 +266,10 @@ def test_synthetic_unknown_colorless_and_ambiguous_literal_aliases(tmp_path):
         assert len(get("/api/v1/cards", color_identity="C")[1]["items"]) == 1
         assert len(get("/api/v1/cards", color_identity="U")[1]["items"]) == 2
         assert len(get("/api/v1/cards", color_identity="R")[1]["items"]) == 1
+        # Known colorless matches C; unknown colors match no color filter.
+        colorless = get("/api/v1/cards", color="C")[1]["items"]
+        assert [card["color_identity"] for card in colorless] == [[]]
+        assert len(get("/api/v1/cards", color=["W", "U", "B", "R", "G", "C"])[1]["items"]) == 2
         assert len(get("/api/v1/cards", q="%_")[1]["items"]) == 2
         unknown = get("/api/v1/cards", q="unknown")[1]["items"][0]
         assert unknown["color_identity"] is None

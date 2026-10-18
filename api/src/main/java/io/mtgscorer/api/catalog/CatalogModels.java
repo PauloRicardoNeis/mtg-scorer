@@ -12,6 +12,16 @@ public final class CatalogModels {
       UUID oracle_id,
       String name,
       String layout,
+      @Schema(
+              types = {"string", "null"},
+              description =
+                  "The card's mana cost; for a double-faced card without one, its front face's.")
+          String mana_cost,
+      @Schema(
+              types = {"string", "null"},
+              description =
+                  "The card's type line; when the source has none, its faces' joined by \" // \".")
+          String type_line,
       @Schema(types = {"array", "null"}) List<String> color_identity,
       @Schema(minimum = "1") long eligible_printing_count,
       Printing preview_printing) {}

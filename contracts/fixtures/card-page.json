@@ -5,6 +5,8 @@
       "oracle_id": "00000000-0000-4000-8000-000000000001",
       "name": "Fixture Card",
       "layout": "transform",
+      "mana_cost": "{U}",
+      "type_line": "Creature \u2014 Fixture // Creature \u2014 Fixture",
       "color_identity": [
         "U"
       ],

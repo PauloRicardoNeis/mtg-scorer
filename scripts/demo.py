@@ -380,7 +380,11 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 "--port",
                 web_port,
             ],
-            {key: value for key, value in env.items() if key != "CATALOG_IMPORT_ADMIN_TOKEN"},
+            {
+                **{key: value for key, value in env.items() if key != "CATALOG_IMPORT_ADMIN_TOKEN"},
+                # The development-only primitives gallery is browser-tested in verification.
+                **({"PRIMITIVES_GALLERY": "1"} if verify else {}),
+            },
             run_dir / "web.log",
         ) as web_process:
             wait_http(web_url + "/", web_process)

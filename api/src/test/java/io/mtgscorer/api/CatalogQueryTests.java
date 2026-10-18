@@ -21,6 +21,26 @@ class CatalogQueryTests {
             Map.of("set", List.of("m11", "2x2", "m11"), "color_identity", List.of("RU")), false);
     assertThat(query.sets()).containsExactly("2x2", "m11");
     assertThat(query.colorIdentity()).isEqualTo("UR");
+    var colors =
+        CatalogQuery.parse(
+            Map.of("color", List.of("C", "R", "W", "R"), "type", List.of("land")), false);
+    assertThat(colors.colors()).containsExactly("W", "R", "C");
+    assertThat(colors.type()).isEqualTo("land");
+  }
+
+  @Test
+  void rejectsUnknownColorsTypesAndTypeLists() {
+    for (var input :
+        List.of(
+            Map.of("color", List.of("X")),
+            Map.of("color", List.of("WU")),
+            Map.of("type", List.of("battle")),
+            Map.of("type", List.of("Creature")),
+            Map.of("type", List.of("land", "creature")))) {
+      assertThatThrownBy(() -> CatalogQuery.parse(input, false)).isInstanceOf(CatalogProblem.class);
+    }
+    assertThatThrownBy(() -> CatalogQuery.parse(Map.of("type", List.of("land")), true))
+        .isInstanceOf(CatalogProblem.class);
   }
 
   @Test
@@ -65,6 +85,29 @@ class CatalogQueryTests {
                 List.of("catalog-new"),
                 "cursor",
                 List.of(encoded)))) {
+      assertThatThrownBy(() -> codec.decode("cards", CatalogQuery.parse(mismatch, false)))
+          .isInstanceOf(CatalogProblem.class);
+    }
+    // Color and type filters are part of the cursor's filter identity.
+    var red =
+        CatalogQuery.parse(
+            Map.of("color", List.of("R"), "type", List.of("instant"), "limit", List.of("2")),
+            false);
+    String redCursor =
+        codec.encode(
+            "cards", "catalog-old", red, List.of("bolt", "00000000-0000-4000-8000-000000000001"));
+    for (var mismatch :
+        List.of(
+            Map.of("type", List.of("instant"), "limit", List.of("2"), "cursor", List.of(redCursor)),
+            Map.of(
+                "color",
+                List.of("U"),
+                "type",
+                List.of("instant"),
+                "limit",
+                List.of("2"),
+                "cursor",
+                List.of(redCursor)))) {
       assertThatThrownBy(() -> codec.decode("cards", CatalogQuery.parse(mismatch, false)))
           .isInstanceOf(CatalogProblem.class);
     }

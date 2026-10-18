@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SiteNav } from "@/components/site-nav";
+import { SectionTag, SiteNav } from "@/components/site-nav";
+import { HeaderSearch } from "@/components/header-search";
 import "./tokens.css";
 import "./styles.css";
 
@@ -22,10 +23,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link className="brand" href="/cards">
                 MTG Scorer
               </Link>
-              <span aria-hidden="true" className="brand-divider" />
-              <span className="guest">Guest catalog</span>
+              <SectionTag />
             </div>
             <SiteNav />
+            <HeaderSearch />
           </div>
         </header>
         <main id="main" tabIndex={-1}>

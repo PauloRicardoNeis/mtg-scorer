@@ -140,6 +140,13 @@
           "layout": {
             "type": "string"
           },
+          "mana_cost": {
+            "description": "The card's mana cost; for a double-faced card without one, its front face's.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -149,15 +156,24 @@
           },
           "preview_printing": {
             "$ref": "#/components/schemas/Printing"
+          },
+          "type_line": {
+            "description": "The card's type line; when the source has none, its faces' joined by \" // \".",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "color_identity",
           "eligible_printing_count",
           "layout",
+          "mana_cost",
           "name",
           "oracle_id",
-          "preview_printing"
+          "preview_printing",
+          "type_line"
         ],
         "type": "object"
       },
@@ -949,6 +965,29 @@
             }
           },
           {
+            "description": "Card colors; a card matches any selected one. C selects known colorless cards.",
+            "explode": true,
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "items": {
+                "enum": [
+                  "W",
+                  "U",
+                  "B",
+                  "R",
+                  "G",
+                  "C"
+                ],
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
             "in": "query",
             "name": "color_identity",
             "required": false,
@@ -1045,6 +1084,24 @@
               "default": "name_asc",
               "enum": [
                 "name_asc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "A card type on any face's type line.",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "artifact",
+                "creature",
+                "enchantment",
+                "instant",
+                "land",
+                "planeswalker",
+                "sorcery"
               ],
               "type": "string"
             }

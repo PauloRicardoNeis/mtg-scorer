@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "./icon";
+import { Toasts, type ToastMessage } from "./toast";
 
 export function CopySearch() {
-  const [status, setStatus] = useState("");
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   return (
     <span className="copy-action">
       <button
@@ -14,16 +15,24 @@ export function CopySearch() {
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(location.href);
-            setStatus("Search URL copied.");
+            setToast({
+              tone: "success",
+              title: "Search URL copied.",
+              message: "It stays pinned to this dataset.",
+            });
           } catch {
-            setStatus("Copy the URL from your browser address bar.");
+            setToast({
+              tone: "warning",
+              title: "Couldn't copy the URL.",
+              message: "Copy it from your browser address bar.",
+            });
           }
         }}
       >
         <Icon name="copy" size={14} />
         Copy this search URL
       </button>
-      <span role="status">{status}</span>
+      <Toasts toast={toast} onDismiss={() => setToast(null)} />
     </span>
   );
 }

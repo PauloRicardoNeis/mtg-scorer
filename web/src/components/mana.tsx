@@ -71,6 +71,65 @@ export function ColorDots({ values }: { values: string[] | null }) {
   );
 }
 
+const filterColors: [string, string][] = [
+  ["W", "White"],
+  ["U", "Blue"],
+  ["B", "Black"],
+  ["R", "Red"],
+  ["G", "Green"],
+  ["C", "Colorless"],
+];
+
+/** Multi-select card colors as a segmented bar; a card matches any selected color. */
+export function ColorFilter({
+  label,
+  name,
+  selected,
+  form,
+}: {
+  label: string;
+  name: string;
+  selected: string[];
+  form?: string;
+}) {
+  return (
+    <div>
+      <span className="group-label" id={`${name}-label`}>
+        {label}
+      </span>
+      <div
+        role="group"
+        aria-labelledby={`${name}-label`}
+        className="segmented color-filter"
+      >
+        {filterColors.map(([color, colorName]) => (
+          <label key={color} title={colorName}>
+            <input
+              type="checkbox"
+              name={name}
+              value={color}
+              form={form}
+              defaultChecked={selected.includes(color)}
+            />
+            <span
+              className="filter-dot"
+              data-color={color}
+              style={
+                {
+                  "--dot": `var(--mana-${color.toLowerCase()})`,
+                } as CSSProperties
+              }
+              aria-hidden="true"
+            />
+            <span aria-hidden="true">{color}</span>
+            <span className="sr-only">{colorName}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const rarities = new Set(["common", "uncommon", "rare", "mythic"]);
 
 /** Rarity gem followed by the rarity name. */

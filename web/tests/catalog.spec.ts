@@ -136,6 +136,47 @@ test("joint filters, empty state and Back restore filters", async ({
   ]);
 });
 
+test("color and card type filters, with cost and type on tiles", async ({
+  page,
+}) => {
+  await page.goto("/cards");
+  await expect(page).toHaveURL(/catalog_snapshot_id=catalog-/);
+  const bolt = page.getByRole("article").filter({
+    has: page.getByRole("link", { name: "Lightning Bolt", exact: true }),
+  });
+  await expect(bolt.getByText("Instant", { exact: true })).toBeVisible();
+  await expect(bolt.getByText("{R}", { exact: true })).toBeAttached();
+  // Labels toggle the visually hidden checkboxes, as a pointer user would.
+  await page.getByTitle("Red", { exact: true }).click();
+  await page.getByTitle("Blue", { exact: true }).click();
+  await expect(page.getByRole("checkbox", { name: "Red" })).toBeChecked();
+  await page.getByLabel("Card type").selectOption("instant");
+  await page.getByRole("button", { name: "Find cards", exact: true }).click();
+  await expect(page).toHaveURL(/color=U&color=R&type=instant/);
+  for (const name of [
+    "Lightning Bolt",
+    "Fire // Ice",
+    "Bonecrusher Giant // Stomp",
+    "Valakut Awakening // Valakut Stoneforge",
+  ])
+    await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
+  await expect(page.locator(".card-tile")).toHaveCount(4);
+  // The selection survives a reload of the shareable URL.
+  await page.reload();
+  await expect(page.getByRole("checkbox", { name: "Blue" })).toBeChecked();
+  await expect(page.getByLabel("Card type")).toHaveValue("instant");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByLabel("Card type").selectOption("land");
+  await page.getByRole("button", { name: "Find cards", exact: true }).click();
+  await expect(
+    page.getByRole("link", {
+      name: "Valakut Awakening // Valakut Stoneforge",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".card-tile")).toHaveCount(1);
+});
+
 test("pagination retains the old publication after a Python refresh", async ({
   page,
 }) => {
@@ -295,6 +336,11 @@ test("printing scans follow the pool and show both Delver sides", async ({
     "src",
     bolt.image_uris.normal,
   );
+  // The hero features the first printing that matches the pool.
+  const hero = page.locator(".detail-art img");
+  await expect(hero).toHaveAttribute("src", bolt.image_uris.normal);
+  await expect(hero).toHaveAttribute("alt", /Magic 2011 #149/);
+  await expect(hero).toHaveAttribute("loading", "eager");
   await page.goto("/cards?q=Insectile");
   await page
     .getByRole("link", {
@@ -322,7 +368,45 @@ test("failed image requests leave a readable fallback and usable card link", asy
   await expect(
     page.getByRole("heading", { name: "Eligible printings" }),
   ).toBeVisible();
+  for (const area of [".detail-art", ".printing-list"])
+    await expect(
+      page.locator(area).getByText("Image unavailable", { exact: true }),
+    ).toBeVisible();
+});
+
+test("header search, '/' shortcut and sticky filter toolbar", async ({
+  page,
+}) => {
+  await page.goto("/cards");
+  await expect(page).toHaveURL(/catalog_snapshot_id=catalog-/);
+  const snapshot = new URL(page.url()).searchParams.get("catalog_snapshot_id")!;
+  await expect(page.locator(".section-tag")).toHaveText("Discovery");
   await expect(
-    page.getByText("Image unavailable", { exact: true }),
+    page.getByRole("link", { name: "Methodology", exact: true }),
   ).toBeVisible();
+  // "/" types normally inside a field and focuses the header search elsewhere.
+  const name = page.getByLabel("Card or face name");
+  await name.fill("a");
+  await name.press("/");
+  await expect(name).toHaveValue("a/");
+  await name.blur();
+  await page.keyboard.press("/");
+  const search = page.getByRole("searchbox", { name: "Search cards" });
+  await expect(search).toBeFocused();
+  await search.fill("Lightning");
+  await search.press("Enter");
+  await expect(page).toHaveURL(
+    new RegExp(`\\?catalog_snapshot_id=${snapshot}&q=Lightning$`),
+  );
+  await expect(
+    page.getByRole("link", { name: "Lightning Bolt", exact: true }),
+  ).toBeVisible();
+  // The toolbar with the name search stays under the header while results scroll.
+  await page.goto(`/cards?catalog_snapshot_id=${snapshot}`);
+  await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+  await expect
+    .poll(async () => (await page.locator(".toolbar").boundingBox())?.y)
+    .toBe(60);
+  await expect(name).toBeInViewport();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

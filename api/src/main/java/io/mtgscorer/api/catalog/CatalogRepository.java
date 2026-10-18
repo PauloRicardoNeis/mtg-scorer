@@ -37,6 +37,24 @@ class CatalogRepository {
          WHERE i.catalog_snapshot_id=p.catalog_snapshot_id AND i.scryfall_id=p.scryfall_id))
       """;
 
+  // Double-faced cards may lack a card-level cost or type line; show the front face's
+  // cost and every face's type line instead.
+  private static final String SHOWN =
+      """
+      (SELECT coalesce(c.mana_cost,
+         (SELECT f.mana_cost FROM catalog.published_catalog_face f
+          WHERE f.catalog_snapshot_id=c.catalog_snapshot_id AND f.oracle_id=c.oracle_id
+          ORDER BY f.face_index LIMIT 1)) mana_cost,
+       coalesce(c.type_line,
+         (SELECT string_agg(f.type_line,' // ' ORDER BY f.face_index) FROM catalog.published_catalog_face f
+          WHERE f.catalog_snapshot_id=c.catalog_snapshot_id AND f.oracle_id=c.oracle_id)) type_line)
+      """;
+
+  /** "creature" → a match for Creature before the subtype dash on any face of a type line. */
+  private static String typePattern(String type) {
+    return "(^|//)[^—/]*\\m" + Character.toUpperCase(type.charAt(0)) + type.substring(1) + "\\M";
+  }
+
   private String printingPredicate(CatalogQuery query, Map<String, Object> args) {
     List<String> conditions = new ArrayList<>();
     conditions.add("p.catalog_snapshot_id=:snapshot AND p.oracle_id=c.oracle_id");
@@ -74,13 +92,30 @@ class CatalogRepository {
               ? ""
               : String.join(",", query.colorIdentity().split("")));
     }
+    if (!query.colors().isEmpty()) {
+      // Any selected color matches; unknown colors (null) never match.
+      List<String> any = new ArrayList<>();
+      List<String> chromatic = query.colors().stream().filter(c -> !c.equals("C")).toList();
+      if (!chromatic.isEmpty()) {
+        any.add("c.colors && string_to_array(:anyColors,',')");
+        args.put("anyColors", String.join(",", chromatic));
+      }
+      if (query.colors().contains("C")) any.add("c.colors='{}'");
+      where += " AND (" + String.join(" OR ", any) + ")";
+    }
+    if (query.type() != null) {
+      where += " AND shown.type_line ~ :typePattern";
+      args.put("typePattern", typePattern(query.type()));
+    }
     if (cursor != null) {
       where += " AND (c.name_key,c.oracle_id) > (:lastName COLLATE \"C\",CAST(:lastId AS uuid))";
       args.put("lastName", cursor.last_key().getFirst());
       args.put("lastId", cursor.last_key().getLast());
     }
     String sql =
-        "SELECT c.oracle_id,c.name,c.layout,c.color_identity,c.name_key,eligible.n,preview.printing FROM catalog.published_catalog_card c CROSS JOIN LATERAL (SELECT count(*) n FROM catalog.published_catalog_printing p WHERE "
+        "SELECT c.oracle_id,c.name,c.layout,shown.mana_cost,shown.type_line,c.color_identity,c.name_key,eligible.n,preview.printing FROM catalog.published_catalog_card c CROSS JOIN LATERAL "
+            + SHOWN
+            + " shown CROSS JOIN LATERAL (SELECT count(*) n FROM catalog.published_catalog_printing p WHERE "
             + predicate
             + ") eligible CROSS JOIN LATERAL (SELECT ("
             + PRINTING_JSON
@@ -98,6 +133,8 @@ class CatalogRepository {
                     row.getObject("oracle_id", UUID.class),
                     row.getString("name"),
                     row.getString("layout"),
+                    row.getString("mana_cost"),
+                    row.getString("type_line"),
                     row.getArray("color_identity") == null
                         ? null
                         : List.of((String[]) row.getArray("color_identity").getArray()),

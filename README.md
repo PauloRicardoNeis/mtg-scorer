@@ -22,6 +22,7 @@ normalization and immutable exports feed atomic PostgreSQL publication, Spring
 queries, and three guest Next.js pages. A small retained seed supports demos/tests.
 
 - Search canonical and face names; filter jointly by printing set, rarity and game.
+- Narrow by card colors, color identity and card type (matched on any face).
 - Inspect complete faces, eligible printings, source dates and dataset identity.
 - Share snapshot-pinned URLs that remain stable across publication refreshes.
 - Missing tournament evidence is explicit. No research scores are served.

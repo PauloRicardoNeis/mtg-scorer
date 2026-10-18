@@ -12,6 +12,8 @@ public record CatalogQuery(
     List<String> rarities,
     String game,
     String colorIdentity,
+    List<String> colors,
+    String type,
     String sort,
     int limit,
     String snapshot,
@@ -19,6 +21,14 @@ public record CatalogQuery(
   public static final Set<String> RARITIES =
       Set.of("common", "uncommon", "rare", "mythic", "special", "bonus");
   public static final Set<String> GAMES = Set.of("paper", "arena", "mtgo");
+
+  /** Card colors in WUBRG order; C selects known colorless cards. */
+  public static final List<String> COLORS = List.of("W", "U", "B", "R", "G", "C");
+
+  /** Card types matched on any face's type line, before its subtypes. */
+  public static final Set<String> TYPES =
+      Set.of("creature", "planeswalker", "instant", "sorcery", "artifact", "enchantment", "land");
+
   public static final Set<String> CARD_PARAMETERS =
       Set.of(
           "q",
@@ -26,6 +36,8 @@ public record CatalogQuery(
           "rarity",
           "game",
           "color_identity",
+          "color",
+          "type",
           "sort",
           "limit",
           "catalog_snapshot_id",
@@ -62,6 +74,11 @@ public record CatalogQuery(
                 .toString();
       }
     }
+    List<String> selected = repeated(input, "color", COLORS.size());
+    if (!COLORS.containsAll(selected)) throw CatalogProblem.query("Invalid color.");
+    List<String> anyColors = COLORS.stream().filter(selected::contains).toList();
+    String type = scalar(input, "type");
+    if (type != null && !TYPES.contains(type)) throw CatalogProblem.query("Invalid card type.");
     String sort = scalar(input, "sort");
     if (sort != null && !sort.equals("name_asc")) throw CatalogProblem.query("Invalid sort.");
     String size = scalar(input, "limit");
@@ -81,6 +98,8 @@ public record CatalogQuery(
         rarities,
         game,
         colors,
+        anyColors,
+        type,
         printings ? "scryfall_id_asc" : "name_asc",
         limit,
         snapshot,
@@ -91,7 +110,8 @@ public record CatalogQuery(
     if (!allowed.containsAll(input.keySet()))
       throw CatalogProblem.query("Unknown query parameter.");
     for (var entry : input.entrySet()) {
-      if (!Set.of("set", "rarity").contains(entry.getKey()) && entry.getValue().size() != 1)
+      if (!Set.of("set", "rarity", "color").contains(entry.getKey())
+          && entry.getValue().size() != 1)
         throw CatalogProblem.query("Duplicate scalar parameter.");
     }
   }
