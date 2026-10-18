@@ -1,13 +1,14 @@
-"""Replaceable score models over missing-aware historical features."""
+"""Staple, Build-around and Evidence scores over missing-aware historical features."""
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from hashlib import sha256
-from json import dumps
+from collections.abc import Sequence
+from dataclasses import dataclass
 from math import exp, isfinite
+from typing import ClassVar
 
-from .features import CardFeatures, FeatureObservation
+from ..features import CardFeatures, FeatureObservation
+from .base import CardScore, ScoreContext, ScoreRun, ScoringInput, build_run, config_fingerprint
 
 
 def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
@@ -17,19 +18,6 @@ def _validate_weight_group(name: str, weights: tuple[float, ...]) -> None:
         raise ValueError(f"{name} weights cannot be negative")
     if abs(sum(weights) - 1.0) > 1e-9:
         raise ValueError(f"{name} weights must sum to 1.0; got {sum(weights)}")
-
-
-@dataclass(frozen=True, slots=True)
-class ScoreContext:
-    """Data and feature identities required to reproduce a score."""
-
-    dataset_snapshot_id: str
-    feature_pipeline_version: str
-
-    def __post_init__(self) -> None:
-        for field_name in ("dataset_snapshot_id", "feature_pipeline_version"):
-            if not getattr(self, field_name).strip():
-                raise ValueError(f"{field_name} cannot be blank")
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,8 +84,7 @@ class ScoreConfig:
     def fingerprint(self) -> str:
         """Hash the complete configuration so a reused version label cannot lie."""
 
-        payload = dumps(asdict(self), sort_keys=True, separators=(",", ":"))
-        return sha256(payload.encode()).hexdigest()
+        return config_fingerprint(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +171,44 @@ def score_card(
         staple_feature_coverage=round(100.0 * staple_coverage, 1),
         buildaround_feature_coverage=round(100.0 * buildaround_coverage, 1),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class FoundationMethod:
+    """The original model as a registered method: one ``score_card`` per card."""
+
+    config: ScoreConfig = DEFAULT_CONFIG
+
+    method_id: ClassVar[str] = "foundation"
+    label: ClassVar[str] = "Staple, Build-around and Evidence"
+    description: ClassVar[str] = (
+        "Weighted averages of each score group's features, reweighted over the features "
+        "that were observed. Unknown features never count as zero."
+    )
+    outputs: ClassVar[tuple[str, ...]] = (
+        "staple",
+        "buildaround_signal",
+        "evidence",
+        "distinctiveness_delta",
+        "staple_feature_coverage",
+        "buildaround_feature_coverage",
+    )
+
+    @property
+    def version(self) -> str:
+        return self.config.version
+
+    @property
+    def config_hash(self) -> str:
+        return self.config.fingerprint
+
+    def score(self, cards: Sequence[ScoringInput], context: ScoreContext) -> ScoreRun:
+        scores = []
+        for card in cards:
+            breakdown = score_card(card.features, context, self.config)
+            values = {name: getattr(breakdown, name) for name in self.outputs}
+            scores.append(CardScore(card.card_id, values))
+        return build_run(self, context, scores)
 
 
 def _weighted_estimate(

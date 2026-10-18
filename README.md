@@ -380,6 +380,8 @@ outside the delivered catalog milestone.
 - `Match` and `MatchParticipant`
 - `FeatureObservation` and `CardFeatures`
 - `ScoreContext`, `ScoreConfig`, and `ScoreBreakdown`
+- `ScoreMethod`, `ScoringInput`, `CardScore`, `ScoreRun`, and the `SCORE_METHODS`
+  registry
 
 Deck registration, standing, and match are separate facts. A source aggregate may
 be retained, but round-level evidence must not be irreversibly collapsed into it.

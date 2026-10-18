@@ -51,6 +51,33 @@ publication. `--once` handles one queued job; `--source-dir` selects retained
 source data for an offline rebuild. The [runbook](../docs/local-catalog.md)
 documents credentials, refresh, retries and rollback. Live probes are not CI.
 
+## Score methods
+
+Scores come from replaceable methods in `src/mtg_scorer/scoring/`, so formulas can
+change or coexist over time. A method receives every eligible card of one stratum
+as `ScoringInput`s and returns a `ScoreRun`. Each run carries the method's id,
+version and configuration hash plus the dataset and feature identities. Each
+`CardScore` holds named outputs (`None` when unscorable, never a stand-in zero) and
+the inputs that explain them.
+
+| Method | Outputs | Notes |
+| --- | --- | --- |
+| `foundation` | Staple, Build-around, Evidence, coverage | The original weighted model; `ScoreConfig` sets its weights |
+| `max-ratio` | `max_ratio` | Count ÷ the largest count in the stratum × 100; measures volume, not quality |
+
+To add a method:
+
+1. Create a module with a frozen configuration dataclass (a `version` label plus
+   settings, hashed with `config_fingerprint`) and a method class providing
+   `method_id`, `label`, `description`, `outputs`, `version`, `config_hash` and
+   `score()`. Finish `score()` with `build_run`, which checks the declared outputs.
+2. Add an instance to `SCORE_METHODS` in `scoring/registry.py`.
+3. Add tests for its own behaviour. The shared contract tests in
+   `tests/test_score_methods.py` already cover every registered method.
+
+A new formula setting is a new configuration, not an edit. Changing it changes the
+configuration hash, so existing results remain attributable to what produced them.
+
 See the repository [README](../README.md),
 [measurement contract](../docs/measurement-contract.md), and
 [application boundary](../docs/adr/0001-polyglot-application-boundary.md) before
