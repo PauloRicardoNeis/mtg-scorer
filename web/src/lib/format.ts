@@ -70,3 +70,31 @@ export type GradeTone = "a" | "b" | "c" | "d" | "f";
 export function gradeTone(letter: string): GradeTone {
   return letter[0].toLowerCase() as GradeTone;
 }
+
+/** A part of a known whole as a percentage with one decimal: 37 of 231 → "16.0%". */
+export function share(part: number, whole: number): string {
+  return whole > 0 ? percent((100 * part) / whole) : "—";
+}
+
+const day = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const dayWithYear = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** An ISO window with an exclusive end, as inclusive days: "Mar 1 – Aug 31, 2026". */
+export function dateWindow(startsOn: string, endsBefore: string): string {
+  const start = new Date(`${startsOn}T00:00:00Z`);
+  const end = new Date(Date.parse(`${endsBefore}T00:00:00Z`) - 86_400_000);
+  const first =
+    start.getUTCFullYear() === end.getUTCFullYear()
+      ? day.format(start)
+      : dayWithYear.format(start);
+  return `${first} – ${dayWithYear.format(end)}`;
+}

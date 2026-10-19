@@ -9,6 +9,10 @@ describe("SiteNav", () => {
     expect(
       screen.getByRole("navigation", { name: "Main" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Rankings" })).toHaveAttribute(
+      "href",
+      "/rankings",
+    );
     expect(screen.getByRole("link", { name: "Discovery" })).toHaveAttribute(
       "href",
       "/cards",
@@ -20,6 +24,7 @@ describe("SiteNav", () => {
   });
 
   it.each([
+    ["/rankings", "Rankings"],
     ["/cards", "Discovery"],
     ["/cards/0b4a7c1e", "Discovery"],
     ["/datasets", "Methodology"],

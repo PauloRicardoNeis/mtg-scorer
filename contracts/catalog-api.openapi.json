@@ -186,6 +186,8 @@
               "snapshot_not_found",
               "card_not_found",
               "catalog_unavailable",
+              "rankings_unavailable",
+              "score_run_not_found",
               "internal_error"
             ],
             "type": "string"
@@ -573,6 +575,298 @@
           "items",
           "next_cursor",
           "oracle_id"
+        ],
+        "type": "object"
+      },
+      "RankedCard": {
+        "properties": {
+          "archetype_deck_count": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "archetype_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "color_identity": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "deck_count": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "event_count": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "labelled_deck_count": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mana_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "oracle_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "preview_printing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Printing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the card is not in the active catalog."
+          },
+          "rank": {
+            "description": "Position by the selected score among all scored cards.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "score": {
+            "description": "The selected output; null when the method could not score the card.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_cut_count": {
+            "description": "Unknown when no deck with this card has a known top-cut result.",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "top_cut_known_decks": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type_line": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "archetype_deck_count",
+          "archetype_label",
+          "color_identity",
+          "deck_count",
+          "event_count",
+          "labelled_deck_count",
+          "mana_cost",
+          "name",
+          "oracle_id",
+          "preview_printing",
+          "rank",
+          "score",
+          "top_cut_count",
+          "top_cut_known_decks",
+          "type_line"
+        ],
+        "type": "object"
+      },
+      "RankedFormat": {
+        "properties": {
+          "format_name": {
+            "type": "string"
+          },
+          "score_run_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "format_name",
+          "score_run_id",
+          "source"
+        ],
+        "type": "object"
+      },
+      "RankingPage": {
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formats": {
+            "items": {
+              "$ref": "#/components/schemas/RankedFormat"
+            },
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RankedCard"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "method_id": {
+            "type": "string"
+          },
+          "offset": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "output": {
+            "type": "string"
+          },
+          "score_run": {
+            "$ref": "#/components/schemas/ScoreRunSummary"
+          },
+          "total": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "catalog_snapshot_id",
+          "formats",
+          "items",
+          "limit",
+          "method_id",
+          "offset",
+          "output",
+          "score_run",
+          "total"
+        ],
+        "type": "object"
+      },
+      "ScoreMethod": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "method_id": {
+            "type": "string"
+          },
+          "method_version": {
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "description",
+          "label",
+          "method_id",
+          "method_version",
+          "outputs"
+        ],
+        "type": "object"
+      },
+      "ScoreRunSummary": {
+        "properties": {
+          "attribution": {
+            "type": "string"
+          },
+          "decks": {
+            "description": "Published decks in the cohort.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "events": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "format_name": {
+            "type": "string"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreMethod"
+            },
+            "type": "array"
+          },
+          "players": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "published_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "score_run_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "top_cut_decks": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_ends_before": {
+            "description": "Exclusive end of the cohort window.",
+            "format": "date",
+            "type": "string"
+          },
+          "window_starts_on": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attribution",
+          "decks",
+          "events",
+          "format_name",
+          "methods",
+          "players",
+          "published_at",
+          "score_run_id",
+          "source",
+          "top_cut_decks",
+          "window_ends_before",
+          "window_starts_on"
         ],
         "type": "object"
       },
@@ -1414,6 +1708,190 @@
         "summary": "Get application version and available capabilities",
         "tags": [
           "Application"
+        ]
+      }
+    },
+    "/api/v1/rankings": {
+      "get": {
+        "operationId": "listRankings",
+        "parameters": [
+          {
+            "description": "Card colors; a card matches any selected one. C selects known colorless cards.",
+            "explode": true,
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "items": {
+                "enum": [
+                  "W",
+                  "U",
+                  "B",
+                  "R",
+                  "G",
+                  "C"
+                ],
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "Modern",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 ]{0,39}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "A score method in the run; without one, max-ratio when present.",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "max-ratio",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "maximum": 10000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Pin a published run so every page shows the same results.",
+            "in": "query",
+            "name": "score_run_id",
+            "required": false,
+            "schema": {
+              "pattern": "^scores-[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "score orders by the selected method's first output.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "score",
+              "enum": [
+                "score",
+                "decks",
+                "top_cuts",
+                "name"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "A card type on any face's type line.",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "artifact",
+                "creature",
+                "enchantment",
+                "instant",
+                "land",
+                "planeswalker",
+                "sorcery"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "summary": "Rank one format's scored cards by a published score method",
+        "tags": [
+          "ranking-controller"
         ]
       }
     },

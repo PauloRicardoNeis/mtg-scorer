@@ -126,6 +126,8 @@ class CatalogOpenApiTests {
             "snapshot_not_found",
             "card_not_found",
             "catalog_unavailable",
+            "rankings_unavailable",
+            "score_run_not_found",
             "internal_error");
   }
 

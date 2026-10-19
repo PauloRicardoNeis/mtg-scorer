@@ -1,6 +1,7 @@
 package io.mtgscorer.api.config;
 
 import io.mtgscorer.api.catalog.CatalogQuery;
+import io.mtgscorer.api.rankings.RankingQuery;
 import io.swagger.v3.oas.models.media.*;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
@@ -21,20 +22,27 @@ public class CatalogOpenApi {
       api.getPaths()
           .forEach(
               (path, item) -> {
-                if (!path.startsWith("/api/v1/cards") && !path.startsWith("/api/v1/snapshots"))
-                  return;
+                if (!path.startsWith("/api/v1/cards")
+                    && !path.startsWith("/api/v1/snapshots")
+                    && !path.equals("/api/v1/rankings")) return;
                 var operation = item.getGet();
+                boolean rankings = path.equals("/api/v1/rankings");
                 Set<String> names =
-                    path.equals("/api/v1/cards")
-                        ? CatalogQuery.CARD_PARAMETERS
-                        : path.endsWith("/printings")
-                            ? CatalogQuery.PRINTING_PARAMETERS
-                            : path.startsWith("/api/v1/cards/")
-                                ? Set.of("catalog_snapshot_id")
-                                : Set.of();
+                    rankings
+                        ? RankingQuery.PARAMETERS
+                        : path.equals("/api/v1/cards")
+                            ? CatalogQuery.CARD_PARAMETERS
+                            : path.endsWith("/printings")
+                                ? CatalogQuery.PRINTING_PARAMETERS
+                                : path.startsWith("/api/v1/cards/")
+                                    ? Set.of("catalog_snapshot_id")
+                                    : Set.of();
                 names.stream()
                     .sorted()
-                    .forEach(name -> operation.addParametersItem(parameter(name)));
+                    .forEach(
+                        name ->
+                            operation.addParametersItem(
+                                rankings ? rankingParameter(name) : parameter(name)));
                 for (String status : List.of("400", "404", "503", "500")) {
                   operation
                       .getResponses()
@@ -67,6 +75,8 @@ public class CatalogOpenApi {
                       "snapshot_not_found",
                       "card_not_found",
                       "catalog_unavailable",
+                      "rankings_unavailable",
+                      "score_run_not_found",
                       "internal_error")));
       api.getComponents().addSchemas("CatalogError", problem);
       var adminProblem = new ObjectSchema();
@@ -99,6 +109,19 @@ public class CatalogOpenApi {
                                                                     "#/components/schemas/ImportError")))));
                         });
               });
+      // A card outside the active catalog has no preview printing: an explicit null.
+      Schema<?> ranked = api.getComponents().getSchemas().get("RankedCard");
+      if (ranked != null)
+        ranked
+            .getProperties()
+            .put(
+                "preview_printing",
+                new Schema<>()
+                    .anyOf(
+                        List.of(
+                            new Schema<>().$ref("#/components/schemas/Printing"),
+                            new Schema<>().types(Set.of("null"))))
+                    .description("Null when the card is not in the active catalog."));
       // Record DTOs always serialize every component, including explicit nulls.
       api.getComponents()
           .getSchemas()
@@ -108,6 +131,38 @@ public class CatalogOpenApi {
                   schema.setRequired(new ArrayList<>(schema.getProperties().keySet()));
               });
     };
+  }
+
+  /** Ranking-only parameters; q, type, color and limit share the catalog's bounds. */
+  private Parameter rankingParameter(String name) {
+    Schema<?> schema =
+        switch (name) {
+          case "format" ->
+              new StringSchema()
+                  .pattern("^[A-Za-z0-9][A-Za-z0-9 ]{0,39}$")
+                  ._default(RankingQuery.DEFAULT_FORMAT);
+          case "method" ->
+              new StringSchema()
+                  .pattern("^[a-z0-9][a-z0-9-]{0,63}$")
+                  ._default(RankingQuery.DEFAULT_METHOD);
+          case "sort" -> new StringSchema()._enum(RankingQuery.SORTS)._default("score");
+          case "offset" ->
+              new IntegerSchema()
+                  .minimum(BigDecimal.ZERO)
+                  .maximum(BigDecimal.valueOf(RankingQuery.MAX_OFFSET))
+                  ._default(0);
+          case "score_run_id" -> new StringSchema().pattern("^scores-[0-9a-f]{64}$");
+          default -> null;
+        };
+    if (schema == null) return parameter(name);
+    Parameter parameter = new Parameter().name(name).in("query").required(false).schema(schema);
+    if (name.equals("method"))
+      parameter.description("A score method in the run; without one, max-ratio when present.");
+    if (name.equals("sort"))
+      parameter.description("score orders by the selected method's first output.");
+    if (name.equals("score_run_id"))
+      parameter.description("Pin a published run so every page shows the same results.");
+    return parameter;
   }
 
   private Parameter parameter(String name) {

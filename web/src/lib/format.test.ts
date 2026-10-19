@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   count,
+  dateWindow,
   deltaTone,
   grade,
   gradeTone,
@@ -8,6 +9,7 @@ import {
   liftTone,
   movement,
   percent,
+  share,
   signed,
 } from "./format";
 
@@ -178,5 +180,33 @@ describe("gradeTone", () => {
   it("covers every grade() can return", () => {
     for (let score = -5; score <= 105; score += 0.5)
       expect(["a", "b", "c", "d", "f"]).toContain(gradeTone(grade(score)));
+  });
+});
+
+describe("share", () => {
+  it("is the part's percentage of the whole with one decimal", () => {
+    expect(share(37, 231)).toBe("16.0%");
+    expect(share(231, 231)).toBe("100.0%");
+    expect(share(0, 231)).toBe("0.0%");
+  });
+
+  it("has no share of an empty whole", () => {
+    expect(share(0, 0)).toBe("—");
+  });
+});
+
+describe("dateWindow", () => {
+  it("shows the exclusive end as the last included day", () => {
+    expect(dateWindow("2026-03-01", "2026-09-01")).toBe("Mar 1 – Aug 31, 2026");
+  });
+
+  it("names both years when the window crosses one", () => {
+    expect(dateWindow("2025-12-01", "2026-03-01")).toBe(
+      "Dec 1, 2025 – Feb 28, 2026",
+    );
+  });
+
+  it("is independent of the local time zone", () => {
+    expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1 – Jan 1, 2026");
   });
 });
