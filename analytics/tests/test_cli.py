@@ -9,6 +9,7 @@ import pytest
 
 import mtg_scorer.ingest.scryfall as scryfall
 import mtg_scorer.publish.postgres as postgres
+import mtg_scorer.publish.score_postgres as score_postgres
 from mtg_scorer import cli
 from mtg_scorer.publish.artifact import verify_artifact
 
@@ -42,6 +43,8 @@ def test_help_lists_every_batch_command(monkeypatch, capsys):
         "publish-catalog",
         "rollback-catalog",
         "score-topdeck",
+        "publish-scores",
+        "rollback-scores",
     ):
         assert command in usage
 
@@ -129,9 +132,46 @@ def test_rollback_catalog_passes_the_expected_active_snapshot(monkeypatch, capsy
     assert "rolled back" in capsys.readouterr().out
 
 
+def test_publish_scores_uses_the_score_dsn_and_prints_json(monkeypatch, capsys, tmp_path):
+    calls = []
+
+    def publish(run_file, dsn):
+        calls.append((run_file, dsn))
+        return {"score_run_id": "scores-1", "state": "published"}
+
+    monkeypatch.setattr(score_postgres, "publish_score_run", publish)
+    monkeypatch.setenv("SCORE_PUBLISH_DSN", DSN)
+
+    run(monkeypatch, "publish-scores", "--run-file", tmp_path / "run.json")
+
+    assert calls == [(tmp_path / "run.json", DSN)]
+    assert json.loads(capsys.readouterr().out) == {"score_run_id": "scores-1", "state": "published"}
+
+
+def test_publish_scores_without_a_dsn_fails_before_publishing(monkeypatch, tmp_path):
+    monkeypatch.delenv("SCORE_PUBLISH_DSN", raising=False)
+    monkeypatch.setattr(score_postgres, "publish_score_run", lambda *a: pytest.fail("published"))
+
+    with pytest.raises(KeyError, match="SCORE_PUBLISH_DSN"):
+        run(monkeypatch, "publish-scores", "--run-file", tmp_path / "run.json")
+
+
+def test_rollback_scores_passes_the_expected_active_run(monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(score_postgres, "rollback_score_run", lambda *args: calls.append(args))
+    monkeypatch.setenv("SCORE_PUBLISH_DSN", DSN)
+
+    run(monkeypatch, "rollback-scores", "--target", "scores-old", "--expected", "scores-new")
+
+    assert calls == [(DSN, "scores-old", "scores-new")]
+    assert "rolled back" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize(
     "arguments",
     [
+        pytest.param(("rollback-scores", "--target", "scores-old"), id="unguarded-score-rollback"),
+        pytest.param(("publish-scores",), id="publish-scores-without-file"),
         pytest.param(("rollback-catalog", "--target", "catalog-old"), id="unguarded-rollback"),
         pytest.param(("publish-catalog", "--artifact", "artifact"), id="publish-without-source"),
         pytest.param(("export-catalog", "--source-dir", "seed"), id="export-without-output"),

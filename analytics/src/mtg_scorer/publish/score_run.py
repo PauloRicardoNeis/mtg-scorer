@@ -28,6 +28,7 @@ from ..tournament_features import (
     select_cohort,
 )
 from .artifact import canonical_bytes
+from .score_validation import validate_score_run
 
 SCHEMA_VERSION = "score-run-file-v1"
 ATTRIBUTION = "Data provided by TopDeck.gg (https://topdeck.gg)"
@@ -191,11 +192,12 @@ def _run(method: ScoreMethod, inputs: list[ScoringInput], context: ScoreContext)
 def write_score_run(document: dict[str, Any], output_root: Path) -> Path:
     """Write ``<score_run_id>.json`` atomically; an identical rerun returns the same file."""
 
+    validate_score_run(document)
     output_root.mkdir(parents=True, exist_ok=True)
     destination = output_root / f"{document['score_run_id']}.json"
     if destination.exists():
         existing = json.loads(destination.read_bytes())
-        if _results(existing) != _results(json.loads(canonical_bytes(document))):
+        if results_sha256(existing) != results_sha256(document):
             raise ValueError(
                 f"{destination.name} already holds different results for the same identity; "
                 "bump the version of whatever changed"
@@ -211,9 +213,12 @@ def write_score_run(document: dict[str, Any], output_root: Path) -> Path:
     return destination
 
 
-def _results(document: dict[str, Any]) -> dict[str, Any]:
-    # Retrieval times may legitimately differ between copies of the same responses.
-    return {key: value for key, value in document.items() if key != "raw_files"}
+def results_sha256(document: dict[str, Any]) -> str:
+    """Hash everything except raw-file metadata, whose retrieval times may differ between
+    copies of the same responses."""
+
+    results = {key: value for key, value in document.items() if key != "raw_files"}
+    return sha256(canonical_bytes(results)).hexdigest()
 
 
 def score_topdeck(source_dir: Path, cohort_file: Path, output_root: Path) -> Path:

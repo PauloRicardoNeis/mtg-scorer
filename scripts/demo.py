@@ -221,6 +221,8 @@ def grant_runtime_roles(admin: str) -> None:
         connection.execute("GRANT catalog_reader TO catalog_api_local")
         connection.execute("GRANT catalog_import_admin TO catalog_api_local")
         connection.execute("GRANT catalog_publisher TO catalog_publisher_local")
+        connection.execute("GRANT score_reader TO catalog_api_local")
+        connection.execute("GRANT score_publisher TO catalog_publisher_local")
 
 
 @contextmanager
@@ -355,6 +357,10 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                     "analytics/tests/test_postgres_publication.py",
                     "-q",
                 ],
+                env=env,
+            )
+            run(
+                [PYTHON, "-m", "pytest", "analytics/tests/test_score_publication.py", "-q"],
                 env=env,
             )
         if verify or args.seed_sample:
