@@ -146,6 +146,12 @@ describe("ColorFilter", () => {
     expect(screen.getByRole("checkbox", { name: "White" })).not.toBeChecked();
   });
 
+  it("can keep its label for assistive tech only", () => {
+    render(<ColorFilter label="Colors" name="color" selected={[]} hideLabel />);
+    expect(screen.getByRole("group", { name: "Colors" })).toBeInTheDocument();
+    expect(screen.getByText("Colors")).toHaveClass("sr-only");
+  });
+
   it("joins an outside form through the form attribute", () => {
     render(
       <ColorFilter label="Colors" name="color" selected={[]} form="filters" />,

@@ -80,21 +80,29 @@ const filterColors: [string, string][] = [
   ["C", "Colorless"],
 ];
 
-/** Multi-select card colors as a segmented bar; a card matches any selected color. */
+/**
+ * Multi-select card colors as a segmented bar; a card matches any selected color.
+ * `hideLabel` keeps the group's name for assistive tech only, for compact toolbars.
+ */
 export function ColorFilter({
   label,
   name,
   selected,
   form,
+  hideLabel = false,
 }: {
   label: string;
   name: string;
   selected: string[];
   form?: string;
+  hideLabel?: boolean;
 }) {
   return (
     <div>
-      <span className="group-label" id={`${name}-label`}>
+      <span
+        className={hideLabel ? "sr-only" : "group-label"}
+        id={`${name}-label`}
+      >
         {label}
       </span>
       <div

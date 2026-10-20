@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { router } from "@/test/navigation";
+import { router, setPathname } from "@/test/navigation";
 import { HeaderSearch } from "./header-search";
 
 function searchBox(): HTMLInputElement {
@@ -220,6 +220,81 @@ describe("HeaderSearch", () => {
       expect([...pushed().searchParams]).toEqual([
         ["catalog_snapshot_id", "snap-1"],
       ]);
+    });
+  });
+
+  describe("on rankings", () => {
+    function rankedBox(): HTMLInputElement {
+      return screen.getByRole("searchbox", { name: "Search ranked cards" });
+    }
+
+    function onRankings(search: string) {
+      window.history.pushState(null, "", `/rankings${search}`);
+      setPathname("/rankings");
+    }
+
+    it("searches the ranked cards instead of the catalog", () => {
+      onRankings("");
+      render(<HeaderSearch />);
+      expect(screen.getByRole("search")).toHaveAttribute("action", "/rankings");
+      expect(rankedBox()).toHaveAttribute("placeholder", "Search ranked cards");
+    });
+
+    it("shows the name filter in the address", () => {
+      onRankings("?format=Modern&q=bolt");
+      render(<HeaderSearch />);
+      expect(rankedBox()).toHaveValue("bolt");
+    });
+
+    it("keeps the run and the other filters, replacing the name and the page", async () => {
+      const user = userEvent.setup();
+      onRankings(
+        "?format=Modern&score_run_id=run-1&type=instant&color=R&q=old&offset=24",
+      );
+      render(<HeaderSearch />);
+      await user.clear(rankedBox());
+      await user.type(rankedBox(), "  Fire // Ice {Enter}");
+      const url = pushed();
+      expect(url.pathname).toBe("/rankings");
+      expect([...url.searchParams]).toEqual([
+        ["format", "Modern"],
+        ["score_run_id", "run-1"],
+        ["type", "instant"],
+        ["color", "R"],
+        ["q", "Fire // Ice"],
+      ]);
+    });
+
+    it("drops the name filter for a blank search", async () => {
+      const user = userEvent.setup();
+      onRankings("?format=Modern&q=old");
+      render(<HeaderSearch />);
+      await user.clear(rankedBox());
+      await user.keyboard("{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith(
+        "/rankings?format=Modern",
+      );
+    });
+
+    it("opens the default rankings from a blank search without filters", async () => {
+      const user = userEvent.setup();
+      onRankings("");
+      render(<HeaderSearch />);
+      await user.type(rankedBox(), "{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith("/rankings");
+    });
+
+    it("follows the name filter as the address changes, and clears it on leaving", () => {
+      onRankings("?q=bolt");
+      const { rerender } = render(<HeaderSearch />);
+      window.history.pushState(null, "", "/rankings?q=ice");
+      rerender(<HeaderSearch />);
+      expect(rankedBox()).toHaveValue("ice");
+
+      window.history.pushState(null, "", "/cards");
+      setPathname("/cards");
+      rerender(<HeaderSearch />);
+      expect(searchBox()).toHaveValue("");
     });
   });
 });

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import { api, ApiError, type RankedCard, type RankingPage } from "@/lib/api";
-import { queryParams, type SearchParams } from "@/lib/urls";
-import { count, dateWindow, share } from "@/lib/format";
+import { queryParams, rankedCardHref, type SearchParams } from "@/lib/urls";
+import { ago, count, dateWindow } from "@/lib/format";
 import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
-import { ColorDots, ColorFilter, ManaCost } from "@/components/mana";
 import { UnderlineTabs } from "@/components/primitives";
+import { RankingFilters } from "@/components/ranking-filters";
+import { RankingTable } from "@/components/ranking-table";
 
 export const metadata: Metadata = { title: "MTG Scorer · Card rankings" };
 
@@ -23,22 +23,18 @@ const designFormats = [
   "Pauper",
 ];
 
-const cardTypes = [
-  ["creature", "Creatures"],
-  ["planeswalker", "Planeswalkers"],
-  ["instant", "Instants"],
-  ["sorcery", "Sorceries"],
-  ["artifact", "Artifacts"],
-  ["enchantment", "Enchantments"],
-  ["land", "Lands"],
-];
-
-const sorts = [
-  ["score", "Relative volume"],
-  ["decks", "Decks"],
-  ["top_cuts", "Top cuts"],
-  ["name", "Name A–Z"],
-];
+// What kind of format each is, under its name. Formats without an entry say
+// where their events come from instead.
+const descriptors: Record<string, string> = {
+  Standard: "Rotating · 60 cards · 1v1",
+  Pioneer: "Non-rotating · Return to Ravnica forward · 1v1",
+  Modern: "Non-rotating · Eighth Edition forward · 1v1",
+  Legacy: "Eternal · 60 cards · 1v1",
+  Vintage: "Eternal · restricted list · 1v1",
+  Pauper: "Commons only · 60 cards · 1v1",
+  Commander: "cEDH · 100-card singleton · 4-player pods",
+  EDH: "cEDH · 100-card singleton · 4-player pods",
+};
 
 // The podium shows second, first and third from left to right.
 const numerals = ["I", "II", "III"];
@@ -55,26 +51,9 @@ function link(page: RankingPage, filters: [string, string][] = []) {
 
 /** A card's catalog page, pinned to the joined catalog; plain text outside it. */
 function CardName({ page, card }: { page: RankingPage; card: RankedCard }) {
-  if (!card.preview_printing || !page.catalog_snapshot_id)
-    return <span>{card.name}</span>;
-  return (
-    <Link
-      href={`/cards/${card.oracle_id}?catalog_snapshot_id=${page.catalog_snapshot_id}`}
-    >
-      {card.name}
-    </Link>
-  );
-}
-
-function TopCuts({ card }: { card: RankedCard }) {
-  if (card.top_cut_count === null)
-    return <span className="muted">Unknown</span>;
-  return (
-    <span>
-      {count(card.top_cut_count)}
-      <small> of {count(card.top_cut_known_decks)} known</small>
-    </span>
-  );
+  const href = rankedCardHref(card, page.catalog_snapshot_id);
+  if (!href) return <span>{card.name}</span>;
+  return <Link href={href}>{card.name}</Link>;
 }
 
 export default async function Rankings({
@@ -82,8 +61,8 @@ export default async function Rankings({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // The filter form is a plain GET form, so unset fields arrive as empty values;
-  // the API accepts only set ones.
+  // Without JavaScript the filters submit as a GET form, so unset fields arrive
+  // as empty values; the API accepts only set ones.
   const query = new URLSearchParams(
     [...queryParams(await searchParams)].filter(([, value]) => value !== ""),
   );
@@ -103,6 +82,7 @@ export default async function Rankings({
     );
     const filtered = kept.some(([key]) => ["q", "type", "color"].includes(key));
     const sort = query.get("sort") ?? "score";
+    const source = run.source === "topdeck" ? "TopDeck" : run.source;
     const podium =
       page.offset === 0 && sort === "score" && !filtered
         ? page.items.slice(0, 3)
@@ -116,21 +96,19 @@ export default async function Rankings({
         <section className="intro band rankings-intro">
           <div className="intro-inner band-inner">
             <div className="intro-copy">
-              <p className="eyebrow">Constructed card rankings</p>
-              <h1>{run.format_name}</h1>
-              <p className="mono-label">
-                Competitive {run.source === "topdeck" ? "TopDeck" : run.source}{" "}
-                events ·{" "}
-                {dateWindow(run.window_starts_on, run.window_ends_before)}
-              </p>
-              <p className="lead">
-                Ranked by {method.label.toLowerCase()}: how often each card was
-                played, compared with the most-played card. It measures
-                popularity in published decklists, not card strength.
-              </p>
-            </div>
-            <aside className="sample-note">
-              <span className="tag">Published score run</span>
+              <div className="rankings-heading">
+                <p className="eyebrow">Constructed card rankings</p>
+                <h1>{run.format_name}</h1>
+                <p className="format-descriptor">
+                  {descriptors[run.format_name] ??
+                    `Competitive ${source} events`}
+                </p>
+                <p className="lead">
+                  Ranked by {method.label.toLowerCase()}: how often each card
+                  was played, compared with the most-played card. It measures
+                  popularity in published decklists, not card strength.
+                </p>
+              </div>
               <dl className="stat-strip">
                 <div>
                   <dt>Decklists</dt>
@@ -148,21 +126,34 @@ export default async function Rankings({
                   <dt>Top-cut decks</dt>
                   <dd>{count(run.top_cut_decks)}</dd>
                 </div>
+                <div>
+                  <dt>Window</dt>
+                  <dd>
+                    {dateWindow(run.window_starts_on, run.window_ends_before)}
+                  </dd>
+                </div>
               </dl>
-              <p className="credit">
-                {run.source === "topdeck" ? (
-                  <>
-                    Data provided by{" "}
+              <p className="freshness">
+                <span className="pulse" aria-hidden="true" />
+                <span>
+                  Updated{" "}
+                  <time
+                    dateTime={run.published_at}
+                    title={`Published ${new Date(run.published_at).toUTCString()}`}
+                  >
+                    {ago(run.published_at)}
+                  </time>
+                  {" · "}
+                  {run.source === "topdeck" ? (
                     <a href="https://topdeck.gg" rel="noreferrer">
                       TopDeck.gg
                     </a>
-                  </>
-                ) : (
-                  run.attribution
-                )}
-                {" · "}published {run.published_at.slice(0, 10)}
+                  ) : (
+                    run.attribution
+                  )}
+                </span>
               </p>
-            </aside>
+            </div>
           </div>
         </section>
         <div className="band format-tabs">
@@ -212,188 +203,54 @@ export default async function Rankings({
             </ol>
           </section>
         )}
-        <form className="toolbar band" action="/rankings" method="get">
-          <div className="toolbar-inner band-inner">
-            <input type="hidden" name="format" value={run.format_name} />
-            <input type="hidden" name="score_run_id" value={run.score_run_id} />
-            <div className="search-field">
-              <label htmlFor="q">Card name</label>
-              <div className="field">
-                <Icon name="search" size={15} />
-                <input
-                  id="q"
-                  name="q"
-                  type="search"
-                  maxLength={100}
-                  defaultValue={query.get("q") ?? ""}
-                />
-              </div>
-            </div>
-            <ColorFilter
-              label="Colors"
-              name="color"
-              selected={query.getAll("color")}
-            />
-            <div className="toolbar-field">
-              <label htmlFor="type">Card type</label>
-              <span className="select">
-                <select
-                  id="type"
-                  name="type"
-                  defaultValue={query.get("type") ?? ""}
-                >
-                  <option value="">All card types</option>
-                  {cardTypes.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </div>
-            <div className="toolbar-field">
-              <label htmlFor="sort">Sort by</label>
-              <span className="select">
-                <select id="sort" name="sort" defaultValue={sort}>
-                  {sorts.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </div>
-            <div className="filter-actions">
-              <button type="submit">Apply</button>
-              <Link className="button ghost" href={link(page)}>
-                Clear filters
-              </Link>
-            </div>
-          </div>
-        </form>
-        <section aria-labelledby="ranking-heading" className="results">
-          <div className="results-heading">
-            <h2 id="ranking-heading">{run.format_name} rankings</h2>
-            <p role="status">
-              {page.total === 0
-                ? "No ranked cards match"
-                : `${count(first)}–${count(last)} of ${count(page.total)} ranked cards`}
-            </p>
-          </div>
-          {page.items.length === 0 ? (
-            <div className="state">
-              <h3>No ranked cards match.</h3>
-              <p>Loosen a filter or search a different name.</p>
-              <Link className="button secondary sm" href={link(page)}>
-                Clear filters
-              </Link>
-            </div>
-          ) : (
-            <div className="ranking-table-wrap">
-              <table className="ranking-table">
-                <thead>
-                  <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Card</th>
-                    <th scope="col">{method.label}</th>
-                    <th scope="col">Decks</th>
-                    <th scope="col">Events</th>
-                    <th scope="col">Top cuts</th>
-                    <th scope="col">Most played in</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {page.items.map((card) => (
-                    <tr key={card.oracle_id}>
-                      <td className="rank">{card.rank}</td>
-                      <th scope="row" className="card-cell">
-                        <CardName page={page} card={card} />
-                        <span className="card-meta">
-                          {card.mana_cost && <ManaCost cost={card.mana_cost} />}
-                          {card.type_line ? (
-                            <span>{card.type_line}</span>
-                          ) : (
-                            <span className="muted">Not in this catalog</span>
-                          )}
-                          {card.color_identity && (
-                            <ColorDots values={card.color_identity} />
-                          )}
-                        </span>
-                      </th>
-                      <td className="score-cell">
-                        {card.score === null ? (
-                          <span className="muted">Unknown</span>
-                        ) : (
-                          <>
-                            <span>{card.score.toFixed(1)}</span>
-                            <span
-                              className="bar"
-                              aria-hidden="true"
-                              style={
-                                {
-                                  "--fill": `${Math.max(0, Math.min(100, card.score))}%`,
-                                } as CSSProperties
-                              }
-                            />
-                          </>
-                        )}
-                      </td>
-                      <td>
-                        {count(card.deck_count)}
-                        <small> {share(card.deck_count, run.decks)}</small>
-                      </td>
-                      <td>{count(card.event_count)}</td>
-                      <td>
-                        <TopCuts card={card} />
-                      </td>
-                      <td>
-                        {card.archetype_label ? (
-                          <span>
-                            {card.archetype_label}
-                            <small>
-                              {" "}
-                              {count(card.archetype_deck_count)} of{" "}
-                              {count(card.labelled_deck_count)}
-                            </small>
-                          </span>
-                        ) : (
-                          <span className="muted">Unlabelled</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="pagination">
-            {page.offset > 0 && (
-              <Link
-                className="button secondary"
-                href={pageLink(Math.max(0, page.offset - page.limit))}
-              >
-                <Icon name="arrow-left" size={14} /> Previous
-              </Link>
-            )}
-            {last < page.total && (
-              <Link className="button secondary" href={pageLink(last)}>
-                Next {page.limit} <Icon name="arrow-right" size={14} />
-              </Link>
-            )}
-          </div>
-        </section>
-        <aside className="method-note">
-          <Icon name="info" size={18} />
-          <strong>
-            {method.label}, {method.method_version}.
-          </strong>
-          <p>
-            {method.description} Counts come from published decklists at
-            competitive events with at least half their lists published; basic
-            lands are not ranked. A top cut counts only where the result is
-            known. Ranks keep their place when you filter.
+        <RankingFilters
+          format={run.format_name}
+          scoreRunId={run.score_run_id}
+          query={new URLSearchParams(kept).toString()}
+          clearHref={link(page)}
+        />
+        <section aria-labelledby="ranking-heading" className="ranking-results">
+          <h2 id="ranking-heading" className="sr-only">
+            {run.format_name} rankings
+          </h2>
+          <RankingTable
+            items={page.items}
+            decks={run.decks}
+            method={method}
+            catalogSnapshotId={page.catalog_snapshot_id}
+            clearHref={link(page)}
+            footer={
+              <>
+                <p role="status">
+                  {page.total === 0
+                    ? "No ranked cards match"
+                    : `${count(first)}–${count(last)} of ${count(page.total)} ranked cards`}
+                </p>
+                <div className="pagination-links">
+                  {page.offset > 0 && (
+                    <Link
+                      className="button secondary sm"
+                      href={pageLink(Math.max(0, page.offset - page.limit))}
+                    >
+                      <Icon name="arrow-left" size={14} /> Previous
+                    </Link>
+                  )}
+                  {last < page.total && (
+                    <Link className="button secondary sm" href={pageLink(last)}>
+                      Next {page.limit} <Icon name="arrow-right" size={14} />
+                    </Link>
+                  )}
+                </div>
+              </>
+            }
+          />
+          <p className="cohort-note">
+            Counts come from published decklists at competitive events with at
+            least half their lists published; basic lands are not ranked. A top
+            cut counts only where the result is known. Ranks keep their place
+            when you filter.
           </p>
-        </aside>
+        </section>
       </>
     );
   } catch (error) {

@@ -98,3 +98,23 @@ export function dateWindow(startsOn: string, endsBefore: string): string {
       : dayWithYear.format(start);
   return `${first} – ${dayWithYear.format(end)}`;
 }
+
+const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
+const units: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 86_400],
+  ["month", 30 * 86_400],
+  ["week", 7 * 86_400],
+  ["day", 86_400],
+  ["hour", 3_600],
+  ["minute", 60],
+];
+
+/** How long ago an instant was, in its largest whole unit: "2 hours ago", "yesterday". */
+export function ago(instant: string, now: Date = new Date()): string {
+  // A clock slightly behind the publisher's still reads as just now.
+  const seconds = Math.max(0, (now.getTime() - Date.parse(instant)) / 1000);
+  for (const [unit, size] of units)
+    if (seconds >= size)
+      return relative.format(-Math.floor(seconds / size), unit);
+  return "just now";
+}
