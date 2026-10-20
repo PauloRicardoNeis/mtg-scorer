@@ -108,7 +108,13 @@
               "decklists": { "type": ["integer", "null"], "minimum": 0 },
               "top_cut_size": { "type": ["integer", "null"], "minimum": 0 },
               "top_cut_basis": {
-                "enum": ["bracket_record", "standing_order", "inconsistent_order", "no_top_cut"]
+                "enum": [
+                  "bracket_record",
+                  "standing_order",
+                  "inconsistent_order",
+                  "no_top_cut",
+                  "unknown_top_cut"
+                ]
               }
             }
           }

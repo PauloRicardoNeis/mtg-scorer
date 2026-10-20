@@ -1,0 +1,8 @@
+{
+  "version": "topdeck-standard-2024-01-to-2026-09-v1",
+  "format_name": "Standard",
+  "starts_on": "2024-01-01",
+  "ends_before": "2026-10-01",
+  "min_decklist_coverage": 0.5,
+  "excluded_events": []
+}

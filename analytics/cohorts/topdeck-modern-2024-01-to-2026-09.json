@@ -1,0 +1,17 @@
+{
+  "version": "topdeck-modern-2024-01-to-2026-09-v1",
+  "format_name": "Modern",
+  "starts_on": "2024-01-01",
+  "ends_before": "2026-10-01",
+  "min_decklist_coverage": 0.5,
+  "excluded_events": [
+    {
+      "source_event_id": "impact-returns-26-sunday-modern-2015",
+      "reason": "Modern 2015 card-pool variant, not current Modern"
+    },
+    {
+      "source_event_id": "test-new-la",
+      "reason": "organizer test event"
+    }
+  ]
+}

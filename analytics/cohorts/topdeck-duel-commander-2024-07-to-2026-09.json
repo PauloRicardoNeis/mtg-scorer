@@ -1,0 +1,8 @@
+{
+  "version": "topdeck-duel-commander-2024-07-to-2026-09-v1",
+  "format_name": "Duel Commander",
+  "starts_on": "2024-07-01",
+  "ends_before": "2026-10-01",
+  "min_decklist_coverage": 0.5,
+  "excluded_events": []
+}

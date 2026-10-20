@@ -39,6 +39,7 @@ BRACKET_RECORD = "bracket_record"
 STANDING_ORDER = "standing_order"
 INCONSISTENT_ORDER = "inconsistent_order"
 NO_TOP_CUT = "no_top_cut"
+UNKNOWN_TOP_CUT = "unknown_top_cut"
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,7 +156,7 @@ class _EventFacts:
 def _event_facts(event: Mapping[str, Any], raw: RawFile, directory: Path) -> _EventFacts:
     tid = event["TID"]
     rows = event.get("standings") or []
-    made_cut, top_cut_basis = _top_cut(rows, event.get("topCut") or 0)
+    made_cut, top_cut_basis = _top_cut(rows, _top_cut_size(event.get("topCut")))
     tournament = _tournament(event, rows, _provenance(tid, raw, directory))
     standings: list[Standing] = []
     decks: list[DeckEntry] = []
@@ -169,10 +170,10 @@ def _event_facts(event: Mapping[str, Any], raw: RawFile, directory: Path) -> _Ev
                 provenance=provenance,
                 source_event_id=tid,
                 source_deck_id=deck_id,
-                wins=row.get("wins"),
-                losses=row.get("losses"),
-                draws=row.get("draws"),
-                byes=row.get("byes"),
+                wins=_count(row.get("wins")),
+                losses=_count(row.get("losses")),
+                draws=_count(row.get("draws")),
+                byes=_count(row.get("byes")),
                 made_top_cut=made_cut[position - 1],
             )
         )
@@ -211,7 +212,9 @@ def _tournament(
     players = len(rows)
     listed = sum(1 for row in rows if _mainboard(row))
     recorded = sum(
-        1 for row in rows if all(row.get(key) is not None for key in ("wins", "losses", "draws"))
+        1
+        for row in rows
+        if all(_count(row.get(key)) is not None for key in ("wins", "losses", "draws"))
     )
     return Tournament(
         provenance=provenance,
@@ -219,7 +222,7 @@ def _tournament(
         format_name=event["format"],
         source_format_name=event["format"],
         player_count=players or None,
-        top_cut_size=event.get("topCut") or 0,
+        top_cut_size=_top_cut_size(event.get("topCut")),
         coverage=CoverageProfile(
             decklists=_coverage(listed, players),
             standings=_coverage(recorded, players),
@@ -238,17 +241,34 @@ def _coverage(observed: int, expected: int) -> CoverageDimension:
     return CoverageDimension(scope, observed, expected)
 
 
-def _top_cut(rows: list[dict[str, Any]], size: int) -> tuple[list[bool | None], str]:
+def _count(value: object) -> int | None:
+    """A record count, or unknown: the source occasionally reports values such as -1."""
+
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _top_cut_size(value: object) -> int | None:
+    """Players in the cut; no value means no cut, unreadable text such as "8-0" is unknown."""
+
+    if value is None:
+        return 0
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return _count(value)
+
+
+def _top_cut(rows: list[dict[str, Any]], size: int | None) -> tuple[list[bool | None], str]:
+    if size is None:
+        return [None] * len(rows), UNKNOWN_TOP_CUT
     if size == 0:
         return [None] * len(rows), NO_TOP_CUT
-    if rows and all(
-        row.get("winsBracket") is not None and row.get("lossesBracket") is not None for row in rows
-    ):
-        return [row["winsBracket"] + row["lossesBracket"] > 0 for row in rows], BRACKET_RECORD
+    bracket = [(_count(row.get("winsBracket")), _count(row.get("lossesBracket"))) for row in rows]
+    if rows and all(won is not None and lost is not None for won, lost in bracket):
+        return [won + lost > 0 for won, lost in bracket], BRACKET_RECORD
     # Without bracket columns, the response order is read as the final standings. That
     # is undocumented, so it is used only if no player below the cut has more wins
     # than a player inside it.
-    wins = [row.get("wins") for row in rows]
+    wins = [_count(row.get("wins")) for row in rows]
     if None in wins or (
         len(rows) > size and min(wins[:size], default=0) < max(wins[size:], default=0)
     ):

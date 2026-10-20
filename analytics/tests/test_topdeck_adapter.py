@@ -23,6 +23,7 @@ from mtg_scorer.ingest.topdeck import (
     NO_TOP_CUT,
     PARSER_VERSION,
     STANDING_ORDER,
+    UNKNOWN_TOP_CUT,
     read_saved_responses,
 )
 
@@ -198,6 +199,51 @@ def test_a_cut_as_large_as_the_field_puts_everyone_in_it(tmp_path) -> None:
     snapshot = read(tmp_path, event("synthetic-bracket-only", [row(1), row(0)], top_cut=8))
 
     assert [s.made_top_cut for s in snapshot.standings] == [True, True]
+
+
+def test_invalid_record_counts_become_unknown_and_lower_standings_coverage(tmp_path) -> None:
+    rows = [row(3), row(2, -1), {**row(1), "draws": "x"}, {**row(0), "wins": True}]
+    snapshot = read(tmp_path, event("synthetic-quirks", rows))
+
+    assert [(s.wins, s.losses, s.draws) for s in snapshot.standings] == [
+        (3, 0, 0),
+        (2, None, 0),
+        (1, 0, None),
+        (None, 0, 0),
+    ]
+    standings = snapshot.tournaments[0].coverage.standings
+    assert (standings.observed_count, standings.expected_count) == (1, 4)
+
+
+@pytest.mark.parametrize(
+    ("top_cut", "size", "basis"),
+    [("8", 8, STANDING_ORDER), ("8-0", None, UNKNOWN_TOP_CUT), (-1, None, UNKNOWN_TOP_CUT)],
+)
+def test_top_cut_sizes_sent_as_text_are_read_or_left_unknown(tmp_path, top_cut, size, basis):
+    rows = [row(3), row(1)]
+    snapshot = read(tmp_path, {**event("synthetic-cut", rows), "topCut": top_cut})
+
+    assert snapshot.tournaments[0].top_cut_size == size
+    assert snapshot.top_cut_basis["synthetic-cut"] == basis
+
+
+def test_a_missing_top_cut_means_no_cut(tmp_path) -> None:
+    missing = {
+        key: value for key, value in event("synthetic-plain", [row(1)]).items() if key != "topCut"
+    }
+    snapshot = read(tmp_path, missing)
+
+    assert (snapshot.tournaments[0].top_cut_size, snapshot.top_cut_basis["synthetic-plain"]) == (
+        0,
+        NO_TOP_CUT,
+    )
+
+
+def test_unreadable_bracket_records_fall_back_to_standing_order(tmp_path) -> None:
+    rows = [row(3, winsBracket=1, lossesBracket=0), row(1, winsBracket=-1, lossesBracket=0)]
+    snapshot = read(tmp_path, event("synthetic-bracket-quirk", rows, top_cut=1))
+
+    assert snapshot.top_cut_basis["synthetic-bracket-quirk"] == STANDING_ORDER
 
 
 def test_events_without_a_top_cut_record_no_cut_result(tmp_path) -> None:
