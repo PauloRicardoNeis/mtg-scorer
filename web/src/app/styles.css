@@ -2316,8 +2316,65 @@ fieldset.gallery-stack {
 }
 
 /* Rankings: a published score run's cards, ordered by stored values. */
-.rankings-intro .intro-copy h1 {
-  font-size: var(--fs-hero);
+.rankings-intro .intro-inner {
+  align-items: center;
+}
+.rankings-intro .intro-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.rankings-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.rankings-intro .rankings-heading > * {
+  margin: 0;
+}
+.rankings-intro .rankings-heading h1 {
+  font-size: clamp(56px, 12vw, var(--fs-hero));
+  line-height: 0.92;
+  letter-spacing: var(--tracking-display);
+}
+.rankings-intro .rankings-heading .lead {
+  margin-top: var(--space-1);
+}
+.format-descriptor {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+  letter-spacing: var(--tracking-tag);
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.rankings-intro .stat-strip {
+  align-self: flex-start;
+}
+/* Freshness: a live dot, when the run was published and where its data comes from. */
+.freshness {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2_5);
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-3);
+}
+.pulse {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: mgPulse 2s ease-out infinite;
+}
+@keyframes mgPulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--pulse-from);
+  }
+  100% {
+    box-shadow: 0 0 0 8px var(--pulse-to);
+  }
 }
 .mono-label {
   margin: 0;
@@ -2327,13 +2384,8 @@ fieldset.gallery-stack {
   text-transform: uppercase;
   color: var(--text-3);
 }
-.credit {
-  margin: var(--space-3) 0 0;
-  font-size: var(--fs-small);
-  color: var(--text-3);
-}
 /* Credits sit inside sentences, so their links need more than color. */
-.credit a,
+.freshness a,
 .site-footer p a {
   color: var(--link);
   text-decoration: underline;
@@ -2384,91 +2436,491 @@ fieldset.gallery-stack {
   padding: 0 12%;
   border: 1px solid var(--line-2);
   border-radius: var(--radius-card);
-  background: repeating-linear-gradient(
-    135deg,
-    var(--ph-a) 0 6px,
-    var(--ph-b) 6px 12px
-  );
+  background: var(--placeholder);
   font-family: var(--font-display);
   color: var(--text-2);
 }
-.ranking-table-wrap {
-  overflow-x: auto;
+
+/* Rankings: toolbar. Controls apply at once and sit at the right; the status
+   holds the left while a change loads. */
+.ranking-toolbar .toolbar-inner {
+  align-items: center;
+}
+.toolbar-status {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+
+/* Rankings: the table and the selected card's preview, side by side until the
+   preview wraps under the table. */
+.ranking-results {
+  padding-top: var(--space-6);
+}
+.ranking-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+.ranking-frame {
+  flex: 1 1 860px;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line-1);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-frame);
   background: var(--table-bg);
+}
+.ranking-scroll {
+  overflow-x: auto;
 }
 .ranking-table {
   width: 100%;
-  min-width: 860px;
+  min-width: 980px;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+/* The design's grid columns. Each cell carries half of the 14px column gap,
+   and the outer cells the 16px side padding. Card takes the rest. */
+.ranking-table .col-rank {
+  width: 83px;
+}
+.ranking-table .col-score {
+  width: 110px;
+}
+.ranking-table .col-share {
+  width: 134px;
+}
+.ranking-table .col-events {
+  width: 92px;
+}
+.ranking-table .col-cuts {
+  width: 132px;
+}
+.ranking-table .col-archetype {
+  width: 173px;
 }
 .ranking-table th,
 .ranking-table td {
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--line-1);
+  padding: 0 7px;
   text-align: left;
   vertical-align: middle;
   font-weight: var(--fw-regular);
 }
+.ranking-table :is(th, td):first-child {
+  padding-left: var(--space-4);
+}
+.ranking-table :is(th, td):last-child {
+  padding-right: var(--space-4);
+}
 .ranking-table thead th {
-  border-top: 0;
+  height: 40px;
   white-space: nowrap;
   background: var(--surface-1);
   font-family: var(--font-mono);
   font-size: var(--fs-col);
   letter-spacing: var(--tracking-col);
+  line-height: 1;
   text-transform: uppercase;
   color: var(--text-3);
 }
-.ranking-table td {
-  font-family: var(--font-mono);
-  font-size: var(--fs-mono);
-  white-space: nowrap;
+/* A long method name wraps to a second line beside its info button. */
+.th-info {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1_5);
+  white-space: normal;
+  line-height: 1.3;
 }
-.ranking-table small {
-  color: var(--text-3);
-}
-.ranking-table .rank {
-  width: 3.5rem;
-  font-weight: var(--fw-medium);
-}
-.card-cell a {
+.tooltip-meta {
   display: block;
-  font-family: var(--font-sans);
-  font-size: var(--fs-ui);
-  font-weight: var(--fw-medium);
+  margin-top: var(--space-1_5);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+}
+.ranking-table tbody tr {
+  height: 62px;
+  border-top: 1px solid var(--line-1);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.ranking-table tbody tr[data-opens] {
+  cursor: pointer;
+}
+/* Hover selects a row for the preview, so the two look the same. */
+.ranking-table tbody tr[data-selected] {
+  background: var(--surface-2);
+}
+.ranking-table td {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  line-height: 1.2;
+  white-space: nowrap;
   color: var(--text-1);
 }
-.card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  font-size: var(--fs-small);
-  color: var(--text-3);
+.ranking-table .rank {
+  font-size: 13px;
+  font-weight: var(--fw-medium);
 }
-.score-cell {
+.card-cell-inner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
 }
-.score-cell .bar {
+.thumb {
+  flex: none;
+  width: 30px;
+  height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-thumb);
+  background: var(--placeholder-sm);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+tr[data-selected] .thumb {
+  box-shadow: var(--glow-thumb);
+}
+.card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1_5);
+  min-width: 0;
+}
+.card-name {
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-1);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a.card-name:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+tr[data-selected] .card-name {
+  color: var(--accent);
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-caption);
+  line-height: 1.2;
+  color: var(--text-3);
+}
+.card-type {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.ranking-table .sub {
+  font-size: var(--fs-col);
+  color: var(--text-3);
+}
+.share-bar {
   position: relative;
-  width: 72px;
-  height: 6px;
-  border-radius: var(--radius-pill);
+  width: 84px;
+  height: 3px;
+  margin-top: var(--space-1);
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
   background: var(--surface-2);
 }
-.score-cell .bar::after {
+.share-bar::after {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: var(--fill);
-  border-radius: inherit;
+  background: var(--text-2);
+}
+.archetype-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+}
+.ranking-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2_5);
+  padding: 40px var(--space-6);
+  border-top: 1px solid var(--line-1);
+}
+.ranking-empty > * {
+  margin: 0;
+}
+.ranking-empty p {
+  font-size: var(--fs-body);
+  color: var(--text-2);
+}
+.ranking-empty .button {
+  height: 32px;
+  padding: 0 13px;
+  font-size: var(--fs-small);
+}
+.ranking-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line-1);
+  background: var(--surface-1);
+}
+.ranking-footer [role="status"] {
+  margin: 0;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+.pagination-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2_5);
+}
+.cohort-note {
+  max-width: 760px;
+  margin: var(--space-4) 0 0;
+  font-size: var(--fs-meta);
+  line-height: var(--lh-body);
+  color: var(--text-3);
+}
+/* Sticks below the header and the toolbar. */
+.ranking-preview {
+  position: sticky;
+  top: calc(var(--header-h) + 58px + var(--space-6));
+  display: flex;
+  flex: 0 0 300px;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 100%;
+  padding: var(--space-5);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-frame);
+  background: var(--panel-glow), var(--surface-1);
+}
+.ranking-preview p {
+  margin: 0;
+}
+.preview-rank {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-col);
+  text-transform: uppercase;
+}
+.preview-art {
+  align-self: center;
+  width: 206px;
+  max-width: 100%;
+}
+.preview-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: var(--card-ratio);
+  padding: 0 12%;
+  border: 1px solid var(--sigil-edge);
+  border-radius: var(--radius-card);
+  background: var(--placeholder);
+  box-shadow: var(--shadow-featured);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+  text-align: center;
+  color: var(--text-1);
+}
+.preview-score {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--fs-meta);
+  color: var(--text-3);
+}
+.preview-score-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-title);
+  line-height: 1;
+  color: var(--text-1);
+}
+.preview-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-md);
+  background: var(--line-1);
+}
+.preview-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--space-2_5) var(--space-3);
+  background: var(--surface-1);
+}
+.preview-stats dt,
+.preview-label {
+  margin: 0;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: var(--tracking-col);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.preview-stats dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  line-height: 1.2;
+  color: var(--text-1);
+}
+.preview-stats .sub {
+  font-size: var(--fs-eyebrow);
+  color: var(--text-3);
+}
+.preview-played {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.played-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px var(--space-2);
+  font-size: var(--fs-small);
+}
+.played-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+}
+.played-share {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+.played-bar {
+  position: relative;
+  grid-column: 1 / -1;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--surface-2);
+}
+.played-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
   background: var(--accent);
+  box-shadow: var(--glow-dot);
+}
+.preview-open {
+  width: 100%;
 }
 .muted {
   color: var(--text-3);
+}
+
+/* Rankings: loading. Skeleton rows at the real row height; no spinner. */
+.skeleton-table {
+  min-width: 980px;
+}
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 60px minmax(230px, 1fr) 96px 120px 78px 118px 150px;
+  align-items: center;
+  column-gap: 14px;
+  height: 62px;
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--line-1);
+}
+.skeleton-row.head {
+  height: 40px;
+  border-top: 0;
+  background: var(--surface-1);
+}
+.skeleton-card-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.skeleton-thumb {
+  flex: none;
+  width: 30px;
+  height: 42px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-thumb);
+  background: var(--placeholder-sm);
+}
+.skeleton-card-cell > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.skeleton-bar {
+  display: block;
+  width: 60%;
+  height: 8px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-2);
+}
+.skeleton-bar.short {
+  width: 36%;
+}
+.skeleton-bar.title {
+  width: 280px;
+  max-width: 100%;
+  height: 64px;
+}
+.skeleton-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: 36px 44px;
+}
+
+@media (max-width: 640px) {
+  /* Three podium cards no longer fit side by side; the table leads instead. */
+  .podium {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
 }

@@ -5,6 +5,10 @@ import AxeBuilder from "@axe-core/playwright";
 // these journeys: two events, seven decks, Lightning Bolt in four of them.
 const results = (page: Page) =>
   page.getByRole("region", { name: "Modern rankings" }).getByRole("status");
+const preview = (page: Page) =>
+  page.getByRole("complementary", { name: "Selected card" });
+const search = (page: Page) =>
+  page.getByRole("searchbox", { name: "Search ranked cards" });
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://cards.scryfall.io/**", (route) =>
@@ -28,6 +32,14 @@ test("Modern rankings show the published run, its credit and every ranked card",
     page.getByRole("heading", { level: 1, name: "Modern" }),
   ).toBeVisible();
   await expect(
+    page.getByText("Non-rotating · Eighth Edition forward · 1v1"),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("main")
+      .getByText(/^Updated (just now|\d+ minutes? ago) · TopDeck\.gg$/),
+  ).toBeVisible();
+  await expect(
     page.getByRole("main").getByRole("link", { name: "TopDeck.gg" }),
   ).toHaveAttribute("href", "https://topdeck.gg");
   await expect(
@@ -36,16 +48,32 @@ test("Modern rankings show the published run, its credit and every ranked card",
   await expect(page.getByText("Mar 1 – Aug 31, 2026")).toBeVisible();
   await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
 
-  const rows = page.getByRole("table").getByRole("row");
+  const table = page.getByRole("table");
+  await expect(table.getByRole("columnheader")).toHaveText([
+    "#",
+    "Card",
+    /Relative volume/,
+    "Meta share",
+    "Events",
+    "Top cuts",
+    "Most played in",
+  ]);
+  const rows = table.getByRole("row");
   await expect(rows).toHaveCount(9);
   await expect(rows.nth(1)).toContainText("Lightning Bolt");
   await expect(rows.nth(1).getByRole("cell").first()).toHaveText("1");
   await expect(rows.nth(1)).toContainText("100.0");
+  await expect(rows.nth(1)).toContainText("57.1%");
   await expect(rows.nth(1)).toContainText("Burn");
-  await expect(page.getByRole("table")).not.toContainText("Island");
+  await expect(table).not.toContainText("Island");
   await expect(
     page.getByRole("row", { name: /Synthetic Unlisted Card/ }),
   ).toContainText("Not in this catalog");
+
+  await expect(preview(page)).toContainText("Rank 1");
+  await expect(
+    preview(page).getByRole("link", { name: "Open card: Lightning Bolt" }),
+  ).toBeVisible();
 
   const podium = page.getByRole("region", { name: "Most played cards" });
   await expect(
@@ -59,13 +87,16 @@ test("Modern rankings show the published run, its credit and every ranked card",
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
-test("filters keep overall ranks, and a card opens its catalog page", async ({
+test("filters apply at once and keep overall ranks, and a card opens its catalog page", async ({
   page,
 }) => {
   await page.goto("/rankings");
-  await page.getByLabel("Card type").selectOption("instant");
-  await page.getByRole("button", { name: "Apply" }).click();
+  const type = page.getByLabel("Card type");
+  await type.focus();
+  await type.selectOption("instant");
   await expect(page).toHaveURL(/type=instant/);
+  // The toolbar is not rebuilt, so the control keeps focus.
+  await expect(type).toBeFocused();
   await expect(
     page.getByRole("region", { name: "Most played cards" }),
   ).toHaveCount(0);
@@ -73,16 +104,58 @@ test("filters keep overall ranks, and a card opens its catalog page", async ({
   await expect(fire.getByRole("cell").first()).toHaveText("2");
   await expect(page.getByRole("table")).not.toContainText("Bruna");
 
-  await page.getByLabel("Card name").fill("bruna");
-  await page.getByLabel("Card type").selectOption("");
-  await page.getByRole("button", { name: "Apply" }).click();
+  await search(page).fill("bruna");
+  await search(page).press("Enter");
+  await expect(page).toHaveURL(/q=bruna/);
+  await expect(page).toHaveURL(/type=instant/);
+  await expect(results(page)).toHaveText("No ranked cards match");
+  await type.selectOption("");
   await expect(results(page)).toHaveText("1–1 of 1 ranked cards");
+  await expect(search(page)).toHaveValue("bruna");
   await page
     .getByRole("link", { name: "Bruna, the Fading Light" })
     .first()
     .click();
   await expect(
     page.getByRole("heading", { level: 1, name: "Bruna, the Fading Light" }),
+  ).toBeVisible();
+});
+
+test("an empty result explains itself inside the table and clears every filter", async ({
+  page,
+}) => {
+  await page.goto("/rankings?q=nothing-matches&color=G");
+  const rankings = page.getByRole("region", { name: "Modern rankings" });
+  await expect(
+    rankings.getByRole("heading", { level: 3, name: "No ranked cards match." }),
+  ).toBeVisible();
+  await expect(preview(page)).toHaveCount(0);
+  await expect(search(page)).toHaveValue("nothing-matches");
+  await rankings.getByRole("link", { name: "Clear filters" }).click();
+  await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
+  await expect(page).not.toHaveURL(/q=|color=/);
+  await expect(search(page)).toHaveValue("");
+  await expect(page.getByRole("checkbox", { name: "Green" })).not.toBeChecked();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("hovering a row previews its card, the header explains the method, and a row opens its card", async ({
+  page,
+}) => {
+  await page.goto("/rankings");
+  await page.getByRole("row", { name: /Fire \/\/ Ice/ }).hover();
+  await expect(preview(page)).toContainText("Rank 2");
+
+  await page.getByRole("button", { name: "About this score" }).hover();
+  await expect(page.getByRole("tooltip")).toContainText("Relative volume");
+
+  await page
+    .getByRole("row", { name: /Lightning Bolt/ })
+    .getByRole("cell")
+    .nth(3)
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Lightning Bolt" }),
   ).toBeVisible();
 });
 

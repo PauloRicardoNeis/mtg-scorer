@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Printing } from "./api";
-import { colors, edition, printingParams, queryParams } from "./urls";
+import {
+  colors,
+  edition,
+  printingParams,
+  queryParams,
+  rankedCardHref,
+} from "./urls";
 
 describe("queryParams", () => {
   it("returns empty params for empty input", () => {
@@ -105,5 +111,25 @@ describe("edition", () => {
         language: "fr",
       }),
     ).toBe("Commander Légendes #★12a (FR)");
+  });
+});
+
+describe("rankedCardHref", () => {
+  const card = {
+    oracle_id: "4457ed35-7c10-48c8-9776-456485fdf070",
+    preview_printing: {} as Printing,
+  };
+
+  it("opens the card in the catalog the ranking joined", () => {
+    expect(rankedCardHref(card, "snap 1")).toBe(
+      "/cards/4457ed35-7c10-48c8-9776-456485fdf070?catalog_snapshot_id=snap+1",
+    );
+  });
+
+  it("has no page for a card outside the catalog or without one", () => {
+    expect(rankedCardHref({ ...card, preview_printing: null }, "snap-1")).toBe(
+      null,
+    );
+    expect(rankedCardHref(card, null)).toBe(null);
   });
 });

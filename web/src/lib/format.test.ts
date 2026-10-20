@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ago,
   count,
   dateWindow,
   deltaTone,
@@ -208,5 +209,35 @@ describe("dateWindow", () => {
 
   it("is independent of the local time zone", () => {
     expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1 – Jan 1, 2026");
+  });
+});
+
+describe("ago", () => {
+  const now = new Date("2026-10-19T12:00:00Z");
+
+  it("names the largest whole unit that has passed", () => {
+    expect(ago("2026-10-19T09:59:00Z", now)).toBe("2 hours ago");
+    expect(ago("2026-10-19T11:15:00Z", now)).toBe("45 minutes ago");
+    expect(ago("2026-10-16T12:00:00Z", now)).toBe("3 days ago");
+    expect(ago("2026-09-28T12:00:00Z", now)).toBe("3 weeks ago");
+    expect(ago("2026-06-01T12:00:00Z", now)).toBe("4 months ago");
+    expect(ago("2024-01-01T00:00:00Z", now)).toBe("2 years ago");
+  });
+
+  it("says yesterday, last week and last month for a single unit", () => {
+    expect(ago("2026-10-18T06:00:00Z", now)).toBe("yesterday");
+    expect(ago("2026-10-12T12:00:00Z", now)).toBe("last week");
+    expect(ago("2026-09-15T12:00:00Z", now)).toBe("last month");
+  });
+
+  it("reads under a minute, or a clock behind the publisher, as just now", () => {
+    expect(ago("2026-10-19T11:59:30Z", now)).toBe("just now");
+    expect(ago("2026-10-19T12:05:00Z", now)).toBe("just now");
+  });
+
+  it("measures from the current time by default", () => {
+    expect(ago(new Date(Date.now() - 3 * 3_600_000).toISOString())).toBe(
+      "3 hours ago",
+    );
   });
 });

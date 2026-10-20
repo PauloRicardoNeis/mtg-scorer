@@ -21,5 +21,7 @@ export function setPathname(value: string): void {
 export const navigation = {
   useRouter: () => router,
   usePathname: () => pathname,
+  // The query of jsdom's current location, which tests set with history.pushState.
+  useSearchParams: () => new URLSearchParams(location.search),
   resetPathname: () => setPathname("/"),
 };
