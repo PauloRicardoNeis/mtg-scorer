@@ -30,7 +30,7 @@ public class RankingController {
   @GetMapping("/compare")
   @Operation(
       operationId = "compareRankings",
-      summary = "Compare cards across the active runs of several formats by constructed score")
+      summary = "Compare cards across the active runs of several formats by a graded score method")
   public ComparePage compare(
       @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> query) {
     return compare.compare(CompareQuery.parse(query));

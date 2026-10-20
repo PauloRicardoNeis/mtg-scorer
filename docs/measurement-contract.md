@@ -92,6 +92,8 @@ Later features remain specified but unavailable until their prerequisites exist.
 | `format_era_breadth` | Breadth across independently observed format-era strata, not raw lifetime | After multiple strata |
 | `deck_family_breadth` | Breadth across empirical deck clusters or externally versioned labels | After clustering |
 | `specificity` | Concentration within a small number of deck families, with sample-size shrinkage | After clustering |
+| `archetype_concentration` | Chance that two different decks with the card share an archetype (Simpson's index without its small-sample bias); support is the decks with an archetype, unknown below two. A deck's archetype is the source's label; an unlabelled commander deck's is its commanders, a partner pair being one archetype named in the cohort's most common spelling. A commander is fully concentrated on its own archetype by construction and is scored like a card that names a labelled archetype. The signature score shrinks it toward the field's own concentration | TopDeck labels; commanders where unlabelled |
+| `archetype_adoption` | Share of the card's most common archetype's decks that play it, with that archetype's size as the denominator; archetypes as for `archetype_concentration` | TopDeck labels; commanders where unlabelled |
 | `package_coherence` | Regularized association with a stable constellation of partners | After co-occurrence |
 | `recurrence` | Independent reappearance across events or separated eras | After multiple strata |
 | `choice_freedom` | Survival in card pools offering materially more alternatives | Research stage |
@@ -130,6 +132,24 @@ Package discovery should ultimately return a strategy fingerprint. The product
 can then show one representative Engine Candidate with its associated package
 instead of presenting ten adjacent cards from the same rogue deck as ten separate
 discoveries.
+
+## Overall grade
+
+The overall grade (`overall-grade`) combines each card's constructed score in every
+format whose active run graded it; it never re-reads decks. A format counts by its
+evidence, `decks / (decks + 250)`, so a format with a few dozen decklists barely
+moves a card while every large format counts about the same. Every card also carries
+one format's worth of a median score (50), so a card proven in many formats outranks
+one strong in a single format, and the weighted average becomes a percentile again
+among every graded card. A format that does not rank a card is no evidence, never a
+zero: a card may simply be illegal there.
+
+Only additive usage pools across formats: decks, events, top cuts and match records
+are sums. Win rates of one-on-one and multiplayer formats are not comparable, so the
+overall run keeps no win rate, only each format's gap to its own field weighted by
+games; top-cut lift is top cuts made over the field's expected top cuts. Archetypes
+and trend series belong to one format and are left unknown. The run's identity hashes
+its component runs, which already pin every version that produced them.
 
 ## Ranking and calibration
 

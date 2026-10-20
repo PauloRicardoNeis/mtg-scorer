@@ -12,13 +12,11 @@ import org.springframework.stereotype.Repository;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Cards across the active runs of several formats, by the constructed score. Each format ranks its
- * own scored cards; a card a format did not rank has no cell there.
+ * Cards across the active runs of several formats, by one graded method. Each format ranks the
+ * cards the method scored; a card a format did not score has no cell there.
  */
 @Repository
 class CompareRepository {
-  static final String METHOD = "constructed-score";
-
   private final NamedParameterJdbcTemplate jdbc;
   private final ObjectMapper mapper;
 
@@ -27,28 +25,35 @@ class CompareRepository {
     this.mapper = mapper;
   }
 
-  /** Every format whose active run has a constructed score. */
-  List<CompareFormat> formats() {
+  /**
+   * Every format whose active run published the method, with the cards it scored there: like the
+   * run summary, the non-null values of the method's first output.
+   */
+  List<CompareFormat> formats(String method) {
     return jdbc.query(
         "SELECT a.format_name,a.score_run_id,"
             + "coalesce((r.summary->'cohort'->'totals'->>'decks')::int,0) decks,"
-            + "(r.summary->'cohort'->'rules'->>'players_per_game')::int players_per_game"
+            + "(r.summary->'cohort'->'rules'->>'players_per_game')::int players_per_game,"
+            + "(SELECT count(*) FROM scores.published_card_score s"
+            + " WHERE s.score_run_id=m.score_run_id AND s.method_id=m.method_id"
+            + " AND s.output=m.outputs[1] AND s.value IS NOT NULL)::int scored_cards"
             + " FROM scores.active_score_run a JOIN scores.published_score_run r USING(score_run_id)"
-            + " WHERE EXISTS(SELECT FROM scores.published_score_run_method m"
-            + " WHERE m.score_run_id=a.score_run_id AND m.method_id=:method)"
+            + " JOIN scores.published_score_run_method m"
+            + " ON m.score_run_id=a.score_run_id AND m.method_id=:method"
             + " ORDER BY a.format_name",
-        Map.of("method", METHOD),
+        Map.of("method", method),
         (row, index) ->
             new CompareFormat(
                 row.getString("format_name"),
                 row.getString("score_run_id"),
                 row.getInt("decks"),
-                row.getObject("players_per_game", Integer.class)));
+                row.getObject("players_per_game", Integer.class),
+                row.getInt("scored_cards")));
   }
 
   private String filtered(List<String> runs, CompareQuery query, Map<String, Object> args) {
     args.put("runs", String.join(",", runs));
-    args.put("method", METHOD);
+    args.put("method", query.method());
     args.put("compared", runs.size());
     List<String> where = new ArrayList<>();
     if (query.q() != null) {
@@ -86,8 +91,10 @@ class CompareRepository {
               FROM scores.published_score_run
               WHERE score_run_id = ANY(string_to_array(:runs,',')) OFFSET 0) r
             JOIN scores.published_score_run_card k ON k.score_run_id=r.score_run_id AND k.scored
+            -- Every compared method's first output is its score; a card without one is unranked.
             JOIN scores.published_card_score s ON s.score_run_id=k.score_run_id
-              AND s.oracle_id=k.oracle_id AND s.method_id=:method AND s.output='score') cells
+              AND s.oracle_id=k.oracle_id AND s.method_id=:method AND s.output='score'
+              AND s.value IS NOT NULL) cells
           GROUP BY oracle_id) x
          LEFT JOIN catalog.active_catalog ac ON true
          LEFT JOIN catalog.published_catalog_card c

@@ -2449,6 +2449,17 @@ fieldset.gallery-stack {
 .format-tab-all .format-tab-sub {
   padding-left: 20px;
 }
+/* The overall tab leads the bar, set apart like the compare tab that ends it. */
+.format-tab-overall {
+  margin-right: var(--space-1_5);
+  border-right: 1px solid var(--line-1);
+}
+.format-tab-overall .format-tab-sub {
+  padding-left: 20px;
+}
+.format-tab-overall[aria-current="page"] svg {
+  color: var(--accent);
+}
 .format-tab[aria-disabled="true"] {
   pointer-events: none;
 }
@@ -2649,7 +2660,7 @@ fieldset.gallery-stack {
 }
 .ranking-table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1250px;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -2675,6 +2686,18 @@ fieldset.gallery-stack {
 }
 .ranking-table .col-archetype {
   width: 173px;
+}
+/* The overall run's formats take the trend and archetype columns' place. */
+.ranking-table .col-formats {
+  width: 305px;
+}
+/* Price and score per dollar follow the grade. The table scrolls to the design's
+   last columns rather than squeezing the card column below its width before them. */
+.ranking-table .col-price {
+  width: 92px;
+}
+.ranking-table .col-value {
+  width: 110px;
 }
 .ranking-table th,
 .ranking-table td {
@@ -2930,6 +2953,13 @@ th[aria-sort] .sort-link {
   gap: var(--space-2);
   min-width: 0;
 }
+/* The formats behind an overall grade: each name with its letter, then a count. */
+.format-grades {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
 .archetype .color-pips {
   flex: none;
 }
@@ -3045,6 +3075,10 @@ tr[data-selected] .card-name {
   gap: var(--space-2_5);
   padding: 40px var(--space-6);
   border-top: 1px solid var(--line-1);
+}
+/* A grading with no scores shows the notice alone, without a table above it. */
+.ranking-frame > .ranking-empty:first-child {
+  border-top: 0;
 }
 .ranking-empty > * {
   margin: 0;

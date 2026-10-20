@@ -53,18 +53,21 @@ class CompareRepositoryTests {
   }
 
   @Test
-  void formatsAreActiveRunsWithAConstructedScore() throws Exception {
-    repository.formats();
+  void formatsAreActiveRunsOfTheMethodWithTheCardsItScored() throws Exception {
+    repository.formats("signature-score");
     verify(jdbc).query(sql.capture(), args.capture(), formatRows.capture());
-    assertThat(args.getValue()).containsOnly(Map.entry("method", "constructed-score"));
-    assertThat(sql.getValue()).contains("m.method_id=:method");
+    assertThat(args.getValue()).containsOnly(Map.entry("method", "signature-score"));
+    assertThat(sql.getValue())
+        .contains("m.method_id=:method")
+        .contains("s.output=m.outputs[1] AND s.value IS NOT NULL");
     when(row.getString("format_name")).thenReturn("Modern");
     when(row.getString("score_run_id")).thenReturn(RUNS.getFirst());
     when(row.getInt("decks")).thenReturn(667);
     when(row.getObject("players_per_game", Integer.class)).thenReturn(2);
+    when(row.getInt("scored_cards")).thenReturn(0);
 
     assertThat(formatRows.getValue().mapRow(row, 0))
-        .isEqualTo(new CompareFormat("Modern", RUNS.getFirst(), 667, 2));
+        .isEqualTo(new CompareFormat("Modern", RUNS.getFirst(), 667, 2, 0));
   }
 
   @Test
@@ -75,8 +78,21 @@ class CompareRepositoryTests {
     assertThat(args.getValue())
         .containsOnlyKeys("runs", "method", "compared")
         .containsEntry("runs", String.join(",", RUNS))
+        .containsEntry("method", "constructed-score")
         .containsEntry("compared", 2);
     assertThat(sql.getValue()).startsWith("SELECT count(*)").doesNotContain(" WHERE strpos");
+  }
+
+  @Test
+  void cellsAreTheChosenMethodsScoresAndACardWithoutOneIsUnranked() {
+    when(jdbc.queryForObject(sql.capture(), args.capture(), eq(Long.class))).thenReturn(5L);
+
+    repository.count(RUNS, query("method", "signature-score"));
+
+    assertThat(args.getValue()).containsEntry("method", "signature-score");
+    assertThat(sql.getValue())
+        .contains("s.method_id=:method AND s.output='score'")
+        .contains("AND s.value IS NOT NULL) cells");
   }
 
   @Test

@@ -2,25 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { api, ApiError, type RankedCard, type RankingPage } from "@/lib/api";
 import { queryParams, rankedCardHref, type SearchParams } from "@/lib/urls";
-import { ago, count, dateWindow, percent, windowLabel } from "@/lib/format";
+import {
+  ago,
+  count,
+  dateWindow,
+  dateWithYear,
+  percent,
+  windowLabel,
+} from "@/lib/format";
 import { Problem } from "@/components/problem";
 import { CardImage } from "@/components/card-image";
 import { Icon } from "@/components/icon";
 import { FormatBar, type FormatTab } from "@/components/format-bar";
 import {
+  OVERALL_FORMAT,
   descriptors,
   designFormats,
   formatLabel as label,
 } from "@/lib/formats";
 import {
   RankingFilters,
+  type GradingOption,
   type SourceTab,
   type ViewTab,
   type WindowOption,
 } from "@/components/ranking-filters";
 import {
-  GRADED_METHOD,
+  COMPARE_GRADINGS,
+  GRADINGS,
   GradeRing,
+  defaultMethod,
+  isGraded,
   trendLabel,
 } from "@/components/ranking-data";
 import { RankingTable, type SortLink } from "@/components/ranking-table";
@@ -35,6 +47,8 @@ const sortable: Record<string, "asc" | "desc"> = {
   decks: "desc",
   top_cut_lift: "desc",
   trend: "desc",
+  price: "desc",
+  value: "desc",
 };
 
 const views: [view: string, label: string][] = [
@@ -66,17 +80,30 @@ function relink(
   return link(page, [...rest, ...set]);
 }
 
-/** One podium place: the card, its numeral above and its grade on the card's edge. */
+/** Why a method could not score a run, shown beside it in the grading menu. */
+const unavailable: Record<string, string> = {
+  "signature-score": "needs archetype labels",
+};
+
+/**
+ * One podium place: the card, its numeral above and its grade on the card's edge.
+ * Under the signature score the place names the card's home archetype; overall,
+ * how many formats grade the card.
+ */
 function Place({
   page,
   card,
   numeral,
   graded,
+  signature,
+  overall,
 }: {
   page: RankingPage;
   card: RankedCard;
   numeral: string;
   graded: boolean;
+  signature: boolean;
+  overall: boolean;
 }) {
   const href = rankedCardHref(card, page.catalog_snapshot_id);
   const first = numeral === "I";
@@ -114,7 +141,16 @@ function Place({
         <span className="podium-score">
           {card.score === null ? "—" : card.score.toFixed(1)}
         </span>
-        {card.win_rate !== null ? (
+        {signature ? (
+          <span>
+            {card.archetypes[0]?.label ?? card.archetype_label ?? "Unlabelled"}
+          </span>
+        ) : overall ? (
+          <span>
+            {card.formats?.length ?? 0}{" "}
+            {card.formats?.length === 1 ? "format" : "formats"}
+          </span>
+        ) : card.win_rate !== null ? (
           <span>{percent(100 * card.win_rate)} WR</span>
         ) : (
           <span>{count(card.deck_count)} decks</span>
@@ -140,15 +176,36 @@ export default async function Rankings({
     const method = run.methods.find(
       (candidate) => candidate.method_id === page.method_id,
     )!;
-    const graded = method.method_id === GRADED_METHOD;
+    const graded = isGraded(method.method_id);
+    const signature = method.method_id === "signature-score";
+    // The overall run combines every format's run, which its components name.
+    const overall = Boolean(run.components);
+    // A method that scored no card here, e.g. signature without archetype labels.
+    const unscored = method.scored_cards === 0;
+    const fallback = defaultMethod(run);
+    // The grading follows every link, and other formats, unless it is the default.
+    const chosen: [string, string][] =
+      method.method_id === fallback ? [] : [["method", method.method_id]];
+    // The comparison follows a grading it offers, unless that is its default.
+    const compareChosen: [string, string][] =
+      COMPARE_GRADINGS.indexOf(method.method_id) > 0
+        ? [["method", method.method_id]]
+        : [];
     const multiplayer = (run.players_per_game ?? 2) > 2;
     const labels = {
-      share: multiplayer ? "Inclusion" : "Meta share",
+      share: overall ? "Decklists" : multiplayer ? "Inclusion" : "Meta share",
       cut: "Top cut",
-      trend: trendLabel(run),
+      trend: overall ? null : trendLabel(run),
+      value: graded ? "Grade per $" : "Score per $",
     };
     const decksOf = new Map(page.formats.map((f) => [f.format_name, f.decks]));
     const tabs: FormatTab[] = [
+      {
+        label: OVERALL_FORMAT,
+        format: OVERALL_FORMAT,
+        decks: decksOf.get(OVERALL_FORMAT) ?? null,
+        overall: true,
+      },
       ...designFormats.map(([tab, format]) => ({
         label: tab,
         format,
@@ -156,7 +213,9 @@ export default async function Rankings({
       })),
       ...page.formats
         .filter(
-          (f) => !designFormats.some(([, format]) => format === f.format_name),
+          (f) =>
+            f.format_name !== OVERALL_FORMAT &&
+            !designFormats.some(([, format]) => format === f.format_name),
         )
         .map((f) => ({
           label: f.format_name,
@@ -165,16 +224,20 @@ export default async function Rankings({
         }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     ];
-    const kept = [...query].filter(([key]) =>
-      ["q", "type", "color", "sort", "order", "view", "limit"].includes(key),
-    ) as [string, string][];
+    const kept = [
+      ...chosen,
+      ...([...query].filter(([key]) =>
+        ["q", "type", "color", "sort", "order", "view", "limit"].includes(key),
+      ) as [string, string][]),
+    ];
     const filtered = kept.some(([key]) => ["q", "type", "color"].includes(key));
     const podium =
       page.offset === 0 &&
       page.sort === "score" &&
       page.order === "desc" &&
       page.view === "all" &&
-      !filtered
+      !filtered &&
+      !unscored
         ? page.items.slice(0, 3)
         : [];
     const sorts = Object.fromEntries(
@@ -226,7 +289,7 @@ export default async function Rankings({
       return {
         source: name,
         label: name === "topdeck" ? "TopDeck" : name,
-        href: `/rankings?${new URLSearchParams({ format: run.format_name, score_run_id: window.score_run_id })}`,
+        href: `/rankings?${new URLSearchParams([["format", run.format_name], ["score_run_id", window.score_run_id], ...chosen])}`,
         current: name === run.source,
       };
     });
@@ -236,23 +299,63 @@ export default async function Rankings({
     const pageLink = (offset: number) =>
       link(page, offset ? [...kept, ["offset", String(offset)]] : kept);
     const source = run.source === "topdeck" ? "TopDeck" : run.source;
+    const leads: Record<string, string> = {
+      "constructed-score": `Every card scored by how the decks that play it perform in tournaments: win rate against the field, top-cut conversion and ${labels.share.toLowerCase()}.`,
+      "signature-score":
+        "Every card scored by how much it belongs to one strategy: how few archetypes play it, how much more often its home archetype plays it than other decks do, and how those decks perform. Staples played everywhere rank low.",
+      "overall-grade":
+        "One grade per card from its constructed grade in every format that ranks it. Formats count by how many decklists back them, and a card proven across many formats outranks one that is strong in a single format.",
+      "max-ratio": `Ranked by ${method.label.toLowerCase()}: how often each card was played, compared with the most-played card. It measures popularity in published decklists, not card strength.`,
+    };
+    // The selected method is offered even when it is not one of the menu's gradings.
+    const gradings: GradingOption[] = run.methods
+      .filter(
+        (candidate) =>
+          GRADINGS.includes(candidate.method_id) || candidate === method,
+      )
+      .sort(
+        (a, b) =>
+          (GRADINGS.indexOf(a.method_id) + 1 || GRADINGS.length + 1) -
+          (GRADINGS.indexOf(b.method_id) + 1 || GRADINGS.length + 1),
+      )
+      .map((candidate) => {
+        // An API from before scored_cards omits it; that counts as scored.
+        const empty = candidate.scored_cards === 0;
+        return {
+          value: candidate.method_id === fallback ? "" : candidate.method_id,
+          label: empty
+            ? `${candidate.label} · ${unavailable[candidate.method_id] ?? "no scores"}`
+            : candidate.label,
+          disabled: empty && candidate !== method,
+        };
+      });
+    const fallbackLabel = run.methods.find(
+      (candidate) => candidate.method_id === fallback,
+    )!.label;
     return (
       <>
-        <FormatBar tabs={tabs} current={run.format_name} />
+        <FormatBar
+          tabs={tabs}
+          current={run.format_name}
+          query={new URLSearchParams(chosen).toString()}
+          compareQuery={new URLSearchParams(compareChosen).toString()}
+        />
         <section className="intro band rankings-intro">
           <div className="intro-inner band-inner">
             <div className="intro-copy">
               <div className="rankings-heading">
-                <p className="eyebrow">Constructed card rankings</p>
+                <p className="eyebrow">
+                  {overall
+                    ? "Overall card rankings"
+                    : "Constructed card rankings"}
+                </p>
                 <h1>{label(run.format_name)}</h1>
                 <p className="format-descriptor">
                   {descriptors[run.format_name] ??
                     `Competitive ${source} events`}
                 </p>
                 <p className="lead">
-                  {graded
-                    ? `Every card scored by how the decks that play it perform in tournaments: win rate against the field, top-cut conversion and ${labels.share.toLowerCase()}.`
-                    : `Ranked by ${method.label.toLowerCase()}: how often each card was played, compared with the most-played card. It measures popularity in published decklists, not card strength.`}
+                  {leads[method.method_id] ?? method.description}
                 </p>
               </div>
               <dl className="stat-strip">
@@ -260,10 +363,17 @@ export default async function Rankings({
                   <dt>Decklists</dt>
                   <dd>{count(run.decks)}</dd>
                 </div>
-                <div>
-                  <dt>{run.matches === null ? "Players" : "Matches"}</dt>
-                  <dd>{count(run.matches ?? run.players)}</dd>
-                </div>
+                {overall ? (
+                  <div>
+                    <dt>Formats</dt>
+                    <dd>{count(run.components!.length)}</dd>
+                  </div>
+                ) : (
+                  <div>
+                    <dt>{run.matches === null ? "Players" : "Matches"}</dt>
+                    <dd>{count(run.matches ?? run.players)}</dd>
+                  </div>
+                )}
                 <div>
                   <dt>Events</dt>
                   <dd>{count(run.events)}</dd>
@@ -308,6 +418,8 @@ export default async function Rankings({
                       card={podium[place]}
                       numeral={["I", "II", "III"][place]}
                       graded={graded}
+                      signature={signature}
+                      overall={overall}
                     />
                   ))}
                 </ol>
@@ -319,67 +431,93 @@ export default async function Rankings({
           format={run.format_name}
           scoreRunId={run.score_run_id}
           query={new URLSearchParams(kept).toString()}
-          clearHref={link(page)}
+          clearHref={link(page, chosen)}
           views={viewTabs}
           windows={windows}
           sources={sources}
+          gradings={gradings}
+          method={chosen[0]?.[1] ?? ""}
         />
         <section aria-labelledby="ranking-heading" className="ranking-results">
           <h2 id="ranking-heading" className="sr-only">
             {label(run.format_name)} rankings
           </h2>
-          <RankingTable
-            items={page.items}
-            run={run}
-            method={method}
-            graded={graded}
-            labels={labels}
-            sorts={sorts}
-            maxDeckCount={page.max_deck_count}
-            catalogSnapshotId={page.catalog_snapshot_id}
-            clearHref={link(page)}
-            footer={
-              <>
-                <p role="status">
-                  {page.total === 0
-                    ? "No ranked cards match"
-                    : `${count(first)}–${count(last)} of ${count(page.total)} ranked cards`}
+          {unscored ? (
+            <div className="ranking-frame">
+              <div className="ranking-empty">
+                <h3>
+                  No {method.label.toLowerCase()} for {label(run.format_name)}.
+                </h3>
+                <p>
+                  {signature
+                    ? `It needs archetype labels, and ${source} decklists for this format don't carry any.`
+                    : "This method could not score any card in this window."}
                 </p>
-                <div className="pagination-links">
-                  {page.offset > 0 && (
-                    <Link
-                      className="button secondary sm"
-                      href={pageLink(Math.max(0, page.offset - page.limit))}
-                    >
-                      <Icon name="arrow-left" size={14} /> Previous
-                    </Link>
-                  )}
-                  {last < page.total &&
-                    (page.limit < 100 && page.offset === 0 ? (
+                <Link className="button secondary" href={link(page)}>
+                  Rank by {fallbackLabel.toLowerCase()}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <RankingTable
+              items={page.items}
+              run={run}
+              method={method}
+              graded={graded}
+              labels={labels}
+              sorts={sorts}
+              maxDeckCount={page.max_deck_count}
+              catalogSnapshotId={page.catalog_snapshot_id}
+              pricesUpdatedAt={page.prices_updated_at}
+              clearHref={link(page)}
+              footer={
+                <>
+                  <p role="status">
+                    {page.total === 0
+                      ? "No ranked cards match"
+                      : `${count(first)}–${count(last)} of ${count(page.total)} ranked cards`}
+                  </p>
+                  <div className="pagination-links">
+                    {page.offset > 0 && (
                       <Link
                         className="button secondary sm"
-                        href={relink(page, kept, { limit: String(more) })}
-                        scroll={false}
+                        href={pageLink(Math.max(0, page.offset - page.limit))}
                       >
-                        Load {more - page.limit} more
+                        <Icon name="arrow-left" size={14} /> Previous
                       </Link>
-                    ) : (
-                      <Link
-                        className="button secondary sm"
-                        href={pageLink(last)}
-                      >
-                        Next {page.limit} <Icon name="arrow-right" size={14} />
-                      </Link>
-                    ))}
-                </div>
-              </>
-            }
-          />
+                    )}
+                    {last < page.total &&
+                      (page.limit < 100 && page.offset === 0 ? (
+                        <Link
+                          className="button secondary sm"
+                          href={relink(page, kept, { limit: String(more) })}
+                          scroll={false}
+                        >
+                          Load {more - page.limit} more
+                        </Link>
+                      ) : (
+                        <Link
+                          className="button secondary sm"
+                          href={pageLink(last)}
+                        >
+                          Next {page.limit}{" "}
+                          <Icon name="arrow-right" size={14} />
+                        </Link>
+                      ))}
+                  </div>
+                </>
+              }
+            />
+          )}
           <p className="cohort-note">
             Counts come from published decklists at competitive events with at
             least half their lists published; basic lands are not ranked. A top
             cut counts only where the result is known, and win rates come from
             reported match records. Ranks keep their place when you filter.
+            {overall &&
+              " The overall grade combines each format's constructed grade. Win rates are not pooled across formats, since one-on-one and four-player games differ: vs field is each format's gap to its own field, weighted by games."}
+            {page.prices_updated_at &&
+              ` Prices are TCGplayer market estimates via Scryfall for each card's cheapest playable paper printing, as of ${dateWithYear(page.prices_updated_at)}.`}
           </p>
         </section>
       </>

@@ -22,10 +22,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CompareServiceTests {
   private static final String MODERN = "scores-" + "a".repeat(64);
   private static final String LEGACY = "scores-" + "b".repeat(64);
+  private static final String PAUPER = "scores-" + "c".repeat(64);
   private static final List<CompareFormat> FORMATS =
       List.of(
-          new CompareFormat("Legacy", LEGACY, 2936, 2),
-          new CompareFormat("Modern", MODERN, 667, 2));
+          new CompareFormat("Legacy", LEGACY, 2936, 2, 300),
+          new CompareFormat("Modern", MODERN, 667, 2, 200));
 
   @Mock private CompareRepository repository;
   @Mock private RankingRepository rankings;
@@ -44,15 +45,20 @@ class CompareServiceTests {
   @Test
   void theComparedRunsAreCountedAndPaged() {
     var query = query("format", "Modern", "format", "Legacy", "sort", "Modern:share");
-    when(repository.formats()).thenReturn(FORMATS);
+    when(repository.formats("constructed-score")).thenReturn(FORMATS);
     when(repository.count(List.of(LEGACY, MODERN), query)).thenReturn(1200L);
     when(repository.page(List.of(LEGACY, MODERN), query)).thenReturn(List.of());
     when(rankings.activeCatalog()).thenReturn("catalog-a");
+    var overall = List.of(new RankedFormat("Overall", "topdeck", MODERN, 92506, null));
+    when(rankings.activeFormats()).thenReturn(overall);
 
     var page = service().compare(query);
 
+    assertThat(page.method_id()).isEqualTo("constructed-score");
     assertThat(page.formats()).isEqualTo(FORMATS);
     assertThat(page.available()).isEqualTo(FORMATS);
+    // The format bar lists every active run, including those the comparison leaves out.
+    assertThat(page.active_formats()).isEqualTo(overall);
     assertThat(page.catalog_snapshot_id()).isEqualTo("catalog-a");
     assertThat(page.total()).isEqualTo(1200);
     assertThat((page.sort() + " " + page.order())).isEqualTo("Modern:share desc");
@@ -62,7 +68,7 @@ class CompareServiceTests {
 
   @Test
   void aColumnOfAFormatThatIsNotComparedFallsBackToTheBestFormat() {
-    when(repository.formats()).thenReturn(FORMATS);
+    when(repository.formats("constructed-score")).thenReturn(FORMATS);
     ArgumentCaptor<CompareQuery> used = ArgumentCaptor.forClass(CompareQuery.class);
     when(repository.count(any(), used.capture())).thenReturn(0L);
 
@@ -76,7 +82,7 @@ class CompareServiceTests {
   @Test
   void theBestFormatOrderNeedsNoComparedColumn() {
     var query = query();
-    when(repository.formats()).thenReturn(FORMATS);
+    when(repository.formats("constructed-score")).thenReturn(FORMATS);
 
     assertThat(service().compare(query).sort()).isEqualTo("best");
     verify(repository).page(List.of(LEGACY, MODERN), query);
@@ -84,7 +90,7 @@ class CompareServiceTests {
 
   @Test
   void onlyTheChosenFormatsAreCompared() {
-    when(repository.formats()).thenReturn(FORMATS);
+    when(repository.formats("constructed-score")).thenReturn(FORMATS);
 
     var page = service().compare(query("format", "Modern", "format", "Pioneer"));
 
@@ -94,8 +100,44 @@ class CompareServiceTests {
   }
 
   @Test
+  void aFormatTheMethodScoredNoCardInIsAvailableButNotCompared() {
+    // Pauper has no archetype labels, so the signature score could not rank its cards.
+    var unlabelled = new CompareFormat("Pauper", PAUPER, 900, 2, 0);
+    List<CompareFormat> signature = List.of(FORMATS.getFirst(), FORMATS.getLast(), unlabelled);
+    when(repository.formats("signature-score")).thenReturn(signature);
+    var query = query("method", "signature-score");
+
+    var page = service().compare(query);
+
+    assertThat(page.method_id()).isEqualTo("signature-score");
+    assertThat(page.formats()).isEqualTo(FORMATS);
+    assertThat(page.available()).isEqualTo(signature);
+    verify(repository).page(List.of(LEGACY, MODERN), query);
+    assertThatThrownBy(
+            () -> service().compare(query("method", "signature-score", "format", "Pauper")))
+        .isInstanceOfSatisfying(
+            CatalogProblem.class,
+            problem -> {
+              assertThat(problem.status()).isEqualTo(503);
+              assertThat(problem.getMessage()).contains("signature-score");
+            });
+  }
+
+  @Test
+  void aSortFallbackKeepsTheChosenMethod() {
+    when(repository.formats("signature-score")).thenReturn(FORMATS);
+    ArgumentCaptor<CompareQuery> used = ArgumentCaptor.forClass(CompareQuery.class);
+    when(repository.count(any(), used.capture())).thenReturn(0L);
+
+    service().compare(query("method", "signature-score", "sort", "Vintage:share"));
+
+    assertThat(used.getValue().method()).isEqualTo("signature-score");
+    assertThat(used.getValue().sort()).isEqualTo("best");
+  }
+
+  @Test
   void withoutAConstructedScoreThereIsNothingToCompare() {
-    when(repository.formats()).thenReturn(FORMATS);
+    when(repository.formats("constructed-score")).thenReturn(FORMATS);
 
     assertThatThrownBy(() -> service().compare(query("format", "Vintage")))
         .isInstanceOfSatisfying(

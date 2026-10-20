@@ -9,6 +9,7 @@ from .base import ScoreMethod
 from .constructed import ConstructedMethod
 from .foundation import FoundationMethod
 from .max_ratio import MaxRatioMethod
+from .signature import SignatureMethod
 
 
 class ScoreMethodRegistry:
@@ -45,4 +46,6 @@ class ScoreMethodRegistry:
 
 
 # Add a new method here; the shared contract tests then cover it automatically.
-SCORE_METHODS = ScoreMethodRegistry((ConstructedMethod(), FoundationMethod(), MaxRatioMethod()))
+SCORE_METHODS = ScoreMethodRegistry(
+    (ConstructedMethod(), FoundationMethod(), MaxRatioMethod(), SignatureMethod())
+)

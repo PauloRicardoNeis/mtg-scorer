@@ -65,9 +65,15 @@ class CardFeatures:
     win_rate: FeatureObservation = field(default_factory=FeatureObservation.unknown)
     # Share of the card's decks with a known result that made the top cut.
     top_cut_rate: FeatureObservation = field(default_factory=FeatureObservation.unknown)
+    # The chance that two of the card's labelled decks share an archetype label;
+    # support is its labelled decks.
+    archetype_concentration: FeatureObservation = field(default_factory=FeatureObservation.unknown)
+    # Share of the decks of the card's most common archetype that play it.
+    archetype_adoption: FeatureObservation = field(default_factory=FeatureObservation.unknown)
     # The whole cohort's rates, which the card's are compared with.
     field_win_rate: float | None = None
     field_top_cut_rate: float | None = None
+    field_archetype_concentration: float | None = None
     deck_count: int = 0
     event_count: int = 0
     full_field_match_count: int = 0
@@ -76,7 +82,7 @@ class CardFeatures:
         for field_name in ("deck_count", "event_count", "full_field_match_count"):
             if getattr(self, field_name) < 0:
                 raise ValueError(f"{field_name} cannot be negative")
-        for field_name in ("field_win_rate", "field_top_cut_rate"):
+        for field_name in ("field_win_rate", "field_top_cut_rate", "field_archetype_concentration"):
             value = getattr(self, field_name)
             if value is not None and not 0.0 <= value <= 1.0:
                 raise ValueError(f"{field_name} must be between 0 and 1; got {value}")

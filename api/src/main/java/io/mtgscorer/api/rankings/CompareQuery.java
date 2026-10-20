@@ -10,11 +10,12 @@ import java.util.Set;
 
 /**
  * Bounds for comparing cards across formats. {@code formats} is empty when absent so the service
- * can compare every format with a constructed score. {@code sort} is "best", "count", "name" or
- * "{format}:{metric}".
+ * can compare every format the method scored. {@code method} is one of the graded {@link #METHODS}.
+ * {@code sort} is "best", "count", "name" or "{format}:{metric}".
  */
 public record CompareQuery(
     List<String> formats,
+    String method,
     String q,
     List<String> colors,
     boolean every,
@@ -27,6 +28,11 @@ public record CompareQuery(
   public static final int DEFAULT_LIMIT = 50;
   public static final int MAX_FORMATS = 12;
 
+  /**
+   * Methods whose 0-100 percentiles grade cards alike in every format; the first is the default.
+   */
+  public static final List<String> METHODS = List.of("constructed-score", "signature-score");
+
   /** Per-format values a column can sort by, and the stored value each reads. */
   public static final Map<String, String> METRICS =
       Map.of(
@@ -38,7 +44,7 @@ public record CompareQuery(
           "trend", "share_delta");
 
   public static final Set<String> PARAMETERS =
-      Set.of("format", "q", "color", "every", "sort", "order", "limit", "offset");
+      Set.of("format", "method", "q", "color", "every", "sort", "order", "limit", "offset");
 
   /** Parameters that may repeat; every other one appears once. */
   static final Set<String> REPEATED = Set.of("format", "color");
@@ -56,6 +62,9 @@ public record CompareQuery(
       if (!formats.contains(format)) formats.add(format);
     }
     if (formats.size() > MAX_FORMATS) throw CatalogProblem.query("Too many formats.");
+    String method = scalar(input, "method");
+    if (method == null) method = METHODS.getFirst();
+    else if (!METHODS.contains(method)) throw CatalogProblem.query("Invalid score method.");
     String q = scalar(input, "q");
     if (q != null) {
       if (q.length() > 100) throw CatalogProblem.query("Search text exceeds 100 characters.");
@@ -92,6 +101,7 @@ public record CompareQuery(
             input, "offset", 0, 0, RankingQuery.MAX_OFFSET, "Offset must be between 0 and 10000.");
     return new CompareQuery(
         List.copyOf(formats),
+        method,
         q,
         colors,
         "true".equals(every),

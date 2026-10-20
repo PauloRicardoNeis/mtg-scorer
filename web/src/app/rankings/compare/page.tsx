@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { api, ApiError, type ComparePage } from "@/lib/api";
 import { count } from "@/lib/format";
-import { designFormats, formatLabel } from "@/lib/formats";
+import { OVERALL_FORMAT, designFormats, formatLabel } from "@/lib/formats";
 import { queryParams, type SearchParams } from "@/lib/urls";
 import { CompareFilters, type PickOption } from "@/components/compare-filters";
 import {
@@ -16,6 +16,7 @@ import {
 import { FormatBar, type FormatTab } from "@/components/format-bar";
 import { Icon } from "@/components/icon";
 import { Problem } from "@/components/problem";
+import { COMPARE_GRADINGS } from "@/components/ranking-data";
 
 export const metadata: Metadata = { title: "MTG Scorer · Compare formats" };
 
@@ -41,6 +42,17 @@ const presets: [
   ],
 ];
 
+/** The comparison's gradings, named as the rankings page's menu names them. */
+const gradingLabels: Record<string, string> = {
+  "constructed-score": "Constructed score",
+  "signature-score": "Signature score",
+};
+
+/** Why a grading leaves formats out, where it can say. */
+const ungradedBecause: Record<string, string> = {
+  "signature-score": "have no archetype labels",
+};
+
 function same(a: string[], b: string[]) {
   return a.length === b.length && a.every((value) => b.includes(value));
 }
@@ -65,18 +77,45 @@ export default async function Compare({
         params.getAll("summary").includes(summary),
       )
     : ["best", "count"];
+  // Empty for the default grading; a grading the comparison lacks is dropped.
+  const requested = params.get("method") ?? "";
+  const method = COMPARE_GRADINGS.indexOf(requested) > 0 ? requested : "";
   const chosenFormats = params.getAll("format");
   const wanted = chosenFormats.length ? chosenFormats : everyDesignFormat;
   const query = new URLSearchParams(wanted.map((format) => ["format", format]));
+  if (method) query.set("method", method);
   for (const key of ["q", "every", "sort", "order", "limit", "offset"])
     if (params.get(key)) query.set(key, params.get(key)!);
   for (const color of params.getAll("color")) query.append("color", color);
   try {
-    const page: ComparePage = await api.compare(query);
+    let page: ComparePage;
+    try {
+      page = await api.compare(query);
+    } catch (error) {
+      // None of the chosen formats has this grading: compare every format that does.
+      if (
+        !method ||
+        !(error instanceof ApiError) ||
+        error.code !== "rankings_unavailable"
+      )
+        throw error;
+      query.delete("format");
+      page = await api.compare(query);
+    }
     const compared = page.formats.map((format) => format.format_name);
+    // An API from before scored_cards omits it; that counts as graded.
+    const graded = page.available.filter((f) => f.scored_cards !== 0);
+    const because = ungradedBecause[page.method_id];
+    // Formats the grading left out, e.g. a signature score without archetype labels.
+    const gradedNote =
+      graded.length < page.available.length
+        ? `The ${(gradingLabels[page.method_id] ?? page.method_id).toLowerCase()} grades ${graded.length} of ${page.available.length} formats${because ? `; the others ${because}` : ""}.`
+        : null;
+    const grading: [string, string][] = method ? [["method", method]] : [];
     // Every link keeps the reader's choices and drops the offset, which no longer applies.
     const state: [string, string][] = [
       ["picked", "1"],
+      ...grading,
       ...compared.map((format) => ["format", format] as [string, string]),
       ...stats.map((stat) => ["stat", stat] as [string, string]),
       ...summaries.map((summary) => ["summary", summary] as [string, string]),
@@ -121,13 +160,20 @@ export default async function Compare({
     const current = presets.find(
       ([, , formats, presetStats]) =>
         same(
-          formats.filter((f) =>
-            page.available.some((a) => a.format_name === f),
-          ),
+          formats.filter((f) => graded.some((a) => a.format_name === f)),
           compared,
         ) && same(presetStats, stats),
     )?.[0];
     const tabs: FormatTab[] = [
+      {
+        label: OVERALL_FORMAT,
+        format: OVERALL_FORMAT,
+        // An API from before active_formats omits it; the tab then waits for data.
+        decks:
+          page.active_formats?.find((f) => f.format_name === OVERALL_FORMAT)
+            ?.decks ?? null,
+        overall: true,
+      },
       ...designFormats.map(([label, format]) => ({
         label,
         format,
@@ -147,7 +193,13 @@ export default async function Compare({
     const more = Math.min(page.limit + 50, 200);
     return (
       <>
-        <FormatBar tabs={tabs} current={null} comparing />
+        <FormatBar
+          tabs={tabs}
+          current={null}
+          comparing
+          query={new URLSearchParams(grading).toString()}
+          compareQuery={new URLSearchParams(grading).toString()}
+        />
         <section className="intro band compare-intro">
           <div className="compare-intro-inner band-inner">
             <div className="compare-heading">
@@ -156,7 +208,7 @@ export default async function Compare({
               <p className="lead">
                 Pick the formats and stats to show. Each row is a card and each
                 column group is a format. A dash means the card isn&rsquo;t
-                ranked there.
+                ranked there.{gradedNote && ` ${gradedNote}`}
               </p>
             </div>
             <div className="compare-presets">
@@ -168,6 +220,7 @@ export default async function Compare({
                       key={key}
                       href={`/rankings/compare?${new URLSearchParams([
                         ["picked", "1"],
+                        ...grading,
                         ...formats.map((format) => ["format", format]),
                         ...presetStats.map((stat) => ["stat", stat]),
                         ["summary", "best"],
@@ -186,7 +239,7 @@ export default async function Compare({
         </section>
         <CompareFilters
           formats={option(
-            page.available.map((f) => f.format_name),
+            graded.map((f) => f.format_name),
             compared,
             formatLabel,
           )}
@@ -202,6 +255,12 @@ export default async function Compare({
           )}
           every={page.every}
           query={new URLSearchParams(state).toString()}
+          gradings={COMPARE_GRADINGS.map((id, index) => ({
+            value: index === 0 ? "" : id,
+            label: gradingLabels[id] ?? id,
+            disabled: false,
+          }))}
+          method={method}
         />
         <section className="compare-results" aria-labelledby="compare-heading">
           <h2 id="compare-heading" className="sr-only">

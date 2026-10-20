@@ -18,7 +18,7 @@ from .domain import DeckEntry, Standing, Tournament
 from .features import CardFeatures, FeatureObservation
 from .scoring.base import config_fingerprint
 
-FEATURE_PIPELINE_VERSION = "card-usage-v2"
+FEATURE_PIPELINE_VERSION = "card-usage-v4"
 # The trend series: twelve periods ending where the cohort window ends, each a
 # twelfth of the window but at most 30 days. Weeks would leave most periods empty in
 # formats with a few events a month.
@@ -28,6 +28,8 @@ SERIES_PERIOD_DAYS = 30
 TOP_ARCHETYPES = 3
 # A card belongs to an archetype's core when at least this share of its decks play it.
 CORE_CARD_SHARE = 0.5
+# Joins partner commanders into the name of their one archetype.
+COMMANDER_SEPARATOR = " + "
 # Published fractions are rounded so reruns write identical files.
 DIGITS = 4
 
@@ -132,8 +134,10 @@ class CardUsage:
 
     ``top_cut_count`` counts only the card's decks whose top-cut result is known;
     ``top_cut_known_decks`` is that denominator, and the count is ``None`` when it is 0.
-    ``archetypes`` names the most common labels with their decks, ``series`` the card's
-    decks in each trend period, and ``record`` the match results of its decks.
+    ``archetypes`` names the most common archetypes (see ``deck_archetypes``) with their
+    decks, ``series`` the card's decks in each trend period, and ``record`` the match
+    results of its decks. ``archetype_concentration`` is the chance that two of its
+    labelled decks share an archetype, unknown below two labelled decks.
     """
 
     oracle_id: str
@@ -150,6 +154,7 @@ class CardUsage:
     archetypes: tuple[tuple[str, int], ...] = ()
     archetype_count: int = 0
     series: tuple[int, ...] = ()
+    archetype_concentration: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +178,8 @@ class CohortPerformance:
     series_starts_on: date
     series: tuple[int, ...]
     archetypes: tuple[ArchetypeCore, ...]
+    # The chance that two labelled decks of the field share an archetype.
+    archetype_concentration: float | None = None
 
     @property
     def win_rate(self) -> float | None:
@@ -278,9 +285,43 @@ def _series(decks: Iterable[DeckEntry], periods: dict[str, int | None]) -> tuple
     return tuple(counts)
 
 
-def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
-    """Count each mainboard card's decks, events, top cuts, labels, copies, record and trend."""
+def deck_archetypes(cohort: Cohort) -> dict[str, str]:
+    """Each labelled deck's archetype by deck id: the source's label, or its commanders.
 
+    TopDeck labels only 60-card formats, so an unlabelled commander deck belongs to
+    the archetype of its commanders, a partner pair being one archetype. Commanders
+    are named as the cohort's decks most often spell them, so a card listed under two
+    names (a double-faced card with or without its back face) stays one archetype.
+    """
+
+    commander_ids = {
+        oracle_id
+        for deck in cohort.decks
+        if not deck.archetype_label
+        for oracle_id in deck.commanders
+    }
+    spellings: dict[str, Counter[str]] = {}
+    if commander_ids:
+        for deck in cohort.decks:
+            for card in deck.cards:
+                if card.oracle_id in commander_ids and card.mainboard_count > 0:
+                    spellings.setdefault(card.oracle_id, Counter())[card.name] += 1
+    names = {oracle_id: _most_common(counts)[0] for oracle_id, counts in spellings.items()}
+    archetypes = {}
+    for deck in cohort.decks:
+        if deck.archetype_label:
+            archetypes[deck.source_deck_id] = deck.archetype_label
+        elif deck.commanders:
+            archetypes[deck.source_deck_id] = COMMANDER_SEPARATOR.join(
+                sorted(names[oracle_id] for oracle_id in deck.commanders)
+            )
+    return archetypes
+
+
+def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
+    """Count each mainboard card's decks, events, top cuts, archetypes, copies, record and trend."""
+
+    archetype_of = deck_archetypes(cohort)
     made_cut = {standing.source_deck_id: standing.made_top_cut for standing in cohort.standings}
     standing_of = {standing.source_deck_id: standing for standing in cohort.standings}
     periods = {
@@ -301,7 +342,11 @@ def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
         card_decks = decks_by_card[oracle_id]
         cut_results = [made_cut.get(deck.source_deck_id) for deck in card_decks]
         known = [result for result in cut_results if result is not None]
-        labels = Counter(deck.archetype_label for deck in card_decks if deck.archetype_label)
+        labels = Counter(
+            archetype_of[deck.source_deck_id]
+            for deck in card_decks
+            if deck.source_deck_id in archetype_of
+        )
         ranked = _ranked(labels)
         label, label_decks = ranked[0] if ranked else (None, 0)
         usage.append(
@@ -324,9 +369,21 @@ def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
                 archetypes=tuple(ranked[:TOP_ARCHETYPES]),
                 archetype_count=len(ranked),
                 series=_series(card_decks, periods),
+                archetype_concentration=_concentration(labels.values()),
             )
         )
     return tuple(usage)
+
+
+def _concentration(counts: Iterable[int]) -> float | None:
+    """The chance that two different decks drawn from these groups share one: Simpson's
+    index without its small-sample bias, so two decks of one label are not certainty."""
+
+    counts = list(counts)
+    total = sum(counts)
+    if total < 2:
+        return None
+    return sum(n * (n - 1) for n in counts) / (total * (total - 1))
 
 
 def _ranked(counts: Counter[str]) -> list[tuple[str, int]]:
@@ -351,10 +408,11 @@ def cohort_performance(cohort: Cohort) -> CohortPerformance:
     periods = {
         t.source_event_id: _series_index(t.occurred_on, cohort.rules) for t in cohort.tournaments
     }
+    archetype_of = deck_archetypes(cohort)
     by_label: dict[str, list[DeckEntry]] = {}
     for deck in cohort.decks:
-        if deck.archetype_label:
-            by_label.setdefault(deck.archetype_label, []).append(deck)
+        if deck.source_deck_id in archetype_of:
+            by_label.setdefault(archetype_of[deck.source_deck_id], []).append(deck)
     archetypes = []
     for label in sorted(by_label):
         decks = by_label[label]
@@ -377,6 +435,7 @@ def cohort_performance(cohort: Cohort) -> CohortPerformance:
         - timedelta(days=SERIES_PERIODS * series_period_days(cohort.rules)),
         series=_series(cohort.decks, periods),
         archetypes=tuple(archetypes),
+        archetype_concentration=_concentration(len(decks) for decks in by_label.values()),
     )
 
 
@@ -425,6 +484,7 @@ def card_features(
     field = field or cohort_performance(cohort)
     win_rate = usage.record.win_rate(field.players_per_game)
     cut = usage.top_cut_count
+    home = next((a.deck_count for a in field.archetypes if a.label == usage.archetype_label), 0)
     return CardFeatures(
         incidence=FeatureObservation.known(
             usage.deck_count / decks, support=usage.deck_count, opportunity_count=decks
@@ -443,8 +503,25 @@ def card_features(
                 opportunity_count=usage.top_cut_known_decks,
             )
         ),
+        archetype_concentration=(
+            FeatureObservation.unknown()
+            if usage.archetype_concentration is None
+            else FeatureObservation.known(
+                usage.archetype_concentration, support=usage.labelled_deck_count
+            )
+        ),
+        archetype_adoption=(
+            FeatureObservation.known(
+                usage.archetype_deck_count / home,
+                support=usage.archetype_deck_count,
+                opportunity_count=home,
+            )
+            if home
+            else FeatureObservation.unknown()
+        ),
         field_win_rate=field.win_rate,
         field_top_cut_rate=field.top_cut_rate,
+        field_archetype_concentration=field.archetype_concentration,
         deck_count=usage.deck_count,
         event_count=usage.event_count,
     )

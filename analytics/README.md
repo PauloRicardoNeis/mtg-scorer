@@ -125,6 +125,13 @@ row counts and that every method scored every scored card. See the
 [runbook](../docs/local-catalog.md#full-catalog-import-worker-and-administration)
 for roles and commands.
 
+`score-overall` (`publish/overall_run.py`) combines one run file per format into the
+overall run: each card's constructed score in every format, weighted by that
+format's decklists and shrunk toward the median (`scoring/overall.py`; see the
+[measurement contract](../docs/measurement-contract.md#overall-grade)). Its file
+satisfies [`contracts/overall-run.schema.json`](../contracts/overall-run.schema.json),
+and `publish-scores` publishes it under the format name "Overall" like any other run.
+
 ## Scoring saved Wizards Pro Tour coverage
 
 `score-wizards` does the same for Pro Tours saved by

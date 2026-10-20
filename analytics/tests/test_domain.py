@@ -193,6 +193,26 @@ RETRIEVED = datetime(2026, 8, 28, tzinfo=UTC)
             id="deck-blank-archetype",
         ),
         pytest.param(
+            lambda: DeckEntry(
+                provenance("deck-1"),
+                "event-1",
+                (DeckCard("oracle-1", "Example", 1), DeckCard("oracle-2", "Other", 1)),
+                commanders=("oracle-2", "oracle-1"),
+            ),
+            "commanders must be sorted and distinct",
+            id="deck-unsorted-commanders",
+        ),
+        pytest.param(
+            lambda: DeckEntry(
+                provenance("deck-1"),
+                "event-1",
+                (DeckCard("oracle-1", "Example", 1),),
+                commanders=("oracle-2",),
+            ),
+            "every commander must be one of the deck's cards",
+            id="deck-commander-not-in-deck",
+        ),
+        pytest.param(
             lambda: Tournament(
                 provenance(), date(2026, 8, 1), "Modern", CoverageProfile(), top_cut_size=-1
             ),

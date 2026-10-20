@@ -62,7 +62,8 @@ class RankingControllerTests {
             null,
             null,
             null,
-            List.of());
+            List.of(),
+            null);
     when(rankings.rankings(query.capture()))
         .thenReturn(
             new RankingPage(
@@ -81,6 +82,7 @@ class RankingControllerTests {
                 null,
                 0,
                 List.of(),
+                null,
                 List.of()));
 
     mvc.perform(get("/api/v1/rankings").param("color", "R").param("color", "C"))
@@ -116,8 +118,10 @@ class RankingControllerTests {
     when(compare.compare(query.capture()))
         .thenReturn(
             new ComparePage(
-                List.of(new CompareFormat("Modern", RUN, 667, 2)),
-                List.of(new CompareFormat("Modern", RUN, 667, 2)),
+                "signature-score",
+                List.of(new CompareFormat("Modern", RUN, 667, 2, 120)),
+                List.of(new CompareFormat("Modern", RUN, 667, 2, 120)),
+                List.of(new RankedFormat("Overall", "topdeck", RUN, 92506, null)),
                 null,
                 0,
                 0,
@@ -131,17 +135,24 @@ class RankingControllerTests {
             get("/api/v1/rankings/compare")
                 .param("format", "Modern")
                 .param("format", "Legacy")
+                .param("method", "signature-score")
                 .param("every", "true"))
         .andExpect(status().isOk())
+        .andExpect(jsonPath("$.method_id").value("signature-score"))
         .andExpect(jsonPath("$.formats[0].format_name").value("Modern"))
+        .andExpect(jsonPath("$.formats[0].scored_cards").value(120))
         .andExpect(jsonPath("$.every").value(true));
 
     assertThat(query.getValue().formats()).containsExactly("Modern", "Legacy");
+    assertThat(query.getValue().method()).isEqualTo("signature-score");
   }
 
   @Test
   void anUnknownCompareParameterIsAProblemBeforeTheServiceRuns() throws Exception {
     mvc.perform(get("/api/v1/rankings/compare").param("view", "risers"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("invalid_query"));
+    mvc.perform(get("/api/v1/rankings/compare").param("method", "max-ratio"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("invalid_query"));
 

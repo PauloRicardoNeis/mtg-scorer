@@ -3,6 +3,7 @@ package io.mtgscorer.api.rankings;
 import static io.mtgscorer.api.rankings.RankingModels.*;
 
 import io.mtgscorer.api.catalog.CatalogSql;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,17 +27,26 @@ class RankingRepository {
     this.mapper = mapper;
   }
 
-  /** The stored value each sort orders by; ties fall back to name, then oracle id. */
+  /** Score per dollar; null when either side is unknown. */
+  private static final String VALUE = "r.score/pr.usd";
+
+  /**
+   * The stored value each sort orders by; ties fall back to name, then oracle id. Win rate orders
+   * by its gap to the field: the same order within a format's run, and the only one an overall run
+   * has, since win rates of one-on-one and multiplayer formats are not pooled.
+   */
   private static final Map<String, String> ORDER =
       Map.of(
           "score", "r.score",
           "decks", "r.deck_count",
           "top_cuts", "r.top_cut_count",
           "name", "r.name",
-          "win_rate", "r.win_rate",
+          "win_rate", "r.win_rate_delta",
           "top_cut_lift", "r.top_cut_lift",
           "trend", "r.share_delta",
-          "movement", "prev.ranking-r.ranking");
+          "movement", "prev.ranking-r.ranking",
+          "price", "pr.usd",
+          "value", VALUE);
 
   static String orderBy(RankingQuery query) {
     String direction = query.order().equals("asc") ? "ASC" : "DESC";
@@ -84,8 +94,15 @@ class RankingRepository {
         'series_period_days',r.summary->'cohort'->'series'->'period_days',
         'series_decks',r.summary->'cohort'->'series'->'decks',
         'methods',(SELECT jsonb_agg(jsonb_build_object('method_id',m.method_id,'method_version',m.method_version,
-          'label',m.label,'description',m.description,'outputs',to_jsonb(m.outputs)) ORDER BY m.method_id)
-          FROM scores.published_score_run_method m WHERE m.score_run_id=r.score_run_id)
+          'label',m.label,'description',m.description,'outputs',to_jsonb(m.outputs),
+          'scored_cards',(SELECT count(*) FROM scores.published_card_score s
+            WHERE s.score_run_id=m.score_run_id AND s.method_id=m.method_id
+              AND s.output=m.outputs[1] AND s.value IS NOT NULL)) ORDER BY m.method_id)
+          FROM scores.published_score_run_method m WHERE m.score_run_id=r.score_run_id),
+        'components',(SELECT jsonb_agg(jsonb_build_object('format_name',c->>'format_name',
+            'score_run_id',c->>'score_run_id','decks',(c->>'decks')::int,
+            'weight',(c->>'weight')::float8) ORDER BY c->>'format_name')
+          FROM jsonb_array_elements(r.summary->'components') c)
       )::text FROM scores.published_score_run r WHERE r.score_run_id=:run
       """,
             Map.of("run", scoreRun),
@@ -163,6 +180,19 @@ class RankingRepository {
         .orElse(null);
   }
 
+  /** When the source last refreshed the active prices, if any are published. */
+  OffsetDateTime pricesUpdatedAt() {
+    return jdbc
+        .queryForList(
+            "SELECT s.source_updated_at FROM prices.active_price_snapshot a"
+                + " JOIN prices.price_snapshot s USING(price_snapshot_id)",
+            Map.of(),
+            OffsetDateTime.class)
+        .stream()
+        .findFirst()
+        .orElse(null);
+  }
+
   int maxDeckCount(String scoreRun) {
     Integer most =
         jdbc.queryForObject(
@@ -232,6 +262,9 @@ class RankingRepository {
         + " LEFT JOIN LATERAL "
         + CatalogSql.SHOWN
         + " shown ON true"
+        + " LEFT JOIN prices.active_price_snapshot ap ON true"
+        + " LEFT JOIN prices.card_price pr"
+        + " ON pr.price_snapshot_id=ap.price_snapshot_id AND pr.oracle_id=r.oracle_id"
         + (where.isEmpty() ? "" : " WHERE " + String.join(" AND ", where));
   }
 
@@ -269,6 +302,20 @@ class RankingRepository {
        FROM scores.published_score_run_card_archetype a
        WHERE a.score_run_id=r.score_run_id AND a.oracle_id=r.oracle_id)""";
 
+  /**
+   * In an overall run, the card's stored score in each run it combines, best first; the run's
+   * summary names each component's run, method and output. Null for a format's own run.
+   */
+  private static final String FORMATS =
+      """
+      (SELECT jsonb_agg(jsonb_build_object('format_name',comp->>'format_name','score',cs.value)
+          ORDER BY cs.value DESC,comp->>'format_name')
+       FROM jsonb_array_elements((SELECT summary->'components' FROM scores.published_score_run
+         WHERE score_run_id=:run)) comp
+       JOIN scores.published_card_score cs ON cs.score_run_id=comp->>'score_run_id'
+         AND cs.method_id=comp->>'method_id' AND cs.output=comp->>'output'
+         AND cs.oracle_id=r.oracle_id AND cs.value IS NOT NULL)""";
+
   List<RankedCard> page(
       String scoreRun, String previous, String method, String output, RankingQuery query) {
     Map<String, Object> args = new HashMap<>();
@@ -296,7 +343,11 @@ class RankingRepository {
             + " FROM catalog.published_catalog_printing p"
             + " WHERE p.catalog_snapshot_id=c.catalog_snapshot_id AND p.oracle_id=c.oracle_id "
             + CatalogSql.PREVIEW_ORDER
-            + "))::text"
+            + "),'price_usd',pr.usd,'score_per_usd',"
+            + VALUE
+            + ",'formats',"
+            + FORMATS
+            + ")::text"
             + from
             + " ORDER BY "
             + orderBy(query)

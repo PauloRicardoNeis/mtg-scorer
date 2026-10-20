@@ -15,7 +15,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import ClassVar
 
-from .base import CardScore, ScoreContext, ScoreRun, ScoringInput, build_run, config_fingerprint
+from .base import (
+    CardScore,
+    ScoreContext,
+    ScoreRun,
+    ScoringInput,
+    build_run,
+    config_fingerprint,
+    percentiles,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,23 +50,6 @@ class ConstructedConfig:
     @property
     def fingerprint(self) -> str:
         return config_fingerprint(self)
-
-
-def _percentiles(values: dict[str, float]) -> dict[str, float]:
-    """Mid-rank percentiles in (0, 1); ties share their average rank."""
-
-    ordered = sorted(values.items(), key=lambda item: (item[1], item[0]))
-    result: dict[str, float] = {}
-    start = 0
-    while start < len(ordered):
-        end = start
-        while end + 1 < len(ordered) and ordered[end + 1][1] == ordered[start][1]:
-            end += 1
-        rank = (start + end) / 2 + 0.5
-        for card_id, _ in ordered[start : end + 1]:
-            result[card_id] = rank / len(ordered)
-        start = end + 1
-    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,9 +107,9 @@ class ConstructedMethod:
                 share[card.card_id] = features.incidence.value
 
         components = (
-            (config.win_rate_weight, _percentiles(win_delta)),
-            (config.top_cut_weight, _percentiles(cut_lift)),
-            (config.share_weight, _percentiles(share)),
+            (config.win_rate_weight, percentiles(win_delta)),
+            (config.top_cut_weight, percentiles(cut_lift)),
+            (config.share_weight, percentiles(share)),
         )
         blend: dict[str, float] = {}
         for card in cards:
@@ -130,7 +121,7 @@ class ConstructedMethod:
             total = sum(weight for weight, _ in known)
             if total:
                 blend[card.card_id] = sum(weight * rank for weight, rank in known) / total
-        final = _percentiles(blend)
+        final = percentiles(blend)
 
         def rounded(value: float | None, digits: int) -> float | None:
             return None if value is None else round(value, digits)

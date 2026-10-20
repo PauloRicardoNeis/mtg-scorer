@@ -9,6 +9,8 @@ import {
   TopCutLift,
   Trend,
   WinRate,
+  defaultMethod,
+  isGraded,
   percentile,
   shares,
   trendLabel,
@@ -32,6 +34,31 @@ function card(overrides: Partial<RankedCard>): RankedCard {
     ...overrides,
   } as RankedCard;
 }
+
+describe("isGraded and defaultMethod", () => {
+  const methods = (...ids: string[]) =>
+    ({
+      methods: ids.map((method_id) => ({ method_id })),
+    }) as RankingPage["score_run"];
+
+  it("grades the percentile scores and not relative volume", () => {
+    expect(isGraded("constructed-score")).toBe(true);
+    expect(isGraded("signature-score")).toBe(true);
+    expect(isGraded("max-ratio")).toBe(false);
+  });
+
+  it("defaults to the constructed score, then volume, then the run's first", () => {
+    expect(
+      defaultMethod(
+        methods("max-ratio", "signature-score", "constructed-score"),
+      ),
+    ).toBe("constructed-score");
+    expect(defaultMethod(methods("signature-score", "max-ratio"))).toBe(
+      "max-ratio",
+    );
+    expect(defaultMethod(methods("foundation"))).toBe("foundation");
+  });
+});
 
 describe("GradeRing", () => {
   it.each([

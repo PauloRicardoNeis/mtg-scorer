@@ -3,15 +3,18 @@ import {
   ago,
   count,
   dateWindow,
+  dateWithYear,
   deltaTone,
   grade,
   gradeTone,
   lift,
   liftTone,
   movement,
+  perDollar,
   percent,
   share,
   signed,
+  usd,
   windowLabel,
 } from "./format";
 
@@ -83,6 +86,31 @@ describe("lift", () => {
 
   it("uses the true minus sign for negative ratios", () => {
     expect(lift(-0.5)).toBe(`${MINUS}0.50×`);
+  });
+});
+
+describe("usd", () => {
+  it("shows dollars and cents with thousands separators", () => {
+    expect(usd(0.6)).toBe("$0.60");
+    expect(usd(0.05)).toBe("$0.05");
+    expect(usd(1125.91)).toBe("$1,125.91");
+  });
+});
+
+describe("perDollar", () => {
+  it("shows whole numbers from 100 and three figures below", () => {
+    expect(perDollar(1666.67)).toBe("1,667");
+    expect(perDollar(166.67)).toBe("167");
+    expect(perDollar(41.234)).toBe("41.2");
+    expect(perDollar(2.2711)).toBe("2.27");
+    expect(perDollar(0.0621)).toBe("0.0621");
+  });
+});
+
+describe("dateWithYear", () => {
+  it("names an instant's UTC day", () => {
+    expect(dateWithYear("2026-09-27T21:05:46.301Z")).toBe("Sep 27, 2026");
+    expect(dateWithYear("2026-09-27T23:59:59-03:00")).toBe("Sep 28, 2026");
   });
 });
 

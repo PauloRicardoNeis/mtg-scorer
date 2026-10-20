@@ -2,6 +2,7 @@ package io.mtgscorer.api.rankings;
 
 import static io.mtgscorer.api.rankings.RankingModels.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -72,7 +73,8 @@ class RankingRepositoryTests {
 
   @Test
   void aRunSummaryIsReadFromItsPublishedJson() throws Exception {
-    when(jdbc.query(anyString(), eq(Map.of("run", RUN)), runRows.capture())).thenReturn(List.of());
+    when(jdbc.query(sql.capture(), eq(Map.of("run", RUN)), runRows.capture()))
+        .thenReturn(List.of());
 
     assertThat(repository.run(RUN)).isEmpty();
     when(row.getString(1))
@@ -86,7 +88,7 @@ class RankingRepositoryTests {
              "series_starts_on":"2025-09-06","series_period_days":30,
              "series_decks":[0,0,0,0,0,0,5,0,0,0,0,0],
              "methods":[{"method_id":"max-ratio","method_version":"max-ratio-v1","label":"Relative volume",
-               "description":"Count ÷ max.","outputs":["max_ratio"]}]}
+               "description":"Count ÷ max.","outputs":["max_ratio"],"scored_cards":0}]}
             """
                 .formatted(RUN));
     var summary = runRows.getValue().mapRow(row, 0);
@@ -100,8 +102,34 @@ class RankingRepositoryTests {
     assertThat(summary.series_starts_on()).isEqualTo(LocalDate.of(2025, 9, 6));
     assertThat(summary.series_decks()).hasSize(12);
     assertThat(summary.methods())
-        .extracting(ScoreMethod::outputs)
-        .containsExactly(List.of("max_ratio"));
+        .extracting(ScoreMethod::outputs, ScoreMethod::scored_cards)
+        .containsExactly(tuple(List.of("max_ratio"), 0));
+    // A method's scored cards count only its first output's known values.
+    assertThat(sql.getValue()).contains("s.output=m.outputs[1] AND s.value IS NOT NULL");
+  }
+
+  @Test
+  void anOverallRunListsTheFormatRunsItCombines() throws Exception {
+    repository.run(RUN);
+    verify(jdbc).query(sql.capture(), eq(Map.of("run", RUN)), runRows.capture());
+    assertThat(sql.getValue()).contains("jsonb_array_elements(r.summary->'components')");
+    when(row.getString(1))
+        .thenReturn(
+            """
+            {"score_run_id":"%s","source":"topdeck","format_name":"Overall",
+             "window_starts_on":"2024-01-01","window_ends_before":"2026-10-01",
+             "published_at":"2026-10-20T01:02:03Z","attribution":"TopDeck",
+             "events":3660,"players":103177,"decks":92506,"top_cut_decks":20582,"scored_cards":21657,
+             "matches":113468,"players_per_game":null,"field_win_rate":null,"field_top_cut_rate":null,
+             "series_starts_on":null,"series_period_days":null,"series_decks":null,"methods":[],
+             "components":[{"format_name":"Legacy","score_run_id":"%s","decks":2936,"weight":0.9215}]}
+            """
+                .formatted(RUN, PREVIOUS));
+
+    var summary = runRows.getValue().mapRow(row, 0);
+
+    assertThat(summary.components())
+        .containsExactly(new RunComponent("Legacy", PREVIOUS, 2936, 0.9215));
   }
 
   @Test
@@ -182,7 +210,8 @@ class RankingRepositoryTests {
             null,
             null,
             null,
-            List.of());
+            List.of(),
+            null);
     when(jdbc.queryForList(sql.capture(), args.capture(), eq(String.class)))
         .thenReturn(List.of(PREVIOUS))
         .thenReturn(List.of());
@@ -289,17 +318,19 @@ class RankingRepositoryTests {
         Map.of(
                 "score", "r.score DESC NULLS LAST,r.name,r.oracle_id",
                 "decks", "r.deck_count DESC NULLS LAST,r.name,r.oracle_id",
-                "win_rate", "r.win_rate DESC NULLS LAST,r.name,r.oracle_id",
+                "win_rate", "r.win_rate_delta DESC NULLS LAST,r.name,r.oracle_id",
                 "top_cut_lift", "r.top_cut_lift DESC NULLS LAST,r.name,r.oracle_id",
                 "trend", "r.share_delta DESC NULLS LAST,r.name,r.oracle_id",
                 "movement", "prev.ranking-r.ranking DESC NULLS LAST,r.name,r.oracle_id",
+                "price", "pr.usd DESC NULLS LAST,r.name,r.oracle_id",
+                "value", "r.score/pr.usd DESC NULLS LAST,r.name,r.oracle_id",
                 "name", "r.name ASC,r.oracle_id")
             .entrySet())
       assertThat(RankingRepository.orderBy(query("sort", expected.getKey())))
           .as(expected.getKey())
           .isEqualTo(expected.getValue());
     assertThat(RankingRepository.orderBy(query("sort", "win_rate", "order", "asc")))
-        .isEqualTo("r.win_rate ASC NULLS LAST,r.name,r.oracle_id");
+        .isEqualTo("r.win_rate_delta ASC NULLS LAST,r.name,r.oracle_id");
     assertThat(RankingRepository.orderBy(query("sort", "name", "order", "desc")))
         .isEqualTo("r.name DESC,r.oracle_id");
   }
@@ -309,7 +340,10 @@ class RankingRepositoryTests {
     repository.page(RUN, null, "max-ratio", "max_ratio", query("limit", "10", "offset", "20"));
     verify(jdbc).query(sql.capture(), args.capture(), cardRows.capture());
     assertThat(args.getValue()).contains(Map.entry("limit", 10), Map.entry("offset", 20));
-    assertThat(sql.getValue()).contains("ORDER BY r.score DESC NULLS LAST");
+    assertThat(sql.getValue())
+        .contains("ORDER BY r.score DESC NULLS LAST")
+        .contains("LEFT JOIN prices.active_price_snapshot ap ON true")
+        .contains("pr.price_snapshot_id=ap.price_snapshot_id AND pr.oracle_id=r.oracle_id");
     when(row.getString(1))
         .thenReturn(
             """
@@ -324,7 +358,8 @@ class RankingRepositoryTests {
              "preview_printing":{"scryfall_id":"10000000-0000-4000-8000-000000000001","set_code":"m11",
                "set_name":"Magic 2011","collector_number":"149","rarity":"common",
                "released_on":"2010-07-16","language":"en","games":["paper"],
-               "source_uri":"https://scryfall.com/card/m11/149","images":[]}}
+               "source_uri":"https://scryfall.com/card/m11/149","images":[]},
+             "price_usd":0.6,"score_per_usd":166.66666666666666}
             """
                 .formatted(BOLT));
 
@@ -338,6 +373,8 @@ class RankingRepositoryTests {
     assertThat(card.archetypes()).containsExactly(new ArchetypeShare("Burn", 8, List.of("R")));
     assertThat(card.color_identity()).containsExactly("R");
     assertThat(card.preview_printing()).extracting(Printing::set_code).isEqualTo("m11");
+    assertThat(card.price_usd()).isEqualTo(0.6);
+    assertThat(card.score_per_usd()).isEqualTo(166.66666666666666);
   }
 
   @Test
@@ -353,7 +390,7 @@ class RankingRepositoryTests {
              "win_rate":null,"win_rate_delta":null,"win_rate_ci95":null,"games":null,
              "top_cut_lift":null,"share_delta":null,"avg_copies":null,"series_decks":null,
              "archetypes":[],"archetype_count":null,"mana_cost":null,"type_line":null,
-             "color_identity":null,"preview_printing":null}
+             "color_identity":null,"preview_printing":null,"price_usd":null,"score_per_usd":null}
             """
                 .formatted(BOLT));
 
@@ -365,6 +402,50 @@ class RankingRepositoryTests {
     assertThat(card.archetypes()).isEmpty();
     assertThat(card.color_identity()).isNull();
     assertThat(card.preview_printing()).isNull();
+    assertThat(card.price_usd()).isNull();
+    assertThat(card.score_per_usd()).isNull();
+  }
+
+  @Test
+  void anOverallRunGradesEachCardInEveryFormatItCombines() throws Exception {
+    repository.page(RUN, null, "overall-grade", "score", query());
+    verify(jdbc).query(sql.capture(), anyMap(), cardRows.capture());
+    // Each grade is the component run's stored score, by the method and output it names.
+    assertThat(sql.getValue())
+        .contains("cs.score_run_id=comp->>'score_run_id'")
+        .contains("cs.method_id=comp->>'method_id' AND cs.output=comp->>'output'");
+    when(row.getString(1))
+        .thenReturn(
+            """
+            {"rank":1,"rank_change":null,"oracle_id":"%s","name":"Lightning Bolt","score":99.5,
+             "deck_count":900,"event_count":300,"top_cut_count":null,"top_cut_known_decks":0,
+             "archetype_label":null,"archetype_deck_count":0,"labelled_deck_count":0,
+             "win_rate":null,"win_rate_delta":0.02,"win_rate_ci95":null,"games":4000,
+             "top_cut_lift":null,"share_delta":null,"avg_copies":3.5,"series_decks":null,
+             "archetypes":[],"archetype_count":null,"mana_cost":"{R}","type_line":"Instant",
+             "color_identity":["R"],"preview_printing":null,"price_usd":null,"score_per_usd":null,
+             "formats":[{"format_name":"Pauper","score":98.0},{"format_name":"Modern","score":41.0}]}
+            """
+                .formatted(BOLT));
+
+    RankedCard card = cardRows.getValue().mapRow(row, 0);
+
+    assertThat(card.formats())
+        .containsExactly(new FormatGrade("Pauper", 98.0), new FormatGrade("Modern", 41.0));
+  }
+
+  @Test
+  void pricesAreDatedByTheActiveSnapshotWhenOneIsPublished() {
+    var updated = OffsetDateTime.parse("2026-09-27T21:05:46.301Z");
+    when(jdbc.queryForList(anyString(), eq(Map.of()), eq(OffsetDateTime.class)))
+        .thenReturn(List.of())
+        .thenReturn(List.of(updated));
+
+    assertThat(repository.pricesUpdatedAt()).isNull();
+    assertThat(repository.pricesUpdatedAt()).isEqualTo(updated);
+    verify(jdbc, org.mockito.Mockito.times(2))
+        .queryForList(sql.capture(), eq(Map.of()), eq(OffsetDateTime.class));
+    assertThat(sql.getValue()).contains("FROM prices.active_price_snapshot");
   }
 
   @Test

@@ -167,6 +167,8 @@ def test_every_registered_method_scores_the_population(tmp_path) -> None:
     assert runs["max-ratio"]["label"] == MaxRatioMethod.label
     assert set(scores(runs["foundation"], "staple")) == {BOLT, COUNTERSPELL}
     assert scores(runs["constructed-score"], "score") == {BOLT: 75.0, COUNTERSPELL: 25.0}
+    # Every Counterspell deck is Control; Bolt splits between Burn and Control.
+    assert scores(runs["signature-score"], "score") == {BOLT: 25.0, COUNTERSPELL: 75.0}
 
 
 def test_writing_names_the_file_after_its_identity(tmp_path) -> None:
@@ -250,9 +252,9 @@ def test_the_database_header_counts_every_row_it_will_load(tmp_path) -> None:
     )
     assert header["row_counts"] == {
         "cards": 3,
-        "methods": 3,
-        "scores": 16,
-        "inputs": 12,
+        "methods": 4,
+        "scores": 18,
+        "inputs": 24,
         "card_archetypes": 5,
         "archetypes": 2,
     }

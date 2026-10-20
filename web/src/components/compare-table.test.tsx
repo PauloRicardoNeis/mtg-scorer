@@ -67,19 +67,29 @@ const unlisted: ComparedCard = {
 };
 
 const page: ComparePage = {
+  method_id: "constructed-score",
+  active_formats: [],
   formats: [
-    { format_name: "EDH", score_run_id: "a", decks: 100, players_per_game: 4 },
+    {
+      format_name: "EDH",
+      score_run_id: "a",
+      decks: 100,
+      players_per_game: 4,
+      scored_cards: 80,
+    },
     {
       format_name: "Modern",
       score_run_id: "b",
       decks: 50,
       players_per_game: 2,
+      scored_cards: 40,
     },
     {
       format_name: "Legacy",
       score_run_id: "c",
       decks: 50,
       players_per_game: null,
+      scored_cards: 40,
     },
   ],
   available: [],

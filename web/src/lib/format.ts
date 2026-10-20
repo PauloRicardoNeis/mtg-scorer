@@ -29,6 +29,26 @@ export function lift(ratio: number): string {
   return `${decimal(ratio, 2)}×`;
 }
 
+const dollars = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
+
+/** A USD price in cents: 1125.9 → "$1,125.90". */
+export function usd(value: number): string {
+  return dollars.format(value);
+}
+
+const wholes = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const significant = new Intl.NumberFormat("en-US", {
+  maximumSignificantDigits: 3,
+});
+
+/** Score per dollar: whole from 100 ("1,667"), else three figures ("41.2", "0.0621"). */
+export function perDollar(value: number): string {
+  return (value >= 100 ? wholes : significant).format(value);
+}
+
 /** Places gained (positive) or lost since the previous period: "▲ 3", "▼ 2", "—". */
 export function movement(places: number): string {
   return places > 0 ? `▲ ${places}` : places < 0 ? `▼ ${-places}` : "—";
@@ -117,6 +137,11 @@ export function windowLabel(
   return days <= 120
     ? `Last ${days} days`
     : `Since ${dayWithYear.format(new Date(`${startsOn}T00:00:00Z`))}`;
+}
+
+/** An instant's UTC day with its year: "Sep 27, 2026". */
+export function dateWithYear(instant: string): string {
+  return dayWithYear.format(new Date(instant));
 }
 
 const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });

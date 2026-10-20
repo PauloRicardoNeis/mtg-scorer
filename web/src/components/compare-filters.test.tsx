@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { router } from "@/test/navigation";
 import { CompareFilters, type PickOption } from "./compare-filters";
+import type { GradingOption } from "./ranking-filters";
 
 const formats: PickOption[] = [
   { value: "Modern", label: "Modern", checked: true },
@@ -15,11 +16,16 @@ const stats: PickOption[] = [
 const summaries: PickOption[] = [
   { value: "best", label: "Best format", checked: true },
 ];
+const gradings: GradingOption[] = [
+  { value: "", label: "Constructed score", disabled: false },
+  { value: "signature-score", label: "Signature score", disabled: false },
+];
 
 function filters(
   query = "",
   every = false,
   options = { formats, stats, summaries },
+  method = "",
 ) {
   return (
     <CompareFilters
@@ -28,9 +34,13 @@ function filters(
       summaries={options.summaries}
       every={every}
       query={query}
+      gradings={gradings}
+      method={method}
     />
   );
 }
+
+const grading = () => screen.getByRole("combobox", { name: "Grading" });
 
 /** The query of the address the filters replaced, as pairs. */
 function replaced(): [string, string][] {
@@ -92,6 +102,54 @@ describe("CompareFilters", () => {
     ]);
   });
 
+  it("offers the gradings and applies one, keeping every other choice", async () => {
+    const user = userEvent.setup();
+    render(filters("q=bolt&sort=Modern:grade&color=R"));
+    expect(
+      within(grading())
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Constructed score", "Signature score"]);
+    expect(grading()).toHaveValue("");
+    await user.selectOptions(grading(), "signature-score");
+    expect(replaced()).toEqual([
+      ["picked", "1"],
+      ["q", "bolt"],
+      ["sort", "Modern:grade"],
+      ["format", "Modern"],
+      ["stat", "grade"],
+      ["summary", "best"],
+      ["method", "signature-score"],
+      ["color", "R"],
+    ]);
+  });
+
+  it("leaves the default grading out of the address", async () => {
+    const user = userEvent.setup();
+    render(
+      filters("", false, { formats, stats, summaries }, "signature-score"),
+    );
+    expect(grading()).toHaveValue("signature-score");
+    await user.selectOptions(grading(), "");
+    expect(replaced().map(([key]) => key)).not.toContain("method");
+  });
+
+  it("keeps a grading it does not offer as a choice", () => {
+    render(
+      <CompareFilters
+        formats={formats}
+        stats={stats}
+        summaries={summaries}
+        every={false}
+        query=""
+        method="signature-score"
+      />,
+    );
+    expect(screen.queryByRole("combobox", { name: "Grading" })).toBeNull();
+    fireEvent.submit(screen.getByRole("form", { name: "Compare settings" }));
+    expect(replaced()).toContainEqual(["method", "signature-score"]);
+  });
+
   it("turns on the every-format switch", async () => {
     const user = userEvent.setup();
     render(filters());
@@ -112,12 +170,21 @@ describe("CompareFilters", () => {
   it("follows the address when a preset or another link changes the choices", () => {
     const { rerender } = render(filters("color=R"));
     rerender(
-      filters("color=U", true, {
-        formats: formats.map((f) => ({ ...f, checked: f.value === "Legacy" })),
-        stats: stats.map((s) => ({ ...s, checked: true })),
-        summaries: summaries.map((s) => ({ ...s, checked: false })),
-      }),
+      filters(
+        "color=U",
+        true,
+        {
+          formats: formats.map((f) => ({
+            ...f,
+            checked: f.value === "Legacy",
+          })),
+          stats: stats.map((s) => ({ ...s, checked: true })),
+          summaries: summaries.map((s) => ({ ...s, checked: false })),
+        },
+        "signature-score",
+      ),
     );
+    expect(grading()).toHaveValue("signature-score");
     expect(screen.getByRole("checkbox", { name: "Modern" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Legacy" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Meta share" })).toBeChecked();

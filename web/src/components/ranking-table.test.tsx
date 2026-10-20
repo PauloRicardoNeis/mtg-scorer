@@ -11,6 +11,7 @@ const constructed = {
   label: "Constructed score",
   description: "Blends win rate, top-cut conversion and meta share.",
   outputs: ["score"],
+  scored_cards: 200,
 };
 const volume = {
   method_id: "max-ratio",
@@ -18,6 +19,7 @@ const volume = {
   label: "Relative volume",
   description: "Decks with the card, against the most-played card.",
   outputs: ["max_ratio"],
+  scored_cards: 200,
 };
 
 const run: RankingPage["score_run"] = {
@@ -41,6 +43,7 @@ const run: RankingPage["score_run"] = {
   series_period_days: 30,
   series_decks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 5],
   methods: [constructed, volume],
+  components: null,
 };
 
 function printing(images: Printing["images"]): Printing {
@@ -71,11 +74,14 @@ function card(overrides: Partial<RankedCard>): RankedCard {
     color_identity: ["R"],
     deck_count: 4,
     event_count: 2,
+    formats: null,
     games: 120,
     labelled_deck_count: 4,
     mana_cost: "{R}",
     name: "Lightning Bolt",
     oracle_id: "bolt",
+    price_usd: 0.6,
+    score_per_usd: 154.1666,
     preview_printing: printing([
       { face_index: null, artist: null, source_uri: "https://img/bolt.jpg" },
     ]),
@@ -118,6 +124,8 @@ const fire = card({
   win_rate_delta: null,
   win_rate_ci95: null,
   share_delta: null,
+  price_usd: null,
+  score_per_usd: null,
   preview_printing: printing([]),
 });
 const unlisted = card({
@@ -143,6 +151,8 @@ const sorts: Record<string, SortLink> = {
     order: "desc",
   },
   trend: { href: "/rankings?sort=trend", active: false, order: "desc" },
+  price: { href: "/rankings?sort=price", active: false, order: "desc" },
+  value: { href: "/rankings?sort=value", active: false, order: "desc" },
 };
 
 function table(
@@ -155,10 +165,16 @@ function table(
       run={run}
       method={method}
       graded={method === constructed}
-      labels={{ share: "Meta share", cut: "Top cut", trend: "12 mo" }}
+      labels={{
+        share: "Meta share",
+        cut: "Top cut",
+        trend: "12 mo",
+        value: method === constructed ? "Grade per $" : "Score per $",
+      }}
       sorts={sorts}
       maxDeckCount={8}
       catalogSnapshotId={catalog}
+      pricesUpdatedAt="2026-09-27T21:05:46.301Z"
       clearHref="/rankings?format=Modern"
       footer={<p role="status">1–3 of 3 ranked cards</p>}
     />
@@ -187,6 +203,8 @@ describe("RankingTable", () => {
       "#",
       "Card",
       expect.stringContaining("Grade"),
+      expect.stringContaining("Price"),
+      "Grade per $",
       "Win rate vs field",
       "Meta share",
       "Top cut",
@@ -202,7 +220,9 @@ describe("RankingTable", () => {
 
   it("sorts from the headers and marks the active one with its direction", () => {
     render(table([bolt]));
-    const grade = screen.getByRole("columnheader", { name: /Grade/ });
+    const grade = screen.getByRole("columnheader", {
+      name: /^Grade(?! per)/,
+    });
     expect(grade).toHaveAttribute("aria-sort", "descending");
     expect(within(grade).getByRole("link")).toHaveTextContent("Grade ↓");
     expect(within(grade).getByRole("link")).toHaveAttribute(
@@ -220,7 +240,7 @@ describe("RankingTable", () => {
 
   it("shows rank and movement, the grade ring and each performance number", () => {
     const { container } = render(table([bolt, fire, unlisted]));
-    const [rank, grade, win, share, cut, trend, archetype] =
+    const [rank, grade, , , win, share, cut, trend, archetype] =
       cells(/Lightning Bolt/);
     expect(rank).toHaveTextContent("1▲ 2Up 2 places");
     expect(within(grade).getByLabelText("Grade A+")).toHaveTextContent("A+");
@@ -243,7 +263,7 @@ describe("RankingTable", () => {
 
   it("keeps unknown numbers unknown rather than zero", () => {
     render(table([bolt, fire, unlisted]));
-    const [rank, grade, win, , cut, trend, archetype] = cells(/Fire/);
+    const [rank, grade, , , win, , cut, trend, archetype] = cells(/Fire/);
     expect(rank).toHaveTextContent("▼ 1Down 1 place");
     expect(within(grade).getByLabelText("Grade D")).toBeInTheDocument();
     expect(win).toHaveTextContent("Unknown");
@@ -255,6 +275,19 @@ describe("RankingTable", () => {
       within(cells(/Unlisted/)[1]).getByLabelText("No grade"),
     ).toBeInTheDocument();
     expect(row(/Unlisted/)).toHaveTextContent("Not in this catalog");
+  });
+
+  it("reads a price the API omits as unknown, never NaN", () => {
+    // An API from before prices sends neither field.
+    const { price_usd: _price, score_per_usd: _value, ...unpriced } = bolt;
+    render(table([unpriced as RankedCard]));
+    const [, , price, value] = cells(/Lightning Bolt/);
+    expect(price).toHaveTextContent("Unknown");
+    expect(value).toHaveTextContent("Unknown");
+    expect(preview().getByText("Price").nextElementSibling).toHaveTextContent(
+      "Unknown",
+    );
+    expect(row(/Lightning Bolt/)).not.toHaveTextContent("NaN");
   });
 
   it("shows a plain score without grades for other methods", () => {
@@ -275,7 +308,12 @@ describe("RankingTable", () => {
         run={run}
         method={volume}
         graded={false}
-        labels={{ share: "Inclusion", cut: "Top cut", trend: null }}
+        labels={{
+          share: "Inclusion",
+          cut: "Top cut",
+          trend: null,
+          value: "Score per $",
+        }}
         sorts={{
           win_rate: {
             href: "/rankings?sort=win_rate&order=asc",
@@ -285,6 +323,7 @@ describe("RankingTable", () => {
         }}
         maxDeckCount={8}
         catalogSnapshotId="snap-1"
+        pricesUpdatedAt={null}
         clearHref="/rankings?format=Modern"
         footer={null}
       />,
@@ -301,6 +340,36 @@ describe("RankingTable", () => {
     ).toHaveTextContent("Win rate vs field ↑");
     expect(cells(/Unlisted/)[1]).toHaveTextContent("Unknown");
     expect(preview().getByText("Inclusion")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Price" })).toBeNull();
+    expect(
+      screen.getByRole("columnheader", { name: "Score per $" }),
+    ).toBeInTheDocument();
+  });
+
+  it("prices each card and its grade per dollar, unknown without a price", async () => {
+    const user = userEvent.setup();
+    render(table([bolt, fire]));
+    const [, , price, value] = cells(/Lightning Bolt/);
+    expect(price).toHaveTextContent("$0.60");
+    expect(value).toHaveTextContent("154 per dollar");
+    expect(cells(/Fire/)[2]).toHaveTextContent("Unknown");
+    expect(cells(/Fire/)[3]).toHaveTextContent("Unknown");
+    expect(screen.getByRole("link", { name: "Price" })).toHaveAttribute(
+      "href",
+      "/rankings?sort=price",
+    );
+    expect(screen.getByRole("link", { name: "Grade per $" })).toHaveAttribute(
+      "href",
+      "/rankings?sort=value",
+    );
+    expect(preview().getByText("Price").nextElementSibling).toHaveTextContent(
+      "$0.60",
+    );
+    expect(
+      preview().getByText("Grade per $").nextElementSibling,
+    ).toHaveTextContent("154");
+    await user.hover(screen.getByRole("button", { name: "About prices" }));
+    expect(screen.getByRole("tooltip")).toHaveTextContent("As of Sep 27, 2026");
   });
 
   it("previews the leading label when the run names no archetype shares", () => {
@@ -442,6 +511,85 @@ describe("RankingTable", () => {
     expect(within(row(/Lightning Bolt/)).queryByRole("link")).toBeNull();
     await user.click(row(/Lightning Bolt/));
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("grades the overall run by format instead of trend and archetype", async () => {
+    const user = userEvent.setup();
+    const overallGrade = {
+      ...constructed,
+      method_id: "overall-grade",
+      method_version: "overall-grade-v1",
+      label: "Overall grade",
+    };
+    const staple = card({
+      win_rate: null,
+      win_rate_ci95: null,
+      win_rate_delta: 0.02,
+      deck_count: 18235,
+      archetypes: [],
+      formats: [
+        { format_name: "Legacy", score: 98.6 },
+        { format_name: "EDH", score: 91 },
+        { format_name: "Pauper", score: 72 },
+        { format_name: "Modern", score: 40 },
+      ],
+    });
+    render(
+      <RankingTable
+        items={[staple]}
+        run={{
+          ...run,
+          format_name: "Overall",
+          decks: 92506,
+          components: Array.from({ length: 15 }, (_, index) => ({
+            format_name: `Format ${index}`,
+            score_run_id: `run-${index}`,
+            decks: 100,
+            weight: 0.3,
+          })),
+          methods: [overallGrade],
+        }}
+        method={overallGrade}
+        graded
+        labels={{
+          share: "Decklists",
+          cut: "Top cut",
+          trend: null,
+          value: "Grade per $",
+        }}
+        sorts={sorts}
+        maxDeckCount={18235}
+        catalogSnapshotId="snap-1"
+        pricesUpdatedAt={null}
+        clearHref="/rankings?format=Overall"
+        footer={null}
+      />,
+    );
+    expect(
+      screen.getAllByRole("columnheader").map((header) => header.textContent),
+    ).toEqual([
+      "#",
+      "Card",
+      expect.stringContaining("Grade"),
+      expect.stringContaining("Price"),
+      "Grade per $",
+      "Vs field",
+      "Decklists",
+      "Top cut",
+      "Graded in",
+    ]);
+    const [, , , , vsField, decklists, , graded] = cells(/Lightning Bolt/);
+    // Only the gap to each format's own field is pooled, so no raw win rate shows.
+    expect(vsField).toHaveTextContent("+2.0%");
+    expect(vsField).not.toHaveTextContent("WR");
+    expect(decklists).toHaveTextContent("18,235");
+    expect(graded).toHaveTextContent("LegacyA+CommanderA++2 more formats");
+    await user.hover(row(/Lightning Bolt/));
+    expect(preview().getByText("Graded in")).toBeInTheDocument();
+    expect(preview().getByText("Modern")).toBeInTheDocument();
+    expect(preview().getByText("Formats").nextSibling).toHaveTextContent(
+      "4 of 15",
+    );
   });
 
   it("explains an empty page inside the table and drops the preview", () => {

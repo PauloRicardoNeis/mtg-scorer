@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -263,10 +263,14 @@ def _run(method: ScoreMethod, inputs: list[ScoringInput], context: ScoreContext)
     }
 
 
-def write_score_run(document: dict[str, Any], output_root: Path) -> Path:
+def write_score_run(
+    document: dict[str, Any],
+    output_root: Path,
+    validate: Callable[[dict[str, Any]], None] = validate_score_run,
+) -> Path:
     """Write ``<score_run_id>.json`` atomically; an identical rerun returns the same file."""
 
-    validate_score_run(document)
+    validate(document)
     output_root.mkdir(parents=True, exist_ok=True)
     destination = output_root / f"{document['score_run_id']}.json"
     if destination.exists():

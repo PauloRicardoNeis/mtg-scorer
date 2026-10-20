@@ -258,7 +258,7 @@
             "type": "integer"
           },
           "score": {
-            "description": "Constructed score, 0-100.",
+            "description": "The method's score, 0-100.",
             "format": "double",
             "type": [
               "number",
@@ -324,20 +324,34 @@
           },
           "score_run_id": {
             "type": "string"
+          },
+          "scored_cards": {
+            "description": "Cards the method scored in this run; 0 leaves the format out of the comparison, e.g. a signature score without archetype labels.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "decks",
           "format_name",
           "players_per_game",
-          "score_run_id"
+          "score_run_id",
+          "scored_cards"
         ],
         "type": "object"
       },
       "ComparePage": {
         "properties": {
+          "active_formats": {
+            "description": "Every active run, comparable or not, such as the overall run; the format bar lists them.",
+            "items": {
+              "$ref": "#/components/schemas/RankedFormat"
+            },
+            "type": "array"
+          },
           "available": {
-            "description": "Every format with a constructed score, comparable or not chosen.",
+            "description": "Every format whose active run published the method, compared or not; one the method scored no card in cannot be compared.",
             "items": {
               "$ref": "#/components/schemas/CompareFormat"
             },
@@ -370,6 +384,14 @@
             "minimum": 1,
             "type": "integer"
           },
+          "method_id": {
+            "description": "The method every compared format is graded by.",
+            "enum": [
+              "constructed-score",
+              "signature-score"
+            ],
+            "type": "string"
+          },
           "offset": {
             "format": "int32",
             "minimum": 0,
@@ -392,12 +414,14 @@
           }
         },
         "required": [
+          "active_formats",
           "available",
           "catalog_snapshot_id",
           "every",
           "formats",
           "items",
           "limit",
+          "method_id",
           "offset",
           "order",
           "sort",
@@ -517,6 +541,24 @@
           "name",
           "oracle_text",
           "type_line"
+        ],
+        "type": "object"
+      },
+      "FormatGrade": {
+        "properties": {
+          "format_name": {
+            "type": "string"
+          },
+          "score": {
+            "format": "double",
+            "maximum": 100,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "format_name",
+          "score"
         ],
         "type": "object"
       },
@@ -883,6 +925,16 @@
             "minimum": 1,
             "type": "integer"
           },
+          "formats": {
+            "description": "In an overall run, the card's score in each format it combines, best first; null for a format's own run.",
+            "items": {
+              "$ref": "#/components/schemas/FormatGrade"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "games": {
             "description": "Games behind the win rate.",
             "format": "int32",
@@ -920,6 +972,14 @@
             ],
             "description": "Null when the card is not in the active catalog."
           },
+          "price_usd": {
+            "description": "Cheapest USD market price among the card's playable paper printings; null without one or without published prices.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "rank": {
             "description": "Position by the selected score among all scored cards.",
             "format": "int64",
@@ -936,6 +996,14 @@
           },
           "score": {
             "description": "The selected output; null when the method could not score the card.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "score_per_usd": {
+            "description": "The selected output divided by the USD price; null without both.",
             "format": "double",
             "type": [
               "number",
@@ -1022,15 +1090,18 @@
           "color_identity",
           "deck_count",
           "event_count",
+          "formats",
           "games",
           "labelled_deck_count",
           "mana_cost",
           "name",
           "oracle_id",
           "preview_printing",
+          "price_usd",
           "rank",
           "rank_change",
           "score",
+          "score_per_usd",
           "series_decks",
           "share_delta",
           "top_cut_count",
@@ -1132,6 +1203,14 @@
               "null"
             ]
           },
+          "prices_updated_at": {
+            "description": "When the source last refreshed the published prices; null without any.",
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "score_run": {
             "$ref": "#/components/schemas/ScoreRunSummary"
           },
@@ -1174,12 +1253,42 @@
           "order",
           "output",
           "previous_score_run_id",
+          "prices_updated_at",
           "score_run",
           "sort",
           "total",
           "view",
           "view_counts",
           "windows"
+        ],
+        "type": "object"
+      },
+      "RunComponent": {
+        "properties": {
+          "decks": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "format_name": {
+            "type": "string"
+          },
+          "score_run_id": {
+            "type": "string"
+          },
+          "weight": {
+            "description": "How much the format counts in the overall grade, from its decklists.",
+            "format": "double",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "decks",
+          "format_name",
+          "score_run_id",
+          "weight"
         ],
         "type": "object"
       },
@@ -1239,6 +1348,12 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "scored_cards": {
+            "description": "Cards with a value for the method's first output; 0 when the method could not score this run, e.g. a signature score without archetype labels.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
@@ -1246,7 +1361,8 @@
           "label",
           "method_id",
           "method_version",
-          "outputs"
+          "outputs",
+          "scored_cards"
         ],
         "type": "object"
       },
@@ -1254,6 +1370,16 @@
         "properties": {
           "attribution": {
             "type": "string"
+          },
+          "components": {
+            "description": "The format runs an overall run combines, by format name; null for a format's own run.",
+            "items": {
+              "$ref": "#/components/schemas/RunComponent"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
           },
           "decks": {
             "description": "Published decks in the cohort.",
@@ -1371,6 +1497,7 @@
         },
         "required": [
           "attribution",
+          "components",
           "decks",
           "events",
           "field_top_cut_rate",
@@ -2364,7 +2491,7 @@
             }
           },
           {
-            "description": "score orders by the selected method's first output; movement by places gained since the previous run.",
+            "description": "score orders by the selected method's first output; movement by places gained since the previous run; price by the USD price; value by score per dollar.",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -2378,7 +2505,9 @@
                 "win_rate",
                 "top_cut_lift",
                 "trend",
-                "movement"
+                "movement",
+                "price",
+                "value"
               ],
               "type": "string"
             }
@@ -2513,7 +2642,7 @@
             }
           },
           {
-            "description": "Formats to compare; without one, every format with a constructed score.",
+            "description": "Formats to compare; without one, every format the method scored.",
             "explode": true,
             "in": "query",
             "name": "format",
@@ -2538,6 +2667,20 @@
               "maximum": 200,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "description": "The grading every format ranks by; a format it scored no card in is not compared.",
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "default": "constructed-score",
+              "enum": [
+                "constructed-score",
+                "signature-score"
+              ],
+              "type": "string"
             }
           },
           {
@@ -2637,7 +2780,7 @@
             "description": "Sanitized Problem Details with a stable code"
           }
         },
-        "summary": "Compare cards across the active runs of several formats by constructed score",
+        "summary": "Compare cards across the active runs of several formats by a graded score method",
         "tags": [
           "ranking-controller"
         ]

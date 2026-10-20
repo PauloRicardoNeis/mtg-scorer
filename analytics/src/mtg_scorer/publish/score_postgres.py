@@ -1,4 +1,5 @@
-"""Publish a score-run file to PostgreSQL; one connection holds the lock until promotion."""
+"""Publish a score-run or overall-run file to PostgreSQL; one connection holds the lock until
+promotion."""
 
 from __future__ import annotations
 
@@ -14,8 +15,9 @@ import psycopg
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
+from .overall_run import SCHEMA_VERSION as OVERALL_SCHEMA_VERSION
 from .score_run import results_sha256
-from .score_validation import validate_score_run
+from .score_validation import validate_overall_run, validate_score_run
 
 LOGGER = logging.getLogger(__name__)
 LOCK_ID = 724603
@@ -30,9 +32,62 @@ STAGING_TABLES = (
 )
 
 
+def _validate(document: dict[str, Any]) -> None:
+    if document.get("schema_version") == OVERALL_SCHEMA_VERSION:
+        validate_overall_run(document)
+    else:
+        validate_score_run(document)
+
+
+def _row_counts(document: dict[str, Any], archetypes: int) -> dict[str, int]:
+    return {
+        "cards": len(document["cards"]),
+        "methods": len(document["runs"]),
+        "scores": sum(len(s["values"]) for run in document["runs"] for s in run["scores"]),
+        "inputs": sum(len(s["inputs"]) for run in document["runs"] for s in run["scores"]),
+        "card_archetypes": sum(len(card["archetypes"]["top"]) for card in document["cards"]),
+        "archetypes": archetypes,
+    }
+
+
+def _overall_header(document: dict[str, Any]) -> dict[str, Any]:
+    """An overall run stores its totals where a format's run stores its cohort's, so both
+    read the same way; its components say which runs it combined."""
+
+    return {
+        **{
+            key: document[key]
+            for key in (
+                "score_run_id",
+                "schema_version",
+                "source",
+                "format_name",
+                "window_starts_on",
+                "window_ends_before",
+                "dataset_snapshot_id",
+                "parser_version",
+                "feature_pipeline_version",
+                "cohort_rules_hash",
+                "population_rule",
+                "attribution",
+            )
+        },
+        "summary": {
+            "cohort": {"totals": document["totals"]},
+            "population": document["population"],
+            "components": document["components"],
+            "method_identities": document["method_identities"],
+        },
+        "row_counts": _row_counts(document, 0),
+        "results_sha256": results_sha256(document),
+    }
+
+
 def score_run_header(document: dict[str, Any]) -> dict[str, Any]:
     """Everything about a run except its per-card rows, plus counts to verify the rows."""
 
+    if document["schema_version"] == OVERALL_SCHEMA_VERSION:
+        return _overall_header(document)
     rules = document["cohort"]["rules"]
     return {
         "score_run_id": document["score_run_id"],
@@ -53,14 +108,7 @@ def score_run_header(document: dict[str, Any]) -> dict[str, Any]:
             "raw_files": document["raw_files"],
             "method_identities": document["method_identities"],
         },
-        "row_counts": {
-            "cards": len(document["cards"]),
-            "methods": len(document["runs"]),
-            "scores": sum(len(s["values"]) for run in document["runs"] for s in run["scores"]),
-            "inputs": sum(len(s["inputs"]) for run in document["runs"] for s in run["scores"]),
-            "card_archetypes": sum(len(card["archetypes"]["top"]) for card in document["cards"]),
-            "archetypes": len(document["cohort"]["archetypes"]),
-        },
+        "row_counts": _row_counts(document, len(document["cohort"]["archetypes"])),
         "results_sha256": results_sha256(document),
     }
 
@@ -122,7 +170,7 @@ def _load_rows(connection: psycopg.Connection, document: dict[str, Any]) -> None
     with connection.cursor().copy(
         "COPY scores.score_run_archetype (score_run_id,label,deck_count,core_cards) FROM STDIN"
     ) as copy:
-        for archetype in document["cohort"]["archetypes"]:
+        for archetype in document.get("cohort", {}).get("archetypes", ()):
             copy.write_row(
                 (run_id, archetype["label"], archetype["deck_count"], archetype["core_cards"])
             )
@@ -166,7 +214,7 @@ def publish_score_run(
     """Validate the file before entering the database; failed attempts remain diagnosable."""
 
     document = json.loads(run_file.read_bytes())
-    validate_score_run(document)
+    _validate(document)
     header = score_run_header(document)
     run_id = header["score_run_id"]
     attempt = uuid4()

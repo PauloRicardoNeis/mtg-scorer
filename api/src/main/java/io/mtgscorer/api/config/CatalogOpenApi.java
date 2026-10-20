@@ -176,7 +176,7 @@ public class CatalogOpenApi {
     if (name.equals("sort"))
       parameter.description(
           "score orders by the selected method's first output; movement by places gained since"
-              + " the previous run.");
+              + " the previous run; price by the USD price; value by score per dollar.");
     if (name.equals("order"))
       parameter.description("Defaults to desc, except asc for name. Unknown values sort last.");
     if (name.equals("view"))
@@ -194,6 +194,10 @@ public class CatalogOpenApi {
               new ArraySchema()
                   .items(new StringSchema().pattern("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$"))
                   .maxItems(CompareQuery.MAX_FORMATS);
+          case "method" ->
+              new StringSchema()
+                  ._enum(CompareQuery.METHODS)
+                  ._default(CompareQuery.METHODS.getFirst());
           case "every" -> new BooleanSchema()._default(false);
           case "sort" ->
               new StringSchema()
@@ -216,9 +220,12 @@ public class CatalogOpenApi {
     Parameter parameter = new Parameter().name(name).in("query").required(false).schema(schema);
     if (name.equals("format"))
       parameter
-          .description("Formats to compare; without one, every format with a constructed score.")
+          .description("Formats to compare; without one, every format the method scored.")
           .style(Parameter.StyleEnum.FORM)
           .explode(true);
+    if (name.equals("method"))
+      parameter.description(
+          "The grading every format ranks by; a format it scored no card in is not compared.");
     if (name.equals("every"))
       parameter.description("Keep only cards ranked in every compared format.");
     if (name.equals("sort"))

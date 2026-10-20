@@ -33,12 +33,21 @@ public record RankingQuery(
   public static final int MAX_OFFSET = 10_000;
 
   /**
-   * Orderings over stored values; "score" is the selected method's first output and "movement" the
-   * places gained since the previous run.
+   * Orderings over stored values; "score" is the selected method's first output, "movement" the
+   * places gained since the previous run, "price" the USD price and "value" score per dollar.
    */
   public static final List<String> SORTS =
       List.of(
-          "score", "decks", "top_cuts", "name", "win_rate", "top_cut_lift", "trend", "movement");
+          "score",
+          "decks",
+          "top_cuts",
+          "name",
+          "win_rate",
+          "top_cut_lift",
+          "trend",
+          "movement",
+          "price",
+          "value");
 
   /** Every ordering defaults to descending except name, which reads A to Z. */
   public static final List<String> ORDERS = List.of("asc", "desc");

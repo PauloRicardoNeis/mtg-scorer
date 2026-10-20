@@ -63,6 +63,7 @@ public class RankingService {
         previous,
         repository.maxDeckCount(id),
         repository.windows(run.format_name()),
+        repository.pricesUpdatedAt(),
         repository.page(id, previous, method.method_id(), output, query));
   }
 

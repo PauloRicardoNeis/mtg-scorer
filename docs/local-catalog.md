@@ -139,6 +139,31 @@ $env:SCORE_PUBLISH_DSN = 'postgresql://catalog_publisher_local:local-catalog-onl
 analytics/.venv/Scripts/python.exe -m mtg_scorer.cli publish-scores --run-file analytics/data/local/score-runs/<score_run_id>.json
 ```
 
+The overall grade combines one run per format into an "Overall" run, which leads the
+format bar. After publishing format runs, `score-overall` reads the runs active in the
+database from a directory of run files (or explicit `--run-file` arguments) and writes
+the overall run file, which `publish-scores` then publishes like any other:
+
+```powershell
+analytics/.venv/Scripts/python.exe -m mtg_scorer.cli score-overall --active-runs-dir analytics/data/local/score-runs --output-root analytics/data/local/score-runs
+analytics/.venv/Scripts/python.exe -m mtg_scorer.cli publish-scores --run-file analytics/data/local/score-runs/<overall score_run_id>.json
+```
+
+Card prices live in a `prices` schema beside the catalog, because they change daily
+and the catalog is immutable. `publish-prices` reads a retained default-cards
+directory, verifies its checksum, and stores each card's cheapest USD price among
+the paper printings a sanctioned deck can play (no gold borders, memorabilia or
+oversized cards). The same bytes always make the same snapshot, which becomes the
+one rankings read; the publisher can insert snapshots and move that pointer but
+never rewrite prices. Grant `price_reader` to the API login and `price_publisher`
+to the publisher login (the demo does both). Scryfall's bulk prices are daily
+estimates, so the rankings page shows their date and never treats them as offers.
+
+```powershell
+$env:PRICE_PUBLISH_DSN = 'postgresql://catalog_publisher_local:local-catalog-only@127.0.0.1:55432/mtg_catalog_demo'
+analytics/.venv/Scripts/python.exe -m mtg_scorer.cli publish-prices --source-dir .local/catalog-imports/raw/scryfall/<SOURCE_TIMESTAMP>
+```
+
 Republishing the same file reports `already_published`. A different file under the
 same run id is refused as `score_run_content_conflict`. `rollback-scores --target
 <older run> --expected <active run>` moves the active pointer back without

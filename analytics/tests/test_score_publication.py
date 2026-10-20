@@ -15,6 +15,7 @@ from synthetic_topdeck import BOLT, COUNTERSPELL, deck, event, open_event, row, 
 
 from mtg_scorer import MaxRatioMethod
 from mtg_scorer.ingest.topdeck import read_saved_responses
+from mtg_scorer.publish.overall_run import score_overall
 from mtg_scorer.publish.score_postgres import (
     publish_score_run,
     rollback_score_run,
@@ -210,6 +211,36 @@ def test_each_format_has_its_own_active_run(make_run) -> None:
     with psycopg.connect(role_dsn("score_reader"), autocommit=True) as reader:
         assert active(reader, "Modern") == modern
         assert active(reader, "Pioneer") == pioneer
+
+
+def test_an_overall_run_is_published_beside_the_formats_it_combines(make_run) -> None:
+    modern = make_run()
+    pioneer = make_run(fmt="Pioneer")
+    result = publish(score_overall([modern, pioneer], modern.parent.parent / "overall"))
+    run_id = result["score_run_id"]
+
+    assert result["state"] == "published"
+    with psycopg.connect(role_dsn("score_reader"), autocommit=True) as reader:
+        assert active(reader, "Overall") == run_id
+        components = reader.execute(
+            "SELECT summary->'components' FROM scores.published_score_run WHERE score_run_id=%s",
+            (run_id,),
+        ).fetchone()[0]
+        bolt = reader.execute(
+            "SELECT deck_count, win_rate, series_decks, archetype_label "
+            "FROM scores.published_score_run_card WHERE score_run_id=%s AND oracle_id=%s",
+            (run_id, BOLT),
+        ).fetchone()
+        grades = reader.execute(
+            "SELECT count(*) FROM scores.published_card_score "
+            "WHERE score_run_id=%s AND method_id='overall-grade' AND output='score'",
+            (run_id,),
+        ).fetchone()[0]
+
+    assert [c["format_name"] for c in components] == ["Modern", "Pioneer"]
+    # Bolt is in three Modern decks and the one Pioneer deck; nothing format-bound pools.
+    assert bolt == (4, None, None, None)
+    assert grades == 2
 
 
 def test_rollback_is_guarded_by_the_expected_active_run(make_run) -> None:

@@ -147,7 +147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Compare cards across the active runs of several formats by constructed score */
+        /** Compare cards across the active runs of several formats by a graded score method */
         get: operations["compareRankings"];
         put?: never;
         post?: never;
@@ -262,7 +262,7 @@ export interface components {
             rank: number;
             /**
              * Format: double
-             * @description Constructed score, 0-100.
+             * @description The method's score, 0-100.
              */
             score: number | null;
             /**
@@ -284,9 +284,16 @@ export interface components {
             /** Format: int32 */
             players_per_game: number | null;
             score_run_id: string;
+            /**
+             * Format: int32
+             * @description Cards the method scored in this run; 0 leaves the format out of the comparison, e.g. a signature score without archetype labels.
+             */
+            scored_cards: number;
         };
         ComparePage: {
-            /** @description Every format with a constructed score, comparable or not chosen. */
+            /** @description Every active run, comparable or not, such as the overall run; the format bar lists them. */
+            active_formats: components["schemas"]["RankedFormat"][];
+            /** @description Every format whose active run published the method, compared or not; one the method scored no card in cannot be compared. */
             available: components["schemas"]["CompareFormat"][];
             catalog_snapshot_id: string | null;
             every: boolean;
@@ -295,6 +302,11 @@ export interface components {
             items: components["schemas"]["ComparedCard"][];
             /** Format: int32 */
             limit: number;
+            /**
+             * @description The method every compared format is graded by.
+             * @enum {string}
+             */
+            method_id: "constructed-score" | "signature-score";
             /** Format: int32 */
             offset: number;
             /** @enum {string} */
@@ -332,6 +344,11 @@ export interface components {
             name: string;
             oracle_text: string | null;
             type_line: string | null;
+        };
+        FormatGrade: {
+            format_name: string;
+            /** Format: double */
+            score: number;
         };
         ImportError: {
             code: string;
@@ -434,6 +451,8 @@ export interface components {
             deck_count: number;
             /** Format: int32 */
             event_count: number;
+            /** @description In an overall run, the card's score in each format it combines, best first; null for a format's own run. */
+            formats: components["schemas"]["FormatGrade"][] | null;
             /**
              * Format: int32
              * @description Games behind the win rate.
@@ -447,6 +466,11 @@ export interface components {
             oracle_id: string;
             /** @description Null when the card is not in the active catalog. */
             preview_printing: components["schemas"]["Printing"] | null;
+            /**
+             * Format: double
+             * @description Cheapest USD market price among the card's playable paper printings; null without one or without published prices.
+             */
+            price_usd: number | null;
             /**
              * Format: int64
              * @description Position by the selected score among all scored cards.
@@ -462,6 +486,11 @@ export interface components {
              * @description The selected output; null when the method could not score the card.
              */
             score: number | null;
+            /**
+             * Format: double
+             * @description The selected output divided by the USD price; null without both.
+             */
+            score_per_usd: number | null;
             /** @description The card's decks in each trend period, oldest first. */
             series_decks: number[] | null;
             /**
@@ -526,6 +555,11 @@ export interface components {
             output: string;
             /** @description The run rank changes are measured against. */
             previous_score_run_id: string | null;
+            /**
+             * Format: date-time
+             * @description When the source last refreshed the published prices; null without any.
+             */
+            prices_updated_at: string | null;
             score_run: components["schemas"]["ScoreRunSummary"];
             sort: string;
             /** Format: int64 */
@@ -536,6 +570,17 @@ export interface components {
             view_counts: components["schemas"]["ViewCounts"];
             /** @description Every published window of this format, latest end first, one run per source and window. */
             windows: components["schemas"]["RunWindow"][];
+        };
+        RunComponent: {
+            /** Format: int32 */
+            decks: number;
+            format_name: string;
+            score_run_id: string;
+            /**
+             * Format: double
+             * @description How much the format counts in the overall grade, from its decklists.
+             */
+            weight: number;
         };
         RunWindow: {
             /** @description Whether this is the run shown without a pinned run. */
@@ -558,9 +603,16 @@ export interface components {
             method_id: string;
             method_version: string;
             outputs: string[];
+            /**
+             * Format: int32
+             * @description Cards with a value for the method's first output; 0 when the method could not score this run, e.g. a signature score without archetype labels.
+             */
+            scored_cards: number;
         };
         ScoreRunSummary: {
             attribution: string;
+            /** @description The format runs an overall run combines, by format name; null for a format's own run. */
+            components: components["schemas"]["RunComponent"][] | null;
             /**
              * Format: int32
              * @description Published decks in the cohort.
@@ -1066,8 +1118,8 @@ export interface operations {
                 q?: string;
                 /** @description Pin a published run so every page shows the same results. */
                 score_run_id?: string;
-                /** @description score orders by the selected method's first output; movement by places gained since the previous run. */
-                sort?: "score" | "decks" | "top_cuts" | "name" | "win_rate" | "top_cut_lift" | "trend" | "movement";
+                /** @description score orders by the selected method's first output; movement by places gained since the previous run; price by the USD price; value by score per dollar. */
+                sort?: "score" | "decks" | "top_cuts" | "name" | "win_rate" | "top_cut_lift" | "trend" | "movement" | "price" | "value";
                 /** @description A card type on any face's type line. */
                 type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
                 /** @description risers and fallers keep cards that gained or lost places. */
@@ -1133,9 +1185,11 @@ export interface operations {
                 color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
                 /** @description Keep only cards ranked in every compared format. */
                 every?: boolean;
-                /** @description Formats to compare; without one, every format with a constructed score. */
+                /** @description Formats to compare; without one, every format the method scored. */
                 format?: string[];
                 limit?: number;
+                /** @description The grading every format ranks by; a format it scored no card in is not compared. */
+                method?: "constructed-score" | "signature-score";
                 offset?: number;
                 order?: "asc" | "desc";
                 q?: string;

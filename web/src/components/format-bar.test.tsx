@@ -40,6 +40,52 @@ describe("FormatBar", () => {
     );
   });
 
+  it("carries the reader's grading to every format and only its own to compare", () => {
+    const { rerender } = render(
+      <FormatBar tabs={tabs} current="Legacy" query="method=max-ratio" />,
+    );
+    expect(bar().getByRole("link", { name: /Commander/ })).toHaveAttribute(
+      "href",
+      "/rankings?format=EDH&method=max-ratio",
+    );
+    expect(bar().getByRole("link", { name: /All formats/ })).toHaveAttribute(
+      "href",
+      "/rankings/compare",
+    );
+    rerender(
+      <FormatBar
+        tabs={tabs}
+        current="Legacy"
+        query="method=signature-score"
+        compareQuery="method=signature-score"
+      />,
+    );
+    expect(bar().getByRole("link", { name: /All formats/ })).toHaveAttribute(
+      "href",
+      "/rankings/compare?method=signature-score",
+    );
+  });
+
+  it("leaves the reader's grading behind on the overall tab", () => {
+    render(
+      <FormatBar
+        tabs={[
+          { label: "Overall", format: "Overall", decks: 92506, overall: true },
+          ...tabs,
+        ]}
+        current="Legacy"
+        query="method=signature-score"
+      />,
+    );
+    const overall = bar().getByRole("link", { name: /Overall/ });
+    expect(overall).toHaveAttribute("href", "/rankings?format=Overall");
+    expect(overall).toHaveTextContent("Overall93k decks");
+    expect(bar().getByRole("link", { name: /Legacy/ })).toHaveAttribute(
+      "href",
+      "/rankings?format=Legacy&method=signature-score",
+    );
+  });
+
   it("marks the compare tab while comparing", () => {
     render(<FormatBar tabs={tabs} current={null} comparing />);
     expect(bar().getByRole("link", { name: /All formats/ })).toHaveAttribute(

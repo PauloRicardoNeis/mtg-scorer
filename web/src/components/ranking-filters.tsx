@@ -26,6 +26,14 @@ export type SourceTab = {
   current: boolean;
 };
 
+export type GradingOption = {
+  /** Empty for the run's default method, which the address leaves out. */
+  value: string;
+  label: string;
+  /** A method that could not score this run, e.g. without archetype labels. */
+  disabled: boolean;
+};
+
 export type ViewTab = {
   view: string;
   label: string;
@@ -43,7 +51,7 @@ function values(form: HTMLFormElement): URLSearchParams {
 }
 
 /**
- * The views, colors and card type of one pinned run. Each filter change replaces
+ * The views, grading, colors and card type of one pinned run. Each change replaces
  * the URL, so the server re-ranks; without JavaScript the form submits as a GET.
  * Sorting lives in the table's column headers and the name search in the header.
  */
@@ -55,6 +63,8 @@ export function RankingFilters({
   views,
   windows = [],
   sources = [],
+  gradings = [],
+  method = "",
 }: {
   format: string;
   scoreRunId: string;
@@ -63,6 +73,8 @@ export function RankingFilters({
   views: ViewTab[];
   windows?: WindowOption[];
   sources?: SourceTab[];
+  gradings?: GradingOption[];
+  method?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -89,7 +101,9 @@ export function RankingFilters({
     (
       controls.namedItem("score_run_id") as HTMLInputElement | HTMLSelectElement
     ).value = scoreRunId;
-  }, [colorKey, type, scoreRunId]);
+    const grading = controls.namedItem("method");
+    if (grading instanceof HTMLSelectElement) grading.value = method;
+  }, [colorKey, type, scoreRunId, method]);
   useRefocus(form, `${scoreRunId}?${query}`);
   const apply = () =>
     startTransition(() =>
@@ -117,6 +131,9 @@ export function RankingFilters({
         {windows.length < 2 && (
           <input type="hidden" name="score_run_id" value={scoreRunId} />
         )}
+        {gradings.length < 2 && method && (
+          <input type="hidden" name="method" value={method} />
+        )}
         {kept.map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
@@ -136,6 +153,21 @@ export function RankingFilters({
         <span role="status" className="toolbar-status">
           {pending ? "Updating rankings…" : ""}
         </span>
+        {gradings.length > 1 && (
+          <span className="select">
+            <select aria-label="Grading" name="method" defaultValue={method}>
+              {gradings.map((grading) => (
+                <option
+                  key={grading.value}
+                  value={grading.value}
+                  disabled={grading.disabled}
+                >
+                  {grading.label}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
         <ColorFilter label="Colors" name="color" selected={colors} hideLabel />
         <span className="select">
           <select aria-label="Card type" name="type" defaultValue={type}>

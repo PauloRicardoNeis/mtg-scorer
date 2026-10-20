@@ -63,7 +63,7 @@ class RankingQueryTests {
   @Test
   void nameSortsAToZByDefaultAndEveryOtherSortHighestFirst() {
     assertThat(RankingQuery.parse(Map.of("sort", List.of("name"))).order()).isEqualTo("asc");
-    for (String sort : List.of("win_rate", "top_cut_lift", "trend", "movement"))
+    for (String sort : List.of("win_rate", "top_cut_lift", "trend", "movement", "price", "value"))
       assertThat(RankingQuery.parse(Map.of("sort", List.of(sort))).order()).isEqualTo("desc");
   }
 

@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Overall-run file v1",
+  "description": "Every format's run combined into one overall grade per card, as written by mtg-scorer score-overall. Cards keep the score-run card shape; what cannot be pooled across formats is null.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "score_run_id",
+    "format_name",
+    "window_starts_on",
+    "window_ends_before",
+    "dataset_snapshot_id",
+    "parser_version",
+    "feature_pipeline_version",
+    "cohort_rules_hash",
+    "population_rule",
+    "method_identities",
+    "source",
+    "attribution",
+    "components",
+    "totals",
+    "population",
+    "cards",
+    "runs"
+  ],
+  "properties": {
+    "schema_version": { "const": "overall-run-file-v1" },
+    "score_run_id": { "type": "string", "pattern": "^scores-[0-9a-f]{64}$" },
+    "format_name": { "$ref": "#/$defs/text" },
+    "window_starts_on": { "type": "string", "format": "date" },
+    "window_ends_before": {
+      "description": "Exclusive end of the latest component window.",
+      "type": "string",
+      "format": "date"
+    },
+    "dataset_snapshot_id": { "$ref": "#/$defs/text" },
+    "parser_version": { "$ref": "#/$defs/text" },
+    "feature_pipeline_version": { "$ref": "#/$defs/text" },
+    "cohort_rules_hash": {
+      "description": "Hash of every component's format and cohort rules hash.",
+      "$ref": "#/$defs/sha256"
+    },
+    "population_rule": { "$ref": "#/$defs/text" },
+    "method_identities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          { "$ref": "#/$defs/method_id" },
+          { "$ref": "#/$defs/text" },
+          { "$ref": "#/$defs/sha256" }
+        ],
+        "items": false,
+        "minItems": 3
+      }
+    },
+    "source": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "attribution": { "$ref": "#/$defs/text" },
+    "components": {
+      "description": "The format runs combined, by format name.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format_name",
+          "score_run_id",
+          "method_id",
+          "output",
+          "window_starts_on",
+          "window_ends_before",
+          "players_per_game",
+          "decks",
+          "graded_cards",
+          "weight"
+        ],
+        "properties": {
+          "format_name": { "$ref": "#/$defs/text" },
+          "score_run_id": { "type": "string", "pattern": "^scores-[0-9a-f]{64}$" },
+          "method_id": { "$ref": "#/$defs/method_id" },
+          "output": { "$ref": "#/$defs/text" },
+          "window_starts_on": { "type": "string", "format": "date" },
+          "window_ends_before": { "type": "string", "format": "date" },
+          "players_per_game": { "type": "integer", "minimum": 2 },
+          "decks": { "type": "integer", "minimum": 1 },
+          "graded_cards": { "type": "integer", "minimum": 1 },
+          "weight": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+        }
+      }
+    },
+    "totals": {
+      "description": "Sums over the components' cohorts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["formats", "events", "players", "decks", "top_cut_decks", "matches"],
+      "properties": {
+        "formats": { "type": "integer", "minimum": 1 },
+        "events": { "$ref": "#/$defs/count" },
+        "players": { "$ref": "#/$defs/count" },
+        "decks": { "$ref": "#/$defs/count" },
+        "top_cut_decks": { "$ref": "#/$defs/count" },
+        "matches": { "$ref": "#/$defs/count" }
+      }
+    },
+    "population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "scored_cards", "excluded_cards"],
+      "properties": {
+        "rule": { "$ref": "#/$defs/text" },
+        "scored_cards": { "$ref": "#/$defs/count" },
+        "excluded_cards": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "oracle_id",
+          "name",
+          "scored",
+          "deck_count",
+          "event_count",
+          "top_cut_count",
+          "top_cut_known_decks",
+          "archetype",
+          "archetypes",
+          "mainboard_copies",
+          "record",
+          "performance",
+          "series",
+          "formats"
+        ],
+        "properties": {
+          "oracle_id": { "$ref": "#/$defs/oracle_id" },
+          "name": { "$ref": "#/$defs/text" },
+          "scored": { "const": true },
+          "deck_count": { "type": "integer", "minimum": 1 },
+          "event_count": { "type": "integer", "minimum": 1 },
+          "top_cut_count": { "type": ["integer", "null"], "minimum": 0 },
+          "top_cut_known_decks": { "$ref": "#/$defs/count" },
+          "archetype": {
+            "description": "Archetype labels belong to one format, so none is pooled.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "deck_count", "labelled_deck_count"],
+            "properties": {
+              "label": { "type": "null" },
+              "deck_count": { "const": 0 },
+              "labelled_deck_count": { "const": 0 }
+            }
+          },
+          "archetypes": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["distinct", "top"],
+            "properties": {
+              "distinct": { "type": "null" },
+              "top": { "type": "array", "maxItems": 0 }
+            }
+          },
+          "mainboard_copies": { "type": "integer", "minimum": 1 },
+          "record": { "$ref": "#/$defs/record" },
+          "performance": {
+            "description": "Win rate and its interval depend on players per game, and trend periods differ by format, so those are null; the win-rate delta is weighted by games and the top-cut lift is top cuts over the field's expected top cuts.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["win_rate", "win_rate_delta", "win_rate_ci95", "top_cut_lift", "share_delta"],
+            "properties": {
+              "win_rate": { "type": "null" },
+              "win_rate_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+              "win_rate_ci95": { "type": "null" },
+              "top_cut_lift": { "type": ["number", "null"], "minimum": 0 },
+              "share_delta": { "type": "null" }
+            }
+          },
+          "series": { "type": "null" },
+          "formats": {
+            "description": "The card's component score in each format that graded it.",
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": { "minLength": 1 },
+            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method_id",
+          "method_version",
+          "method_config_hash",
+          "label",
+          "description",
+          "outputs",
+          "scores"
+        ],
+        "properties": {
+          "method_id": { "$ref": "#/$defs/method_id" },
+          "method_version": { "$ref": "#/$defs/text" },
+          "method_config_hash": { "$ref": "#/$defs/sha256" },
+          "label": { "$ref": "#/$defs/text" },
+          "description": { "$ref": "#/$defs/text" },
+          "outputs": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/text" }
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["card_id", "values", "inputs"],
+              "properties": {
+                "card_id": { "$ref": "#/$defs/oracle_id" },
+                "values": { "$ref": "#/$defs/named_numbers" },
+                "inputs": { "$ref": "#/$defs/named_numbers" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "count": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "method_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "oracle_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "named_numbers": {
+      "type": "object",
+      "propertyNames": { "minLength": 1 },
+      "additionalProperties": { "type": ["number", "null"] }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decks", "wins", "losses", "draws"],
+      "properties": {
+        "decks": { "$ref": "#/$defs/count" },
+        "wins": { "$ref": "#/$defs/count" },
+        "losses": { "$ref": "#/$defs/count" },
+        "draws": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

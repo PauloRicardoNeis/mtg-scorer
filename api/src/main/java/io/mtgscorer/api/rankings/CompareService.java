@@ -17,18 +17,20 @@ public class CompareService {
   }
 
   public ComparePage compare(CompareQuery requested) {
-    List<CompareFormat> available = repository.formats();
+    List<CompareFormat> available = repository.formats(requested.method());
+    // A format the method scored no card in, e.g. a signature score without archetype labels,
+    // has nothing to compare.
     List<CompareFormat> formats =
-        requested.formats().isEmpty()
-            ? available
-            : available.stream()
-                .filter(f -> requested.formats().contains(f.format_name()))
-                .toList();
+        available.stream()
+            .filter(f -> f.scored_cards() > 0)
+            .filter(
+                f -> requested.formats().isEmpty() || requested.formats().contains(f.format_name()))
+            .toList();
     if (formats.isEmpty())
       throw new CatalogProblem(
           503,
           "rankings_unavailable",
-          "No published constructed scores are available for these formats yet.");
+          "No " + requested.method() + " rankings are published for these formats yet.");
     // A column of a format that is not compared falls back to the best format.
     boolean compared =
         requested.sortFormat() == null
@@ -38,6 +40,7 @@ public class CompareService {
             ? requested
             : new CompareQuery(
                 requested.formats(),
+                requested.method(),
                 requested.q(),
                 requested.colors(),
                 requested.every(),
@@ -49,8 +52,10 @@ public class CompareService {
                 requested.offset());
     List<String> runs = formats.stream().map(CompareFormat::score_run_id).toList();
     return new ComparePage(
+        query.method(),
         formats,
         available,
+        rankings.activeFormats(),
         rankings.activeCatalog(),
         repository.count(runs, query),
         query.offset(),

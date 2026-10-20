@@ -53,10 +53,11 @@ def test_modern_rankings_follow_the_published_constructed_scores():
     assert (run["field_win_rate"], run["field_top_cut_rate"]) == (0.5, 0.5)
     assert (run["series_period_days"], len(run["series_decks"])) == (16, 12)
     assert run["attribution"].startswith("Data provided by TopDeck.gg")
-    assert {method["method_id"] for method in run["methods"]} == {
-        "constructed-score",
-        "foundation",
-        "max-ratio",
+    assert {method["method_id"]: method["scored_cards"] for method in run["methods"]} == {
+        "constructed-score": 8,
+        "foundation": 8,
+        "max-ratio": 8,
+        "signature-score": 8,
     }
     assert (page["method_id"], page["output"]) == ("constructed-score", "score")
     assert {
@@ -147,6 +148,17 @@ def test_a_pinned_run_and_another_method_are_served():
     assert pinned["total"] == 8
 
 
+def test_the_signature_score_ranks_single_archetype_cards_above_shared_staples():
+    status, page = get(method="signature-score")
+    assert status == 200
+    validate(page, "RankingPage")
+    assert (page["method_id"], page["output"]) == ("signature-score", "score")
+    ranked = {card["name"]: (card["rank"], card["score"]) for card in page["items"]}
+    # Fire // Ice is only ever Izzet Tempo; Lightning Bolt splits between two archetypes.
+    assert ranked["Fire // Ice"] == (1, 93.75)
+    assert ranked["Lightning Bolt"] == (5, 43.75)
+
+
 def compare(**query):
     url = BASE + "/api/v1/rankings/compare" + ("?" + urlencode(query, doseq=True) if query else "")
     try:
@@ -183,11 +195,28 @@ def test_compare_filters_and_sorts_by_one_formats_column():
     assert fallback["sort"] == "best"
 
 
+def test_compare_grades_by_the_signature_score_where_it_scored_cards():
+    status, page = compare(format="Modern", method="signature-score")
+    assert status == 200
+    validate(page, "ComparePage")
+    assert page["method_id"] == "signature-score"
+    assert [(f["format_name"], f["scored_cards"]) for f in page["formats"]] == [("Modern", 8)]
+    # Every available format published the method; only those it scored are compared.
+    assert all(f["scored_cards"] > 0 for f in page["formats"])
+    assert "Modern" in [f["format_name"] for f in page["available"]]
+    ranked = {card["name"]: card["formats"]["Modern"]["rank"] for card in page["items"]}
+    assert (ranked["Fire // Ice"], ranked["Lightning Bolt"]) == (1, 5)
+    _, constructed = compare(format="Modern")
+    assert constructed["method_id"] == "constructed-score"
+    assert names(constructed)[0] == "Lightning Bolt"
+
+
 @pytest.mark.parametrize(
     ("query", "status", "code"),
     [
         ({"view": "risers"}, 400, "invalid_query"),
         ({"sort": "Modern:elo"}, 400, "invalid_query"),
+        ({"method": "max-ratio"}, 400, "invalid_query"),
         ({"format": "Vintage"}, 503, "rankings_unavailable"),
     ],
 )

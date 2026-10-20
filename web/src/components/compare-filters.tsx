@@ -4,15 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition, type ChangeEvent } from "react";
 import { Chip, Switch } from "./forms";
 import { ColorFilter } from "./mana";
+import type { GradingOption } from "./ranking-filters";
 import { rememberFocus, useRefocus } from "./refocus";
 
 export type PickOption = { value: string; label: string; checked: boolean };
 
-/** The form's values as a query; every control here always carries a value. */
+/** The form's set values as a query; the default grading is left out. */
 function values(form: HTMLFormElement): URLSearchParams {
   const query = new URLSearchParams();
   for (const [key, value] of new FormData(form))
-    query.append(key, String(value));
+    if (typeof value === "string" && value !== "") query.append(key, value);
   return query;
 }
 
@@ -49,8 +50,9 @@ function Picks({
 }
 
 /**
- * The formats, stats and summaries the compare table shows, and its filters. Each
- * change replaces the URL so the server re-renders; without JavaScript it is a GET form.
+ * The formats, stats and summaries the compare table shows, the grading it ranks by,
+ * and its filters. Each change replaces the URL so the server re-renders; without
+ * JavaScript it is a GET form.
  */
 export function CompareFilters({
   formats,
@@ -58,12 +60,17 @@ export function CompareFilters({
   summaries,
   every,
   query,
+  gradings = [],
+  method = "",
 }: {
   formats: PickOption[];
   stats: PickOption[];
   summaries: PickOption[];
   every: boolean;
   query: string;
+  gradings?: GradingOption[];
+  /** Empty for the default grading, which the address leaves out. */
+  method?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -76,14 +83,22 @@ export function CompareFilters({
     return value ? [[key, value] as const] : [];
   });
   // Presets and links elsewhere change the address without remounting the form.
-  const state = JSON.stringify([formats, stats, summaries, every, colors]);
+  const state = JSON.stringify([
+    formats,
+    stats,
+    summaries,
+    every,
+    colors,
+    method,
+  ]);
   useEffect(() => {
-    const [f, s, m, e, c] = JSON.parse(state) as [
+    const [f, s, m, e, c, g] = JSON.parse(state) as [
       PickOption[],
       PickOption[],
       PickOption[],
       boolean,
       string[],
+      string,
     ];
     // A group of one control is not a RadioNodeList, so look the boxes up by name.
     const sync = (name: string, on: (value: string) => boolean) => {
@@ -97,6 +112,8 @@ export function CompareFilters({
     sync("summary", (value) => m.some((o) => o.value === value && o.checked));
     sync("color", (value) => c.includes(value));
     sync("every", () => e);
+    const grading = form.current!.elements.namedItem("method");
+    if (grading instanceof HTMLSelectElement) grading.value = g;
   }, [state]);
   useRefocus(form, query);
   const apply = () =>
@@ -134,6 +151,9 @@ export function CompareFilters({
       <div className="compare-toolbar-inner band-inner">
         {/* Marks the choices as made, so an empty summary stays empty. */}
         <input type="hidden" name="picked" value="1" />
+        {gradings.length < 2 && method && (
+          <input type="hidden" name="method" value={method} />
+        )}
         {kept.map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
@@ -144,6 +164,21 @@ export function CompareFilters({
           <span role="status" className="toolbar-status">
             {pending ? "Updating comparison…" : ""}
           </span>
+          {gradings.length > 1 && (
+            <span className="select">
+              <select aria-label="Grading" name="method" defaultValue={method}>
+                {gradings.map((grading) => (
+                  <option
+                    key={grading.value}
+                    value={grading.value}
+                    disabled={grading.disabled}
+                  >
+                    {grading.label}
+                  </option>
+                ))}
+              </select>
+            </span>
+          )}
           <Switch
             label="In every selected format"
             name="every"

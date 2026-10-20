@@ -1,4 +1,5 @@
-"""Executable score-run v2 validation; shared by run-file writing and publication."""
+"""Executable score-run v2 and overall-run validation; shared by run-file writing and
+publication."""
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[4] / "contracts"
 SCHEMA = json.loads((ROOT / "score-run.schema.json").read_text())
+OVERALL_SCHEMA = json.loads((ROOT / "overall-run.schema.json").read_text())
 
 
 def validate_score_run(document: dict[str, Any]) -> None:
@@ -55,6 +57,52 @@ def validate_score_run(document: dict[str, Any]) -> None:
         card_ids = [score["card_id"] for score in run["scores"]]
         if len(card_ids) != len(set(card_ids)) or set(card_ids) != scored:
             raise ValueError(f"{run['method_id']} must score each scored card exactly once")
+        outputs = set(run["outputs"])
+        if any(set(score["values"]) != outputs for score in run["scores"]):
+            raise ValueError(f"{run['method_id']} scores must hold exactly its declared outputs")
+
+
+def validate_overall_run(document: dict[str, Any]) -> None:
+    """Check the overall-run schema, then that cards, components and scores agree."""
+
+    Draft202012Validator(OVERALL_SCHEMA, format_checker=FormatChecker()).validate(document)
+    formats = [component["format_name"] for component in document["components"]]
+    if len(set(formats)) != len(formats) or document["format_name"] in formats:
+        raise ValueError("components must name distinct formats other than the run's own")
+    if document["totals"]["formats"] != len(formats):
+        raise ValueError("totals count a different number of formats than the components")
+    cards = {card["oracle_id"]: card for card in document["cards"]}
+    if len(cards) != len(document["cards"]):
+        raise ValueError("duplicate card oracle_id")
+    for card in cards.values():
+        if (card["top_cut_count"] is None) != (card["top_cut_known_decks"] == 0):
+            raise ValueError(
+                f"{card['oracle_id']}: top_cut_count must be unknown exactly when "
+                "no result is known"
+            )
+        if (
+            card["event_count"] > card["deck_count"]
+            or card["top_cut_known_decks"] > card["deck_count"]
+            or card["record"]["decks"] > card["deck_count"]
+            or card["mainboard_copies"] < card["deck_count"]
+        ):
+            raise ValueError(f"{card['oracle_id']}: counts exceed the card's decks")
+        if not set(card["formats"]) <= set(formats):
+            raise ValueError(f"{card['oracle_id']}: graded in a format that is not a component")
+    if document["population"]["scored_cards"] != len(cards):
+        raise ValueError("population scored_cards does not match the cards")
+    identities = [
+        [run["method_id"], run["method_version"], run["method_config_hash"]]
+        for run in document["runs"]
+    ]
+    if identities != document["method_identities"]:
+        raise ValueError("method_identities do not match the runs")
+    if len({run["method_id"] for run in document["runs"]}) != len(document["runs"]):
+        raise ValueError("duplicate method_id")
+    for run in document["runs"]:
+        card_ids = [score["card_id"] for score in run["scores"]]
+        if len(card_ids) != len(set(card_ids)) or set(card_ids) != set(cards):
+            raise ValueError(f"{run['method_id']} must score each card exactly once")
         outputs = set(run["outputs"])
         if any(set(score["values"]) != outputs for score in run["scores"]):
             raise ValueError(f"{run['method_id']} scores must hold exactly its declared outputs")

@@ -8,6 +8,7 @@ from synthetic_topdeck import (
     BOLT,
     COUNTERSPELL,
     ISLAND,
+    commander_deck,
     deck,
     event,
     open_event,
@@ -117,7 +118,33 @@ def test_a_commander_counts_as_a_played_card(tmp_path) -> None:
     cards = {card.oracle_id: card for card in snapshot.decks[0].cards}
 
     assert (cards[COUNTERSPELL].mainboard_count, cards[BOLT].mainboard_count) == (1, 1)
+    assert snapshot.decks[0].commanders == (COUNTERSPELL,)
     assert not snapshot.decks[0].sideboard_observed
+
+
+def test_partner_commanders_are_kept_sorted_whatever_the_zone_is_called(tmp_path) -> None:
+    first, second = sorted((BOLT, COUNTERSPELL))
+    rows = [
+        row(1, deck_obj=commander_deck({"B": (second, 1), "A": (first, 1)}, {"I": (ISLAND, 30)})),
+        row(0, deck_obj=commander_deck({"A": (first, 1)}, {"I": (ISLAND, 30)}, zone="COMMANDER")),
+        row(0, deck_obj=commander_deck({"A": (first, 1)}, {"I": (ISLAND, 30)}, zone="Commander")),
+        row(0, deck_obj=deck({"I": (ISLAND, 30)})),
+    ]
+    snapshot = read(tmp_path, event("synthetic-partners", rows, fmt="EDH"))
+
+    assert [d.commanders for d in snapshot.decks] == [(first, second), (first,), (first,), ()]
+    # The commander is played whatever its zone is called.
+    assert all({c.oracle_id for c in d.cards} == {first, ISLAND} for d in snapshot.decks[1:3])
+
+
+def test_a_commander_zone_holding_a_whole_list_names_no_commander(tmp_path) -> None:
+    misplaced = {"A": (BOLT, 1), "B": (COUNTERSPELL, 1), "I": (ISLAND, 30)}
+    listed = commander_deck(misplaced, {"A": (BOLT, 1)})
+    snapshot = read(tmp_path, event("synthetic-misplaced", [row(1, deck_obj=listed)], fmt="EDH"))
+    cards = {card.oracle_id: card.mainboard_count for card in snapshot.decks[0].cards}
+
+    assert snapshot.decks[0].commanders == ()
+    assert cards == {BOLT: 2, COUNTERSPELL: 1, ISLAND: 30}
 
 
 def test_team_events_are_skipped_and_counted(tmp_path) -> None:

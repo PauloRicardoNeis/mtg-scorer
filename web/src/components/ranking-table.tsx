@@ -4,9 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { RankedCard, RankingPage } from "@/lib/api";
-import { deltaTone, lift, percent, share, signed } from "@/lib/format";
+import {
+  count,
+  dateWithYear,
+  deltaTone,
+  lift,
+  percent,
+  perDollar,
+  share,
+  signed,
+  usd,
+} from "@/lib/format";
 import { edition, rankedCardHref } from "@/lib/urls";
 import { CardImage } from "./card-image";
+import { FormatGradeRows, FormatGrades } from "./format-grades";
 import { Icon } from "./icon";
 import { ColorPips, ManaCost } from "./mana";
 import {
@@ -26,7 +37,12 @@ type Method = Run["methods"][number];
 
 export type SortLink = { href: string; active: boolean; order: "asc" | "desc" };
 
-export type ColumnLabels = { share: string; cut: string; trend: string | null };
+export type ColumnLabels = {
+  share: string;
+  cut: string;
+  trend: string | null;
+  value: string;
+};
 
 function score(card: RankedCard): string | null {
   return card.score === null ? null : card.score.toFixed(1);
@@ -89,6 +105,28 @@ function Sortable({
   );
 }
 
+/**
+ * A USD price; unknown when no playable paper printing has one, or when an API
+ * from before prices omits the field.
+ */
+function Price({ value }: { value: number | null | undefined }) {
+  if (value === null || value === undefined)
+    return <span className="muted">Unknown</span>;
+  return <span>{usd(value)}</span>;
+}
+
+/** Score per dollar of the card's price; unknown without both. */
+function Value({ value }: { value: number | null | undefined }) {
+  if (value === null || value === undefined)
+    return <span className="muted">Unknown</span>;
+  return (
+    <span>
+      {perDollar(value)}
+      <span className="sr-only"> per dollar</span>
+    </span>
+  );
+}
+
 /** The selected card with the run's numbers for it. */
 function Preview({
   card,
@@ -107,6 +145,8 @@ function Preview({
 }) {
   const printing = card.preview_printing;
   const top = percentile(card.rank, run.scored_cards);
+  // The overall run pools no win rate or share; its formats stand in for them.
+  const overall = run.components !== null && run.components !== undefined;
   return (
     <aside className="ranking-preview" aria-label="Selected card">
       <p className="preview-rank">
@@ -134,9 +174,14 @@ function Preview({
       </div>
       <dl className="preview-stats">
         <div>
-          <dt>Win rate</dt>
+          <dt>{overall ? "Formats" : "Win rate"}</dt>
           <dd>
-            {card.win_rate === null ? (
+            {overall ? (
+              <>
+                {card.formats?.length ?? 0}{" "}
+                <span className="sub">of {run.components!.length}</span>
+              </>
+            ) : card.win_rate === null ? (
               "—"
             ) : (
               <>
@@ -166,7 +211,11 @@ function Preview({
         </div>
         <div>
           <dt>{labels.share}</dt>
-          <dd>{share(card.deck_count, run.decks)}</dd>
+          <dd>
+            {overall
+              ? count(card.deck_count)
+              : share(card.deck_count, run.decks)}
+          </dd>
         </div>
         <div>
           <dt>{labels.cut} · copies</dt>
@@ -177,10 +226,24 @@ function Preview({
             </span>
           </dd>
         </div>
+        <div>
+          <dt>Price</dt>
+          <dd>
+            <Price value={card.price_usd} />
+          </dd>
+        </div>
+        <div>
+          <dt>{labels.value}</dt>
+          <dd>
+            <Value value={card.score_per_usd} />
+          </dd>
+        </div>
       </dl>
       <div className="preview-played">
-        <p className="preview-label">Played in</p>
-        {card.archetypes.length > 0 ? (
+        <p className="preview-label">{overall ? "Graded in" : "Played in"}</p>
+        {overall ? (
+          <FormatGradeRows formats={card.formats} />
+        ) : card.archetypes.length > 0 ? (
           card.archetypes.map((archetype) => {
             const part = (100 * archetype.deck_count) / card.deck_count;
             return (
@@ -234,6 +297,7 @@ export function RankingTable({
   sorts,
   maxDeckCount,
   catalogSnapshotId,
+  pricesUpdatedAt,
   clearHref,
   footer,
 }: {
@@ -245,11 +309,14 @@ export function RankingTable({
   sorts: Record<string, SortLink>;
   maxDeckCount: number;
   catalogSnapshotId: string | null;
+  pricesUpdatedAt: string | null;
   clearHref: string;
   footer: ReactNode;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The overall run grades by format instead of by trend and archetype.
+  const overall = run.components !== null && run.components !== undefined;
   // A new page or filter may drop the selected card; the top row stands in.
   const selected =
     items.find((card) => card.oracle_id === selectedId) ?? items[0];
@@ -262,11 +329,19 @@ export function RankingTable({
               <col className="col-rank" />
               <col />
               <col className="col-score" />
+              <col className="col-price" />
+              <col className="col-value" />
               <col className="col-win" />
               <col className="col-share" />
               <col className="col-cut" />
-              <col className="col-trend" />
-              <col className="col-archetype" />
+              {overall ? (
+                <col className="col-formats" />
+              ) : (
+                <>
+                  <col className="col-trend" />
+                  <col className="col-archetype" />
+                </>
+              )}
             </colgroup>
             <thead>
               <tr>
@@ -288,14 +363,40 @@ export function RankingTable({
                     </span>
                   </Tooltip>
                 </Sortable>
-                <Sortable label="Win rate vs field" link={sorts.win_rate} />
+                <Sortable label="Price" link={sorts.price}>
+                  <Tooltip
+                    label="About prices"
+                    eyebrow="Market estimate"
+                    title="Cheapest playable paper printing"
+                    placement="below"
+                  >
+                    TCGplayer market price in USD, via Scryfall&apos;s daily
+                    bulk data. An estimate of value, not a price to buy at.
+                    {pricesUpdatedAt && (
+                      <span className="tooltip-meta">
+                        As of {dateWithYear(pricesUpdatedAt)}
+                      </span>
+                    )}
+                  </Tooltip>
+                </Sortable>
+                <Sortable label={labels.value} link={sorts.value} />
+                <Sortable
+                  label={overall ? "Vs field" : "Win rate vs field"}
+                  link={sorts.win_rate}
+                />
                 <Sortable label={labels.share} link={sorts.decks} />
                 <Sortable label={labels.cut} link={sorts.top_cut_lift} />
-                <Sortable
-                  label={labels.trend ? `Trend · ${labels.trend}` : "Trend"}
-                  link={sorts.trend}
-                />
-                <th scope="col">Most played in</th>
+                {overall ? (
+                  <th scope="col">Graded in</th>
+                ) : (
+                  <>
+                    <Sortable
+                      label={labels.trend ? `Trend · ${labels.trend}` : "Trend"}
+                      link={sorts.trend}
+                    />
+                    <th scope="col">Most played in</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -364,6 +465,12 @@ export function RankingTable({
                       )}
                     </td>
                     <td>
+                      <Price value={card.price_usd} />
+                    </td>
+                    <td>
+                      <Value value={card.score_per_usd} />
+                    </td>
+                    <td>
                       <WinRate card={card} />
                     </td>
                     <td>
@@ -371,17 +478,26 @@ export function RankingTable({
                         decks={card.deck_count}
                         total={run.decks}
                         most={maxDeckCount}
+                        counted={overall}
                       />
                     </td>
                     <td>
                       <TopCutLift value={card.top_cut_lift} />
                     </td>
-                    <td>
-                      <Trend card={card} run={run} />
-                    </td>
-                    <td>
-                      <MostPlayedIn card={card} />
-                    </td>
+                    {overall ? (
+                      <td>
+                        <FormatGrades formats={card.formats} />
+                      </td>
+                    ) : (
+                      <>
+                        <td>
+                          <Trend card={card} run={run} />
+                        </td>
+                        <td>
+                          <MostPlayedIn card={card} />
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}

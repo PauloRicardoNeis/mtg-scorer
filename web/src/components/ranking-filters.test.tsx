@@ -160,6 +160,92 @@ describe("RankingFilters", () => {
     ]);
   });
 
+  const gradings = [
+    { value: "", label: "Constructed score", disabled: false },
+    { value: "signature-score", label: "Signature score", disabled: false },
+    { value: "max-ratio", label: "Relative volume", disabled: false },
+  ];
+
+  function graded(query: string, method = "", options = gradings) {
+    return (
+      <RankingFilters
+        format="Modern"
+        scoreRunId="run-1"
+        query={query}
+        clearHref={clearHref}
+        views={views}
+        gradings={options}
+        method={method}
+      />
+    );
+  }
+
+  it("offers each grading and applies the chosen one, keeping order and view", async () => {
+    const user = userEvent.setup();
+    render(graded("sort=win_rate&view=risers"));
+    expect(
+      within(select("Grading"))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Constructed score", "Signature score", "Relative volume"]);
+    expect(select("Grading")).toHaveValue("");
+    await user.selectOptions(select("Grading"), "signature-score");
+    expect(replaced()).toEqual([
+      ["format", "Modern"],
+      ["score_run_id", "run-1"],
+      ["sort", "win_rate"],
+      ["view", "risers"],
+      ["method", "signature-score"],
+    ]);
+  });
+
+  it("leaves the default grading out of the address", async () => {
+    const user = userEvent.setup();
+    render(graded("", "signature-score"));
+    expect(select("Grading")).toHaveValue("signature-score");
+    await user.selectOptions(select("Grading"), "");
+    expect(replaced()).toEqual([
+      ["format", "Modern"],
+      ["score_run_id", "run-1"],
+    ]);
+  });
+
+  it("disables a grading that could not score the run", () => {
+    render(
+      graded("", "", [
+        gradings[0],
+        {
+          value: "signature-score",
+          label: "Signature score · needs archetype labels",
+          disabled: true,
+        },
+      ]),
+    );
+    expect(
+      screen.getByRole("option", { name: /needs archetype labels/ }),
+    ).toBeDisabled();
+  });
+
+  it("keeps a chosen grading when there is nothing to choose between", async () => {
+    const user = userEvent.setup();
+    render(graded("", "signature-score", []));
+    expect(screen.queryByRole("combobox", { name: "Grading" })).toBeNull();
+    await user.selectOptions(select("Card type"), "land");
+    expect(replaced()).toEqual([
+      ["format", "Modern"],
+      ["score_run_id", "run-1"],
+      ["method", "signature-score"],
+      ["type", "land"],
+    ]);
+  });
+
+  it("follows the address when a link elsewhere changes the grading", () => {
+    const { rerender } = render(graded("", "signature-score"));
+    rerender(graded("", "max-ratio"));
+    expect(select("Grading")).toHaveValue("max-ratio");
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
   it("shows sources only when there are several", () => {
     const sources = [
       {

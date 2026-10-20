@@ -57,6 +57,8 @@ test("Modern rankings show the published run, its credit and every ranked card",
     "#",
     "Card",
     /Grade/,
+    /Price/,
+    "Grade per $",
     "Win rate vs field",
     "Meta share",
     "Top cut",
@@ -73,6 +75,8 @@ test("Modern rankings show the published run, its credit and every ranked card",
   await expect(rows.nth(1)).toContainText("80.0% WR");
   await expect(rows.nth(1)).toContainText("57.1%");
   await expect(rows.nth(1)).toContainText("2.00×");
+  // The seed's own Scryfall response prices Lightning Bolt's cheapest printing.
+  await expect(rows.nth(1)).toContainText("$0.95");
   await expect(rows.nth(1)).toContainText("Burn");
   await expect(table).not.toContainText("Island");
   await expect(
@@ -129,6 +133,57 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   await expect(
     page.getByRole("heading", { level: 1, name: "Bruna, the Fading Light" }),
   ).toBeVisible();
+});
+
+test("the grading menu re-ranks by signature score and the choice follows every link", async ({
+  page,
+}) => {
+  await page.goto("/rankings");
+  const grading = page.getByLabel("Grading");
+  await expect(grading).toHaveValue("");
+  await expect(grading.getByRole("option")).toHaveText([
+    "Constructed score",
+    "Signature score",
+    "Relative volume",
+  ]);
+  await grading.selectOption("signature-score");
+  await expect(page).toHaveURL(/method=signature-score/);
+  await expect(
+    page.getByText(/how much it belongs to one strategy/),
+  ).toBeVisible();
+  // Fire // Ice is only ever Izzet Tempo; Lightning Bolt splits between two archetypes.
+  const podium = page.getByRole("region", { name: "Top ranked cards" });
+  await expect(
+    podium.getByRole("link", { name: "Rank 1: Fire // Ice" }),
+  ).toBeVisible();
+  await expect(podium).toContainText("Izzet Tempo");
+  const rows = page.getByRole("table").getByRole("row");
+  await expect(rows.nth(1).getByLabel("Grade A+")).toBeVisible();
+  await expect(rows.nth(1)).toContainText("93.8");
+  await expect(
+    page
+      .getByRole("row", { name: /Lightning Bolt/ })
+      .getByRole("cell")
+      .first(),
+  ).toHaveText(/^5/);
+
+  await page
+    .getByRole("columnheader", { name: /Win rate vs field/ })
+    .getByRole("link")
+    .click();
+  await expect(page).toHaveURL(/sort=win_rate/);
+  await expect(page).toHaveURL(/method=signature-score/);
+  await expect(grading).toHaveValue("signature-score");
+  await expect(
+    page
+      .getByRole("navigation", { name: "Formats" })
+      .getByRole("link", { name: /Legacy/ }),
+  ).toHaveAttribute("href", /method=signature-score/);
+
+  await grading.selectOption("");
+  await expect(page).not.toHaveURL(/method=/);
+  await expect(page).toHaveURL(/sort=win_rate/);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test("an empty result explains itself inside the table and clears every filter", async ({
@@ -208,6 +263,46 @@ test("column headers sort and the view tabs count risers and fallers", async ({
   await views.getByRole("link", { name: /Risers/ }).click();
   await expect(page).toHaveURL(/view=risers/);
   await expect(results(page)).toHaveText("No ranked cards match");
+});
+
+test("the overall tab grades each card across every published format", async ({
+  page,
+}) => {
+  await page.goto("/rankings?format=Modern&method=signature-score");
+  const overall = page
+    .getByRole("navigation", { name: "Formats" })
+    .getByRole("link", { name: /Overall/ });
+  // The overall run has its own grading, so another format's does not follow.
+  await expect(overall).toHaveAttribute("href", "/rankings?format=Overall");
+  await overall.click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Overall" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Every format at once · weighted by decklists"),
+  ).toBeVisible();
+  await expect(page.getByLabel("Grading")).toHaveCount(0);
+
+  const table = page.getByRole("table");
+  await expect(table.getByRole("columnheader")).toHaveText([
+    "#",
+    "Card",
+    /Grade/,
+    /Price/,
+    "Grade per $",
+    "Vs field",
+    "Decklists",
+    "Top cut",
+    "Graded in",
+  ]);
+  // verify combines only the synthetic Modern run, so each card is graded there.
+  const bolt = page.getByRole("row", { name: /Lightning Bolt/ });
+  await expect(bolt.getByLabel("Grade A+")).toBeVisible();
+  await expect(bolt).toContainText("+30.0%");
+  await expect(bolt).not.toContainText("WR");
+  await expect(bolt).toContainText("Modern");
+  await expect(preview(page)).toContainText("Graded in");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test("a format without published rankings explains itself", async ({

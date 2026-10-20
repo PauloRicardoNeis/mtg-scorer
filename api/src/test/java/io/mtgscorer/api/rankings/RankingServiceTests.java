@@ -27,17 +27,23 @@ class RankingServiceTests {
   private static final String PIONEER = "scores-" + "b".repeat(64);
   private static final ScoreMethod VOLUME =
       new ScoreMethod(
-          "max-ratio", "max-ratio-v1", "Relative volume", "Count ÷ max.", List.of("max_ratio"));
+          "max-ratio",
+          "max-ratio-v1",
+          "Relative volume",
+          "Count ÷ max.",
+          List.of("max_ratio"),
+          608);
   private static final ScoreMethod CONSTRUCTED =
       new ScoreMethod(
           "constructed-score",
           "constructed-score-v1",
           "Constructed score",
           "Blend.",
-          List.of("score"));
+          List.of("score"),
+          608);
   private static final ScoreMethod FOUNDATION =
       new ScoreMethod(
-          "foundation", "foundation-v2", "Staple", "Weighted.", List.of("staple", "evidence"));
+          "foundation", "foundation-v2", "Staple", "Weighted.", List.of("staple", "evidence"), 608);
   private static final List<RankedFormat> FORMATS =
       List.of(
           new RankedFormat("Modern", "topdeck", MODERN, 231, 2),
@@ -70,7 +76,8 @@ class RankingServiceTests {
         LocalDate.of(2025, 9, 6),
         30,
         List.of(0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0),
-        List.of(methods));
+        List.of(methods),
+        null);
   }
 
   private static RankedCard card() {
@@ -100,6 +107,9 @@ class RankingServiceTests {
         "{R}",
         "Instant",
         List.of("R"),
+        null,
+        0.6,
+        166.67,
         null);
   }
 
@@ -131,6 +141,8 @@ class RankingServiceTests {
     when(repository.page(MODERN, previous, "constructed-score", "score", query))
         .thenReturn(List.of(card()));
     when(repository.activeCatalog()).thenReturn("catalog-a");
+    var prices = OffsetDateTime.parse("2026-09-27T21:05:46.301Z");
+    when(repository.pricesUpdatedAt()).thenReturn(prices);
 
     var page = service().rankings(query);
 
@@ -144,6 +156,7 @@ class RankingServiceTests {
     assertThat((page.sort() + " " + page.order() + " " + page.view())).isEqualTo("score desc all");
     assertThat(page.formats()).isEqualTo(FORMATS);
     assertThat(page.catalog_snapshot_id()).isEqualTo("catalog-a");
+    assertThat(page.prices_updated_at()).isEqualTo(prices);
     assertThat(page.total()).isEqualTo(608);
     assertThat(page.offset()).isZero();
     assertThat(page.limit()).isEqualTo(10);

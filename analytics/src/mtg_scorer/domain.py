@@ -172,6 +172,8 @@ class DeckEntry:
     ``sideboard_observed`` is False unless the source reported a sideboard zone, so a
     missing sideboard stays unknown instead of reading as empty. ``archetype_label``
     is the source's own name for the deck, not an analytical classification.
+    ``commanders`` holds the sorted oracle ids of the cards the source listed as the
+    deck's commanders; it is empty when the source named none.
     """
 
     provenance: Provenance
@@ -180,6 +182,7 @@ class DeckEntry:
     player_name: str | None = None
     sideboard_observed: bool = False
     archetype_label: str | None = None
+    commanders: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.source_event_id.strip():
@@ -187,8 +190,13 @@ class DeckEntry:
         if self.archetype_label is not None and not self.archetype_label.strip():
             raise ValueError("archetype_label cannot be blank when present")
         oracle_ids = [card.oracle_id for card in self.cards]
-        if len(oracle_ids) != len(set(oracle_ids)):
+        distinct = set(oracle_ids)
+        if len(oracle_ids) != len(distinct):
             raise ValueError("cards must contain at most one entry per oracle_id")
+        if list(self.commanders) != sorted(set(self.commanders)):
+            raise ValueError("commanders must be sorted and distinct")
+        if not distinct.issuperset(self.commanders):
+            raise ValueError("every commander must be one of the deck's cards")
 
     @property
     def source_deck_id(self) -> str:

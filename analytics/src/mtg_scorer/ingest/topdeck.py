@@ -29,10 +29,17 @@ from ..domain import (
 )
 
 SOURCE = "topdeck"
-PARSER_VERSION = "topdeck-bulk-v2"
-# Zones whose cards are played: commander formats keep the commander apart from the
-# Mainboard, and it counts as played. The Sideboard is kept separately.
-PLAYED_ZONES = ("Mainboard", "Commanders")
+PARSER_VERSION = "topdeck-bulk-v3"
+# Cards in the Mainboard and in a commander zone are played: commander formats keep
+# the commander apart from the Mainboard. The Sideboard is kept separately.
+MAINBOARD = "Mainboard"
+# Commander zone names, compared case-insensitively: most lists say "Commanders", a
+# few "Commander" or "COMMANDER".
+COMMANDER_ZONES = frozenset({"commanders", "commander"})
+# The rules allow two commanders at most (partners, a background, an oathbreaker and
+# its signature spell). A longer commander zone holds a misplaced decklist, so its
+# cards are played but none of them is taken for a commander.
+MAX_COMMANDERS = 2
 
 # How each event's top-cut membership was established.
 BRACKET_RECORD = "bracket_record"
@@ -297,18 +304,24 @@ def _deck(
     if not _mainboard(row):
         return None, 0, 0
     deck = row["deckObj"]
+    commander_zones = [zone for zone in deck if zone.lower() in COMMANDER_ZONES]
     # One entry per oracle id: [first name seen, mainboard copies, sideboard copies].
     copies: dict[str, list[Any]] = {}
+    commanders: set[str] = set()
     skipped = [0, 0]
-    for slot, zone in [(0, zone) for zone in PLAYED_ZONES] + [(1, "Sideboard")]:
+    zones = [(0, MAINBOARD)] + [(0, zone) for zone in commander_zones] + [(1, "Sideboard")]
+    for slot, zone in zones:
         for name, line in (deck.get(zone) or {}).items():
             oracle_id = _oracle_id((line or {}).get("id"))
             count = (line or {}).get("count")
             if oracle_id is None or not isinstance(count, int) or count <= 0:
                 skipped[slot] += 1
                 continue
-            entry = copies.setdefault(intern(oracle_id), [intern(name), 0, 0])
+            oracle_id = intern(oracle_id)
+            entry = copies.setdefault(oracle_id, [intern(name), 0, 0])
             entry[1 + slot] += count
+            if zone in commander_zones:
+                commanders.add(oracle_id)
     label = (row.get("archetype") or "").strip() or None
     cards = tuple(
         DeckCard(oracle_id, name, mainboard_count=main, sideboard_count=side)
@@ -321,5 +334,6 @@ def _deck(
         # An unreadable sideboard line means the sideboard was not fully observed.
         sideboard_observed="Sideboard" in deck and not skipped[1],
         archetype_label=label,
+        commanders=tuple(sorted(commanders)) if len(commanders) <= MAX_COMMANDERS else (),
     )
     return entry, skipped[0], skipped[1]

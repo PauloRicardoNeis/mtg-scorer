@@ -11,6 +11,12 @@ export const designFormats: [label: string, format: string][] = [
   ["Commander", "EDH"],
 ];
 
+/**
+ * The overall run: every format's grade combined into one per card. It leads the
+ * format bar and is never compared, since it already spans the formats.
+ */
+export const OVERALL_FORMAT = "Overall";
+
 /** A format as the site names it: TopDeck's "EDH" reads "Commander". */
 export function formatLabel(format: string): string {
   return designFormats.find(([, name]) => name === format)?.[0] ?? format;
@@ -26,4 +32,5 @@ export const descriptors: Record<string, string> = {
   Vintage: "Eternal · restricted list · 1v1",
   Pauper: "Commons only · 60 cards · 1v1",
   EDH: "cEDH · 100-card singleton · 4-player pods",
+  [OVERALL_FORMAT]: "Every format at once · weighted by decklists",
 };

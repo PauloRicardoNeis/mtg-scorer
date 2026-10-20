@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { RankedCard, RankingPage } from "@/lib/api";
 import {
+  count,
   deltaTone,
   grade,
   gradeTone,
@@ -14,8 +15,30 @@ import { ColorPips } from "./mana";
 
 type Run = RankingPage["score_run"];
 
-/** The constructed score is the only method whose 0–100 scale carries grades. */
-export const GRADED_METHOD = "constructed-score";
+/** Methods whose 0–100 percentile scale carries letter grades. */
+const GRADED_METHODS = [
+  "constructed-score",
+  "signature-score",
+  "overall-grade",
+];
+
+export function isGraded(methodId: string): boolean {
+  return GRADED_METHODS.includes(methodId);
+}
+
+/** The gradings a reader can rank by, in menu order; a run offers those it has. */
+export const GRADINGS = ["constructed-score", "signature-score", "max-ratio"];
+
+/** The gradings formats can be compared by, in menu order; the first is the default. */
+export const COMPARE_GRADINGS = GRADINGS.filter(isGraded);
+
+/** The method the API ranks by without one: the first of these the run has. */
+export function defaultMethod(run: Run): string {
+  const ids = run.methods.map((method) => method.method_id);
+  return (
+    ["constructed-score", "max-ratio"].find((id) => ids.includes(id)) ?? ids[0]
+  );
+}
 
 /**
  * A grade ring: the score fills the ring, the letter sits in the inner disc. Only
@@ -77,10 +100,11 @@ export function RankMove({ change }: { change: number | null | undefined }) {
 
 /**
  * Win rate against the field: a bar grows left or right of the centre tick, with
- * the delta in points beside it and the raw win rate below.
+ * the delta in points beside it and the raw win rate below. The overall run has
+ * only the delta, since win rates of one-on-one and multiplayer formats differ.
  */
 export function WinRate({ card }: { card: RankedCard }) {
-  if (card.win_rate === null || card.win_rate_delta === null)
+  if (card.win_rate_delta === null)
     return <span className="muted">Unknown</span>;
   const points = 100 * card.win_rate_delta;
   // A ±6-point delta fills one half of the 72px track.
@@ -101,25 +125,39 @@ export function WinRate({ card }: { card: RankedCard }) {
         <span className={`tone-${tone}`}>
           {signed(points)}%<span className="sr-only"> against the field</span>
         </span>
-        <span className="sub">{percent(100 * card.win_rate)} WR</span>
+        {card.win_rate !== null && (
+          <span className="sub">{percent(100 * card.win_rate)} WR</span>
+        )}
       </span>
     </span>
   );
 }
 
-/** Meta share as a value over a bar sized against the run's most-played card. */
+/**
+ * Meta share as a value over a bar sized against the run's most-played card. A
+ * counted share shows the decks instead: across formats, a share of every deck
+ * would mostly measure the largest format.
+ */
 export function MetaShare({
   decks,
   total,
   most,
+  counted = false,
 }: {
   decks: number;
   total: number;
   most: number;
+  counted?: boolean;
 }) {
   return (
     <span className="stacked share">
-      <span>{total > 0 ? percent((100 * decks) / total) : "—"}</span>
+      <span>
+        {counted
+          ? count(decks)
+          : total > 0
+            ? percent((100 * decks) / total)
+            : "—"}
+      </span>
       <span
         className="share-bar"
         aria-hidden="true"
