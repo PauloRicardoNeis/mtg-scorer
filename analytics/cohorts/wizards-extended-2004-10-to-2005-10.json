@@ -1,0 +1,8 @@
+{
+  "version": "wizards-extended-2004-10-to-2005-10-v1",
+  "format_name": "Extended",
+  "starts_on": "2004-10-01",
+  "ends_before": "2005-11-01",
+  "min_decklist_coverage": 0.8,
+  "excluded_events": []
+}

@@ -132,6 +132,83 @@ permission and honest coverage labels. No synthetic tournament proof, automatic
 switch to multiplayer, source scraping project, or permission request to a third
 party is authorized by this plan.
 
+## Historical source: Wizards Pro Tour coverage, 2004–2010
+
+TopDeck data starts in 2024. For earlier grades, the owner approved reading Wizards'
+own event coverage from the Internet Archive (2026-10-20). For constructed Pro Tours
+of roughly 2004–2010 it published every player's decklist, every round's results and
+the final standings. Grand Prix and earlier Pro Tours published top 8s only, which
+cannot feed the constructed score, so they are out of scope.
+
+`scripts/probe_wizards_coverage.py` lists one event's archived pages through the
+Wayback CDX API, waits 2 s between requests, and saves the original bytes (`id_`)
+of the decklist, results and standings pages with a manifest that names the event.
+`mtg-scorer score-wizards` reads one or more such directories offline into a
+score-run file with source `wizards-coverage` (see
+[analytics/README.md](../analytics/README.md)). Pages live under
+`default.asp?x=mtgevent/<code>/` up to 2008 and
+`Magazine/Article.aspx?x=mtg/daily/eventcoverage/<code>/` from 2009. The archive's
+CDX API answered slowly on 2026-10-20 (503 and 504 responses); the probe backs off,
+and a listing that keeps failing stops the run, which `--resume` continues.
+
+| Event | Format | Players | Decks (joined) | Constructed rounds read | Card lines resolved |
+| --- | --- | --- | --- | --- | --- |
+| PT Columbus 2004 (`ptcol05`) | Extended | 286 | 271 (262) | 16 of 16 | 7,289 of 7,290 |
+| PT Los Angeles 2005 (`ptla05`) | Extended | 340 | 339 (339) | 16 of 16 | 9,078 of 9,078 |
+| PT Honolulu 2006 (`pthon06`) | Standard | 410 | 350 (348) | 16 of 16 | 9,309 of 9,310 |
+| PT Honolulu 2009 (`pthon09`) | Alara Block | 396 | 394 (390) | 10 of 10 | 9,858 of 9,858 |
+| PT Austin 2009 (`ptaus09`) | Extended | 418 | 416 (408) | 10 of 10 | 11,511 of 11,511 |
+| PT San Diego 2010 (`ptsd10`) | Standard | 413 | 389 (374) | 10 of 10 | 9,653 of 9,653 |
+
+What the six events showed:
+
+- Decklists: 2004–06 events list 85–100% of the field on alphabetical pages ("afdecks",
+  "alldecksad"; Honolulu 2006 published 349 lists for 408 standings). The 2009–10
+  events left two groups out of those pages: the top 8 and the players with the best
+  constructed records, which have pages of their own ("top8decks"; "tedecks",
+  "topstddecks", "f-topblock"). Without them Austin's decks won 44% of their matches;
+  with them every event's field wins 50%. Deck names sit after the player ("First Last
+  – Deck Name") or on the next line; 2009–10 pages caption each deck with the event
+  instead, so those decks carry no archetype label. The 2009 and 2010 pages use two
+  variants of a `div.deck` layout (the 2010 one starts the sideboard mid-column). Main
+  decks of 37, 57 or 250 cards match the counts printed on the page (lands left out by
+  the coverage, Battle of Wits).
+- Rounds: 2009–10 Pro Tours mixed formats, 10 constructed and 6 Booster Draft rounds.
+  Their "standings by format" page gives each player's constructed points; rounds 1–5
+  and 12–16 reproduce them for 98–99% of players (410 of 417 at Austin, 405 of 411 at
+  San Diego, 390 of 396 at Honolulu), rounds 4–8 and 12–16 for under a third. Records
+  count only those rounds.
+- Names: decklists say "First Last", standings "Last, First [CTRY]". Exact tokens
+  join most decks; the rest join through truncated names, surname plus initial and a
+  last pass for spellings that differ (Japanese long vowels such as "Odan"/"Oodan",
+  "Muller"/"Mueller", nicknames, surname first, typos). The PT LA pairs from that last
+  pass were checked by hand; before it, 22 PT LA decks stayed unjoined, now none do.
+  Up to 15 decks an event (San Diego) stay unjoined and so have no record. Results
+  pages sometimes give a player the default country early on ("[USA]" before "[CAN]");
+  those spellings are merged so the player's record is not split.
+- Cards: before corrections 31 of 9,078 PT LA lines and 102 of 9,259 Honolulu 2006
+  lines did not resolve. Punctuation and accent differences ("Watch Wolf", "Lim-Dul's
+  Vault") now resolve on their own, and `CARD_ALIASES` corrects 32 typos ("Caves of
+  Kolios", "Frostlang", "Scorching Rusalka"), each checked against its deck and the
+  card's first printing. A 2026 product "front card" named Savage Lands made the land
+  ambiguous; layouts no deck can list are ignored. Two lines stay unresolved
+  ("Unknown", "Gift of the States").
+- Results: each match is listed once per round; draws and byes are read. Records stay
+  unknown when a constructed round is missing: PT Hollywood 2008 archived results for
+  rounds 14–16 only.
+- Grades: the 2004–05 Extended season (Columbus and Los Angeles) scores 609 complete
+  decks and 2,918 matches; Pillage, Force Spike and Lonely Sandbar lead the constructed
+  score. Honolulu 2006 is led by the Owling Mine cards (Exhaustion, Kami of the Crescent
+  Moon) beside Pyroclasm and Boomerang; Honolulu 2009 by Battlegrace Angel, Thornling
+  and Ranger of Eos; Austin 2009 by Ghost Quarter and Flame-Kin Zealot; San Diego 2010
+  by Oblivion Ring and Stoneforge Mystic.
+
+Limits: a season holds one or two Pro Tours, a few hundred decks, so card win rates
+carry wide intervals. Deck labels are the coverage's own deck names. Player names
+stay in the private raw pages; run files hold none. The probe reads an archive of a
+third party's site at a gentle rate and keeps raw pages local. No run has been
+published to a shared database.
+
 ## Demo data policy and dependencies
 
 [Scryfall API guidance](https://scryfall.com/docs/api) supports added-value MTG

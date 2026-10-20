@@ -1,0 +1,8 @@
+{
+  "version": "wizards-alara-block-2009-05-to-2009-09-v1",
+  "format_name": "Alara Block",
+  "starts_on": "2009-05-01",
+  "ends_before": "2009-10-01",
+  "min_decklist_coverage": 0.8,
+  "excluded_events": []
+}

@@ -47,6 +47,20 @@ def main() -> None:
     )
     score_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
     score_parser.add_argument("--output-root", type=Path, required=True)
+    wizards_parser = subparsers.add_parser(
+        "score-wizards",
+        help="score one cohort of saved Wizards Pro Tour coverage pages into a run file; "
+        "card names resolve against the catalog in CATALOG_READ_DSN",
+    )
+    wizards_parser.add_argument(
+        "--source-dir",
+        type=Path,
+        action="append",
+        required=True,
+        help="one event's probe output with manifest.json; repeat for a season",
+    )
+    wizards_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
+    wizards_parser.add_argument("--output-root", type=Path, required=True)
     publish_scores_parser = subparsers.add_parser(
         "publish-scores", help="atomically publish a score-run file and make it active"
     )
@@ -92,6 +106,18 @@ def main() -> None:
         from .publish.score_run import score_topdeck
 
         print(score_topdeck(arguments.source_dir, arguments.cohort, arguments.output_root))
+    elif arguments.command == "score-wizards":
+        from .ingest.wizards import catalog_resolver
+        from .publish.score_run import score_wizards
+
+        print(
+            score_wizards(
+                arguments.source_dir,
+                arguments.cohort,
+                arguments.output_root,
+                catalog_resolver(os.environ["CATALOG_READ_DSN"]),
+            )
+        )
     elif arguments.command == "publish-scores":
         from .publish.score_postgres import publish_score_run
 

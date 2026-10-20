@@ -16,6 +16,7 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
+from ..ingest import wizards
 from ..ingest.topdeck import PARSER_VERSION, SOURCE, TopDeckSnapshot, read_saved_responses
 from ..scoring import SCORE_METHODS, ScoreContext, ScoreMethod, ScoringInput
 from ..tournament_features import (
@@ -61,11 +62,16 @@ def load_cohort_rules(path: Path) -> CohortRules:
 
 
 def build_score_run(
-    snapshot: TopDeckSnapshot,
+    snapshot: TopDeckSnapshot | wizards.WizardsSnapshot,
     rules: CohortRules,
     methods: Iterable[ScoreMethod] = SCORE_METHODS,
+    *,
+    source: str = SOURCE,
+    parser_version: str = PARSER_VERSION,
+    attribution: str = ATTRIBUTION,
 ) -> dict[str, Any]:
-    """Select the cohort, compute card usage and run every method over it."""
+    """Select the cohort, compute card usage and run every method over it. The source,
+    parser and attribution default to TopDeck's."""
 
     methods = tuple(methods)
     cohort = select_cohort(
@@ -84,7 +90,7 @@ def build_score_run(
     context = ScoreContext(snapshot.dataset_snapshot_id, FEATURE_PIPELINE_VERSION)
     identity = {
         "dataset_snapshot_id": snapshot.dataset_snapshot_id,
-        "parser_version": PARSER_VERSION,
+        "parser_version": parser_version,
         "feature_pipeline_version": FEATURE_PIPELINE_VERSION,
         "cohort_rules_hash": rules.fingerprint,
         "population_rule": POPULATION_RULE,
@@ -94,8 +100,8 @@ def build_score_run(
         "schema_version": SCHEMA_VERSION,
         "score_run_id": "scores-" + sha256(canonical_bytes(identity)).hexdigest(),
         **identity,
-        "source": SOURCE,
-        "attribution": ATTRIBUTION,
+        "source": source,
+        "attribution": attribution,
         "raw_files": [
             {
                 "name": raw.name,
@@ -167,7 +173,9 @@ def _rate(value: float | None) -> float | None:
 
 
 def _cohort_summary(
-    cohort: Cohort, snapshot: TopDeckSnapshot, field: CohortPerformance
+    cohort: Cohort,
+    snapshot: TopDeckSnapshot | wizards.WizardsSnapshot,
+    field: CohortPerformance,
 ) -> dict[str, Any]:
     made_cut = {s.source_deck_id: s.made_top_cut for s in cohort.standings}
     return {
@@ -291,4 +299,20 @@ def score_topdeck(source_dir: Path, cohort_file: Path, output_root: Path) -> Pat
     """Read saved TopDeck responses, score the cohort and write the run file."""
 
     document = build_score_run(read_saved_responses(source_dir), load_cohort_rules(cohort_file))
+    return write_score_run(document, output_root)
+
+
+def score_wizards(
+    source_dirs: Iterable[Path], cohort_file: Path, output_root: Path, resolver: wizards.Resolver
+) -> Path:
+    """Read the saved Wizards coverage of one or more events, score the cohort and write
+    the run file."""
+
+    document = build_score_run(
+        wizards.read_saved_events(source_dirs, resolver),
+        load_cohort_rules(cohort_file),
+        source=wizards.SOURCE,
+        parser_version=wizards.PARSER_VERSION,
+        attribution=wizards.ATTRIBUTION,
+    )
     return write_score_run(document, output_root)
