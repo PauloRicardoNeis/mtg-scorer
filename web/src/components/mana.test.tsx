@@ -247,6 +247,11 @@ describe("Rarity", () => {
     },
   );
 
+  it("names a rarity it has no word for as the source does", () => {
+    const { container } = render(<Rarity rarity="timeshifted" />);
+    expect(container.firstElementChild).toHaveTextContent("timeshifted");
+  });
+
   it("falls back to the common gem for other rarities", () => {
     const { container } = render(<Rarity rarity="special" />);
     expect(container.firstElementChild).toHaveTextContent("special");

@@ -3,18 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { useI18n } from "#i18n";
+import type { I18n } from "@/i18n/translator";
 import type { RankedCard, RankingPage } from "@/lib/api";
-import {
-  count,
-  dateWithYear,
-  deltaTone,
-  lift,
-  percent,
-  perDollar,
-  share,
-  signed,
-  usd,
-} from "@/lib/format";
+import { deltaTone } from "@/lib/format";
 import { edition, rankedCardHref } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { FormatGradeRows, FormatGrades } from "./format-grades";
@@ -44,8 +36,8 @@ export type ColumnLabels = {
   value: string;
 };
 
-function score(card: RankedCard): string | null {
-  return card.score === null ? null : card.score.toFixed(1);
+function score(card: RankedCard, { decimal }: I18n): string | null {
+  return card.score === null ? null : decimal(card.score, 1);
 }
 
 /** The row thumbnail is decorative: the card's name sits beside it. */
@@ -110,19 +102,21 @@ function Sortable({
  * from before prices omits the field.
  */
 function Price({ value }: { value: number | null | undefined }) {
+  const { t, usd } = useI18n();
   if (value === null || value === undefined)
-    return <span className="muted">Unknown</span>;
+    return <span className="muted">{t.common.unknown}</span>;
   return <span>{usd(value)}</span>;
 }
 
 /** Score per dollar of the card's price; unknown without both. */
 function Value({ value }: { value: number | null | undefined }) {
+  const { t, perDollar } = useI18n();
   if (value === null || value === undefined)
-    return <span className="muted">Unknown</span>;
+    return <span className="muted">{t.common.unknown}</span>;
   return (
     <span>
       {perDollar(value)}
-      <span className="sr-only"> per dollar</span>
+      <span className="sr-only"> {t.rankingTable.perDollar}</span>
     </span>
   );
 }
@@ -143,14 +137,17 @@ function Preview({
   labels: ColumnLabels;
   href: string | null;
 }) {
+  const i18n = useI18n();
+  const { t, fill, count, percent, signed, share, lift, decimal } = i18n;
   const printing = card.preview_printing;
-  const top = percentile(card.rank, run.scored_cards);
+  const top = percentile(card.rank, run.scored_cards, i18n);
+  const methodLabel = i18n.method(method).label;
   // The overall run pools no win rate or share; its formats stand in for them.
   const overall = run.components !== null && run.components !== undefined;
   return (
-    <aside className="ranking-preview" aria-label="Selected card">
+    <aside className="ranking-preview" aria-label={t.rankingTable.selectedCard}>
       <p className="preview-rank">
-        <span>Rank {card.rank}</span>
+        <span>{fill(t.rankingTable.rank, { rank: card.rank })}</span>
         <RankMove change={card.rank_change} />
       </p>
       <div className="preview-art">
@@ -158,7 +155,10 @@ function Preview({
           <CardImage
             key={card.oracle_id}
             src={printing.images[0]?.source_uri ?? null}
-            alt={`${card.name} — ${edition(printing)}`}
+            alt={fill(t.images.alt, {
+              name: card.name,
+              edition: edition(printing),
+            })}
             featured
           />
         ) : (
@@ -168,18 +168,24 @@ function Preview({
       <div className="preview-score">
         {graded && <GradeRing score={card.score} size="preview" />}
         <p>
-          <span className="preview-score-value">{score(card) ?? "—"}</span>
-          <span>{graded ? (top ?? method.label) : method.label}</span>
+          <span className="preview-score-value">
+            {score(card, i18n) ?? "—"}
+          </span>
+          <span>{graded ? (top ?? methodLabel) : methodLabel}</span>
         </p>
       </div>
       <dl className="preview-stats">
         <div>
-          <dt>{overall ? "Formats" : "Win rate"}</dt>
+          <dt>{overall ? t.formats.label : t.rankingTable.winRate}</dt>
           <dd>
             {overall ? (
               <>
-                {card.formats?.length ?? 0}{" "}
-                <span className="sub">of {run.components!.length}</span>
+                {count(card.formats?.length ?? 0)}{" "}
+                <span className="sub">
+                  {fill(t.rankingTable.outOf, {
+                    count: run.components!.length,
+                  })}
+                </span>
               </>
             ) : card.win_rate === null ? (
               "—"
@@ -196,7 +202,7 @@ function Preview({
           </dd>
         </div>
         <div>
-          <dt>Vs field</dt>
+          <dt>{t.rankingTable.vsField}</dt>
           <dd
             className={
               card.win_rate_delta === null
@@ -218,16 +224,16 @@ function Preview({
           </dd>
         </div>
         <div>
-          <dt>{labels.cut} · copies</dt>
+          <dt>{fill(t.rankingTable.cutCopies, { cut: labels.cut })}</dt>
           <dd>
             {card.top_cut_lift === null ? "—" : lift(card.top_cut_lift)}{" "}
             <span className="sub">
-              · {card.avg_copies === null ? "—" : card.avg_copies.toFixed(1)}
+              · {card.avg_copies === null ? "—" : decimal(card.avg_copies, 1)}
             </span>
           </dd>
         </div>
         <div>
-          <dt>Price</dt>
+          <dt>{t.rankingTable.price}</dt>
           <dd>
             <Price value={card.price_usd} />
           </dd>
@@ -240,7 +246,9 @@ function Preview({
         </div>
       </dl>
       <div className="preview-played">
-        <p className="preview-label">{overall ? "Graded in" : "Played in"}</p>
+        <p className="preview-label">
+          {overall ? t.rankingTable.gradedIn : t.rankingTable.playedIn}
+        </p>
         {overall ? (
           <FormatGradeRows formats={card.formats} />
         ) : card.archetypes.length > 0 ? (
@@ -267,16 +275,16 @@ function Preview({
             </span>
           </p>
         ) : (
-          <p className="muted">No labelled decks</p>
+          <p className="muted">{t.rankingTable.noLabelledDecks}</p>
         )}
       </div>
       {href && (
         <Link
           className="button preview-open"
           href={href}
-          aria-label={`Open card: ${card.name}`}
+          aria-label={fill(t.rankingTable.openCardNamed, { name: card.name })}
         >
-          Open card
+          {t.rankingTable.openCard}
           <Icon name="arrow-right" size={14} />
         </Link>
       )}
@@ -314,6 +322,10 @@ export function RankingTable({
   footer: ReactNode;
 }) {
   const router = useRouter();
+  const i18n = useI18n();
+  const { t, fill } = i18n;
+  const { label: methodLabel, description: methodDescription } =
+    i18n.method(method);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // The overall run grades by format instead of by trend and archetype.
   const overall = run.components !== null && run.components !== undefined;
@@ -346,55 +358,66 @@ export function RankingTable({
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <Sortable label="Card" link={sorts.name} />
+                <Sortable label={t.common.card} link={sorts.name} />
                 <Sortable
-                  label={graded ? "Grade" : method.label}
+                  label={graded ? t.rankingTable.grade : methodLabel}
                   link={sorts.score}
                 >
                   <Tooltip
-                    label="About this score"
-                    eyebrow="Method"
-                    title={method.label}
+                    label={t.rankingTable.aboutScore}
+                    eyebrow={t.rankingTable.method}
+                    title={methodLabel}
                     placement="below"
                   >
-                    {method.description}
+                    {methodDescription}
                     <span className="tooltip-meta">
                       {method.method_version}
                     </span>
                   </Tooltip>
                 </Sortable>
-                <Sortable label="Price" link={sorts.price}>
+                <Sortable label={t.rankingTable.price} link={sorts.price}>
                   <Tooltip
-                    label="About prices"
-                    eyebrow="Market estimate"
-                    title="Cheapest playable paper printing"
+                    label={t.rankingTable.aboutPrices}
+                    eyebrow={t.rankingTable.priceEyebrow}
+                    title={t.rankingTable.priceTitle}
                     placement="below"
                   >
-                    TCGplayer market price in USD, via Scryfall&apos;s daily
-                    bulk data. An estimate of value, not a price to buy at.
+                    {t.rankingTable.priceBody}
                     {pricesUpdatedAt && (
                       <span className="tooltip-meta">
-                        As of {dateWithYear(pricesUpdatedAt)}
+                        {fill(t.rankingTable.asOf, {
+                          date: i18n.dateWithYear(pricesUpdatedAt),
+                        })}
                       </span>
                     )}
                   </Tooltip>
                 </Sortable>
                 <Sortable label={labels.value} link={sorts.value} />
                 <Sortable
-                  label={overall ? "Vs field" : "Win rate vs field"}
+                  label={
+                    overall
+                      ? t.rankingTable.vsField
+                      : t.rankingTable.winRateVsField
+                  }
                   link={sorts.win_rate}
                 />
                 <Sortable label={labels.share} link={sorts.decks} />
                 <Sortable label={labels.cut} link={sorts.top_cut_lift} />
                 {overall ? (
-                  <th scope="col">Graded in</th>
+                  <th scope="col">{t.rankingTable.gradedIn}</th>
                 ) : (
                   <>
                     <Sortable
-                      label={labels.trend ? `Trend · ${labels.trend}` : "Trend"}
+                      label={
+                        labels.trend
+                          ? fill(t.rankingTable.trendOver, {
+                              period: labels.trend,
+                            })
+                          : t.rankingTable.trend
+                      }
                       link={sorts.trend}
                     />
-                    <th scope="col">Most played in</th>
+                    <th scope="col">{t.rankingTable.mostPlayedIn}</th>
                   </>
                 )}
               </tr>
@@ -446,7 +469,9 @@ export function RankingTable({
                                 {card.type_line}
                               </span>
                             ) : (
-                              <span className="muted">Not in this catalog</span>
+                              <span className="muted">
+                                {t.common.notInCatalog}
+                              </span>
                             )}
                           </span>
                         </span>
@@ -457,11 +482,13 @@ export function RankingTable({
                         <span className="grade-cell">
                           <GradeRing score={card.score} />
                           <span className="grade-score">
-                            {score(card) ?? "—"}
+                            {score(card, i18n) ?? "—"}
                           </span>
                         </span>
                       ) : (
-                        (score(card) ?? <span className="muted">Unknown</span>)
+                        (score(card, i18n) ?? (
+                          <span className="muted">{t.common.unknown}</span>
+                        ))
                       )}
                     </td>
                     <td>
@@ -506,10 +533,10 @@ export function RankingTable({
         </div>
         {items.length === 0 && (
           <div className="ranking-empty">
-            <h3>No ranked cards match.</h3>
-            <p>Loosen a filter or search a different name.</p>
+            <h3>{t.rankingTable.emptyTitle}</h3>
+            <p>{t.rankingTable.emptyBody}</p>
             <Link className="button secondary" href={clearHref}>
-              Clear filters
+              {t.common.clearFilters}
             </Link>
           </div>
         )}

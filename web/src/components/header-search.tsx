@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, type RefObject } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useI18n } from "#i18n";
 import { Icon } from "./icon";
 
 // The dataset a page shows: in the query on card pages, in the path on dataset pages.
@@ -64,7 +65,8 @@ export function HeaderSearch() {
   const router = useRouter();
   const rankings = /^\/rankings(\/|$)/.test(usePathname());
   const input = useRef<HTMLInputElement>(null);
-  const label = rankings ? "Search ranked cards" : "Search cards";
+  const { t } = useI18n();
+  const label = rankings ? t.search.rankedCards : t.search.cards;
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
       if (

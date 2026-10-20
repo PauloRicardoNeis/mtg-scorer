@@ -1,17 +1,20 @@
+import { useI18n } from "#i18n";
+
 // Rows at the real row height while the run loads: stripes for thumbnails, bars
 // for text, no spinner.
 export default function Loading() {
+  const { t } = useI18n();
   return (
     <>
       <section className="intro band rankings-intro" aria-hidden="true">
         <div className="band-inner skeleton-hero">
-          <p className="eyebrow">Constructed card rankings</p>
+          <p className="eyebrow">{t.rankings.eyebrow}</p>
           <span className="skeleton-bar title" />
           <span className="skeleton-bar short" />
         </div>
       </section>
       <section className="ranking-results" role="status" aria-live="polite">
-        <p className="sr-only">Loading rankings…</p>
+        <p className="sr-only">{t.rankings.loading}</p>
         <div className="ranking-frame" aria-hidden="true">
           <div className="ranking-scroll">
             <div className="skeleton-table">

@@ -2,21 +2,32 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { useI18n } from "#i18n";
 import type { Snapshot } from "@/lib/api";
-import { colors } from "@/lib/urls";
 import { Icon } from "./icon";
 import { ColorFilter } from "./mana";
 
 // A card matches a type on any face, as Scryfall's t: search does.
-const cardTypes = [
-  ["creature", "Creatures"],
-  ["planeswalker", "Planeswalkers"],
-  ["instant", "Instants"],
-  ["sorcery", "Sorceries"],
-  ["artifact", "Artifacts"],
-  ["enchantment", "Enchantments"],
-  ["land", "Lands"],
-];
+export const cardTypes = [
+  "creature",
+  "planeswalker",
+  "instant",
+  "sorcery",
+  "artifact",
+  "enchantment",
+  "land",
+] as const;
+
+const rarities = [
+  "common",
+  "uncommon",
+  "rare",
+  "mythic",
+  "special",
+  "bonus",
+] as const;
+
+const games = ["paper", "mtgo", "arena"] as const;
 
 export function Filters({
   snapshot,
@@ -25,6 +36,7 @@ export function Filters({
   snapshot: Snapshot;
   query: string;
 }) {
+  const { t, fill, colors } = useI18n();
   const current = new URLSearchParams(query);
   const colorOptions = ["W", "U", "B", "R", "G"]
     .reduce<string[]>(
@@ -64,7 +76,7 @@ export function Filters({
       <div className="toolbar band">
         <div className="toolbar-inner band-inner">
           <div className="search-field">
-            <label htmlFor="q">Card or face name</label>
+            <label htmlFor="q">{t.filters.name}</label>
             <div className="field">
               <Icon name="search" size={15} />
               <input
@@ -73,19 +85,19 @@ export function Filters({
                 form={form}
                 type="search"
                 maxLength={100}
-                placeholder="Try Insectile Aberration…"
+                placeholder={t.filters.namePlaceholder}
                 defaultValue={current.get("q") ?? ""}
               />
             </div>
           </div>
           <ColorFilter
-            label="Colors"
+            label={t.common.colors}
             name="color"
             form={form}
             selected={current.getAll("color")}
           />
           <div className="toolbar-field">
-            <label htmlFor="type">Card type</label>
+            <label htmlFor="type">{t.common.cardType}</label>
             <span className="select">
               <select
                 id="type"
@@ -93,10 +105,10 @@ export function Filters({
                 form={form}
                 defaultValue={current.get("type") ?? ""}
               >
-                <option value="">All card types</option>
-                {cardTypes.map(([value, label]) => (
+                <option value="">{t.common.allCardTypes}</option>
+                {cardTypes.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {t.cardTypes[value]}
                   </option>
                 ))}
               </select>
@@ -104,16 +116,16 @@ export function Filters({
           </div>
           <div className="filter-actions">
             <button type="submit" form={form} disabled={pending}>
-              {pending ? "Searching…" : "Find cards"}
+              {pending ? t.filters.searching : t.filters.find}
             </button>
             <a
               className="button ghost"
               href={`/cards?catalog_snapshot_id=${snapshot.catalog_snapshot_id}`}
             >
-              Clear filters
+              {t.common.clearFilters}
             </a>
             <span role="status" aria-live="polite">
-              {pending ? "Loading matching cards…" : ""}
+              {pending ? t.filters.loading : ""}
             </span>
           </div>
         </div>
@@ -122,7 +134,7 @@ export function Filters({
         id={form}
         className="filters band"
         action="/cards"
-        aria-label="Pool filters"
+        aria-label={t.filters.label}
         onSubmit={(event) => {
           event.preventDefault();
           const values = new URLSearchParams();
@@ -139,7 +151,7 @@ export function Filters({
             value={snapshot.catalog_snapshot_id}
           />
           <div>
-            <label htmlFor="set">Sets</label>
+            <label htmlFor="set">{t.filters.sets}</label>
             <select
               id="set"
               name="set"
@@ -149,7 +161,7 @@ export function Filters({
             >
               {missingSets.map((code) => (
                 <option key={code} value={code}>
-                  {code.toUpperCase()} (not in this dataset)
+                  {fill(t.filters.missingSet, { code: code.toUpperCase() })}
                 </option>
               ))}
               {snapshot.sets.map((set) => (
@@ -158,38 +170,34 @@ export function Filters({
                 </option>
               ))}
             </select>
-            <small id="set-help">
-              No selection includes all sets. Ctrl / Cmd selects several.
-            </small>
+            <small id="set-help">{t.filters.setHelp}</small>
           </div>
           <div>
-            <label htmlFor="rarity">Rarity</label>
+            <label htmlFor="rarity">{t.filters.rarity}</label>
             <select
               id="rarity"
               name="rarity"
               multiple
               defaultValue={current.getAll("rarity")}
             >
-              {["common", "uncommon", "rare", "mythic", "special", "bonus"].map(
-                (value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ),
-              )}
+              {rarities.map((value) => (
+                <option key={value} value={value}>
+                  {t.rarities[value]}
+                </option>
+              ))}
             </select>
-            <small>No selection includes all rarities.</small>
+            <small>{t.filters.rarityHelp}</small>
           </div>
           <div>
-            <label htmlFor="color_identity">Color identity</label>
+            <label htmlFor="color_identity">{t.filters.colorIdentity}</label>
             <span className="select">
               <select
                 id="color_identity"
                 name="color_identity"
                 defaultValue={current.get("color_identity") ?? ""}
               >
-                <option value="">All, including unknown</option>
-                <option value="C">Colorless only</option>
+                <option value="">{t.filters.anyColorIdentity}</option>
+                <option value="C">{t.filters.colorlessOnly}</option>
                 {colorOptions.map((value) => (
                   <option key={value} value={value}>
                     {colors(value.split(""))}
@@ -197,25 +205,27 @@ export function Filters({
                 ))}
               </select>
             </span>
-            <small>Selected colors also include colorless cards.</small>
+            <small>{t.filters.colorHelp}</small>
           </div>
           <div>
-            <label htmlFor="game">Game</label>
+            <label htmlFor="game">{t.filters.game}</label>
             <span className="select">
               <select
                 id="game"
                 name="game"
                 defaultValue={current.get("game") ?? ""}
               >
-                <option value="">Any game</option>
-                <option value="paper">Paper</option>
-                <option value="mtgo">Magic Online</option>
-                <option value="arena">Arena</option>
+                <option value="">{t.filters.anyGame}</option>
+                {games.map((value) => (
+                  <option key={value} value={value}>
+                    {t.games[value]}
+                  </option>
+                ))}
               </select>
             </span>
           </div>
           <div>
-            <label htmlFor="limit">Cards per page</label>
+            <label htmlFor="limit">{t.filters.perPage}</label>
             <span className="select">
               <select id="limit" name="limit" defaultValue={String(limit)}>
                 {pageSizes.map((size) => (

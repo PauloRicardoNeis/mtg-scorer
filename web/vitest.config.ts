@@ -17,7 +17,11 @@ export default defineConfig({
     unstubGlobals: true,
     coverage: {
       provider: "v8",
-      include: ["src/lib/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+      include: [
+        "src/lib/**/*.{ts,tsx}",
+        "src/components/**/*.{ts,tsx}",
+        "src/i18n/**/*.{ts,tsx}",
+      ],
       exclude: ["src/lib/api.generated.ts", "src/**/*.test.{ts,tsx}"],
       reporter: ["text", "html", "lcov", "cobertura"],
       reportsDirectory: "./coverage",

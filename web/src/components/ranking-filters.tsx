@@ -3,19 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition } from "react";
-import { count } from "@/lib/format";
+import { useI18n } from "#i18n";
+import { cardTypes } from "./filters";
 import { ColorFilter } from "./mana";
 import { rememberFocus, useRefocus } from "./refocus";
-
-const cardTypes = [
-  ["creature", "Creatures"],
-  ["planeswalker", "Planeswalkers"],
-  ["instant", "Instants"],
-  ["sorcery", "Sorceries"],
-  ["artifact", "Artifacts"],
-  ["enchantment", "Enchantments"],
-  ["land", "Lands"],
-];
 
 export type WindowOption = { scoreRunId: string; label: string };
 
@@ -77,6 +68,7 @@ export function RankingFilters({
   method?: string;
 }) {
   const router = useRouter();
+  const { t, count } = useI18n();
   const [pending, startTransition] = useTransition();
   const form = useRef<HTMLFormElement>(null);
   const current = new URLSearchParams(query);
@@ -121,7 +113,7 @@ export function RankingFilters({
       className="toolbar band ranking-toolbar"
       action="/rankings"
       method="get"
-      aria-label="Ranking filters"
+      aria-label={t.rankings.filters}
       aria-busy={pending || undefined}
       onChange={(event) => {
         rememberFocus(event.target);
@@ -143,7 +135,7 @@ export function RankingFilters({
         {kept.map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
-        <nav className="view-tabs" aria-label="Views">
+        <nav className="view-tabs" aria-label={t.rankings.views}>
           {views.map((tab) => (
             <Link
               key={tab.view}
@@ -157,11 +149,15 @@ export function RankingFilters({
           ))}
         </nav>
         <span role="status" className="toolbar-status">
-          {pending ? "Updating rankings…" : ""}
+          {pending ? t.rankings.updating : ""}
         </span>
         {gradings.length > 1 && (
           <span className="select">
-            <select aria-label="Grading" name="method" defaultValue={method}>
+            <select
+              aria-label={t.rankings.grading}
+              name="method"
+              defaultValue={method}
+            >
               {gradings.map((grading) => (
                 <option
                   key={grading.value}
@@ -174,13 +170,22 @@ export function RankingFilters({
             </select>
           </span>
         )}
-        <ColorFilter label="Colors" name="color" selected={colors} hideLabel />
+        <ColorFilter
+          label={t.common.colors}
+          name="color"
+          selected={colors}
+          hideLabel
+        />
         <span className="select">
-          <select aria-label="Card type" name="type" defaultValue={type}>
-            <option value="">All card types</option>
-            {cardTypes.map(([value, label]) => (
+          <select
+            aria-label={t.common.cardType}
+            name="type"
+            defaultValue={type}
+          >
+            <option value="">{t.common.allCardTypes}</option>
+            {cardTypes.map((value) => (
               <option key={value} value={value}>
-                {label}
+                {t.cardTypes[value]}
               </option>
             ))}
           </select>
@@ -188,7 +193,7 @@ export function RankingFilters({
         {windows.length > 1 && (
           <span className="select">
             <select
-              aria-label="Window"
+              aria-label={t.rankings.windowSelect}
               name="score_run_id"
               defaultValue={scoreRunId}
             >
@@ -201,7 +206,10 @@ export function RankingFilters({
           </span>
         )}
         {sources.length > 1 && (
-          <nav className="segmented sm source-tabs" aria-label="Sources">
+          <nav
+            className="segmented sm source-tabs"
+            aria-label={t.rankings.sources}
+          >
             {sources.map((tab) => (
               <Link
                 key={tab.source}
@@ -215,12 +223,12 @@ export function RankingFilters({
         )}
         {filtered && (
           <Link className="button ghost sm" href={clearHref}>
-            Clear filters
+            {t.common.clearFilters}
           </Link>
         )}
         <noscript>
           <button type="submit" className="sm">
-            Apply
+            {t.common.apply}
           </button>
         </noscript>
       </div>

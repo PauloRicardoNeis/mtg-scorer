@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { count } from "@/lib/format";
+import { useI18n } from "#i18n";
+import type { I18n } from "@/i18n/translator";
 import { Icon } from "./icon";
 
 export type FormatTab = {
@@ -14,9 +15,11 @@ export type FormatTab = {
 };
 
 /** "2,448 decks" → "2.4k decks" once a count passes a thousand. */
-function decks(value: number): string {
-  if (value < 1000) return `${count(value)} decks`;
-  return `${(value / 1000).toFixed(value < 10_000 ? 1 : 0)}k decks`;
+function decks(value: number, { t, fill, plural, decimal }: I18n): string {
+  if (value < 1000) return plural(t.formats.decks, value);
+  return fill(t.formats.thousandDecks, {
+    count: decimal(value / 1000, value < 10_000 ? 1 : 0),
+  });
 }
 
 /**
@@ -40,6 +43,8 @@ export function FormatBar({
   /** Choices that follow the reader to the comparison, which grades by fewer methods. */
   compareQuery?: string;
 }) {
+  const i18n = useI18n();
+  const { t } = i18n;
   const bar = useRef<HTMLElement>(null);
   useEffect(() => {
     const tab = bar.current?.querySelector<HTMLElement>(
@@ -58,7 +63,7 @@ export function FormatBar({
       <nav
         ref={bar}
         className="format-bar-inner band-inner"
-        aria-label="Formats"
+        aria-label={t.formats.label}
       >
         {tabs.map((tab) => {
           const active = tab.format === current;
@@ -85,7 +90,7 @@ export function FormatBar({
                 {tab.label}
               </span>
               <span className="format-tab-sub">
-                {ready ? decks(tab.decks!) : "No data yet"}
+                {ready ? decks(tab.decks!, i18n) : t.formats.noData}
               </span>
             </Link>
           );
@@ -97,9 +102,9 @@ export function FormatBar({
         >
           <span className="format-tab-label">
             <Icon name="layout-grid" size={12} />
-            All formats
+            {t.formats.allFormats}
           </span>
-          <span className="format-tab-sub">Compare</span>
+          <span className="format-tab-sub">{t.formats.compare}</span>
         </Link>
       </nav>
     </div>

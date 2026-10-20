@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   ago,
   count,
+  dateTime,
   dateWindow,
   dateWithYear,
+  daysBetween,
+  decimal,
   deltaTone,
   grade,
   gradeTone,
@@ -15,8 +18,8 @@ import {
   share,
   signed,
   usd,
-  windowLabel,
 } from "./format";
+import { spaced } from "@/test/i18n";
 
 const MINUS = "−";
 
@@ -227,17 +230,25 @@ describe("share", () => {
 
 describe("dateWindow", () => {
   it("shows the exclusive end as the last included day", () => {
-    expect(dateWindow("2026-03-01", "2026-09-01")).toBe("Mar 1 – Aug 31, 2026");
+    expect(spaced(dateWindow("2026-03-01", "2026-09-01"))).toBe(
+      "Mar 1 – Aug 31, 2026",
+    );
   });
 
   it("names both years when the window crosses one", () => {
-    expect(dateWindow("2025-12-01", "2026-03-01")).toBe(
+    expect(spaced(dateWindow("2025-12-01", "2026-03-01"))).toBe(
       "Dec 1, 2025 – Feb 28, 2026",
     );
   });
 
   it("is independent of the local time zone", () => {
-    expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1 – Jan 1, 2026");
+    expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1, 2026");
+  });
+
+  it("follows the locale's date order and names", () => {
+    expect(spaced(dateWindow("2026-03-01", "2026-09-01", "de"))).toBe(
+      "1. März – 31. Aug. 2026",
+    );
   });
 });
 
@@ -259,9 +270,13 @@ describe("ago", () => {
     expect(ago("2026-09-15T12:00:00Z", now)).toBe("last month");
   });
 
-  it("reads under a minute, or a clock behind the publisher, as just now", () => {
-    expect(ago("2026-10-19T11:59:30Z", now)).toBe("just now");
-    expect(ago("2026-10-19T12:05:00Z", now)).toBe("just now");
+  it("leaves under a minute, or a clock behind the publisher, to the caller", () => {
+    expect(ago("2026-10-19T11:59:30Z", now)).toBeNull();
+    expect(ago("2026-10-19T12:05:00Z", now)).toBeNull();
+  });
+
+  it("speaks the locale", () => {
+    expect(ago("2026-10-18T06:00:00Z", now, "de")).toBe("gestern");
   });
 
   it("measures from the current time by default", () => {
@@ -271,19 +286,35 @@ describe("ago", () => {
   });
 });
 
-describe("windowLabel", () => {
-  it("names a recent window by its length and a long one by its start", () => {
-    expect(windowLabel("2026-07-03", "2026-10-01", "2026-10-01")).toBe(
-      "Last 90 days",
-    );
-    expect(windowLabel("2024-01-01", "2026-10-01", "2026-10-01")).toBe(
-      "Since Jan 1, 2024",
+describe("daysBetween", () => {
+  it("counts whole days from start to exclusive end", () => {
+    expect(daysBetween("2026-07-03", "2026-10-01")).toBe(90);
+    expect(daysBetween("2026-03-28", "2026-03-30")).toBe(2);
+  });
+});
+
+describe("dateTime", () => {
+  it("reads an instant to the minute in UTC", () => {
+    expect(spaced(dateTime("2026-10-19T23:30:00Z"))).toBe(
+      "October 19, 2026 at 11:30 PM UTC",
     );
   });
+});
 
-  it("gives an older window its dates", () => {
-    expect(windowLabel("2026-03-01", "2026-09-01", "2026-10-01")).toBe(
-      "Mar 1 – Aug 31, 2026",
-    );
+describe("in another locale", () => {
+  const NBSP = "\u00a0";
+
+  it("uses its separators and percent spacing", () => {
+    expect(count(33512, "de")).toBe("33.512");
+    expect(count(-1234, "fr")).toBe(`${MINUS}1\u202f234`);
+    expect(signed(2.45, "pt-BR")).toBe("+2,5");
+    expect(signed(-0.8, "de")).toBe(`${MINUS}0,8`);
+    expect(percent(54.12, "de")).toBe(`54,1${NBSP}%`);
+    expect(percent(54.12, "ja")).toBe("54.1%");
+    expect(lift(1.123, "it")).toBe("1,12×");
+    expect(decimal(87.25, 1, "es")).toBe("87,3");
+    expect(share(37, 231, "ru")).toBe(`16,0${NBSP}%`);
+    expect(usd(1125.9, "pt-BR")).toBe(`US$${NBSP}1.125,90`);
+    expect(perDollar(41.23, "de")).toBe("41,2");
   });
 });

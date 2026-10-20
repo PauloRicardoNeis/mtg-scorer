@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition, type ChangeEvent } from "react";
+import { useI18n } from "#i18n";
 import { Chip, Switch } from "./forms";
 import { ColorFilter } from "./mana";
 import type { GradingOption } from "./ranking-filters";
@@ -73,6 +74,7 @@ export function CompareFilters({
   method?: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, startTransition] = useTransition();
   const form = useRef<HTMLFormElement>(null);
   const current = new URLSearchParams(query);
@@ -133,7 +135,7 @@ export function CompareFilters({
       className="toolbar band compare-toolbar"
       action="/rankings/compare"
       method="get"
-      aria-label="Compare settings"
+      aria-label={t.compare.settings}
       aria-busy={pending || undefined}
       onChange={(event: ChangeEvent<HTMLFormElement>) => {
         const box = event.target as unknown as HTMLInputElement;
@@ -162,16 +164,20 @@ export function CompareFilters({
         {kept.map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
-        <Picks label="Formats" name="format" options={formats} />
+        <Picks label={t.compare.formats} name="format" options={formats} />
         <div className="compare-toolbar-row">
-          <Picks label="Stats" name="stat" options={stats} />
-          <Picks label="Summary" name="summary" options={summaries} />
+          <Picks label={t.compare.stats} name="stat" options={stats} />
+          <Picks label={t.compare.summary} name="summary" options={summaries} />
           <span role="status" className="toolbar-status">
-            {pending ? "Updating comparison…" : ""}
+            {pending ? t.compare.updating : ""}
           </span>
           {gradings.length > 1 && (
             <span className="select">
-              <select aria-label="Grading" name="method" defaultValue={method}>
+              <select
+                aria-label={t.rankings.grading}
+                name="method"
+                defaultValue={method}
+              >
                 {gradings.map((grading) => (
                   <option
                     key={grading.value}
@@ -185,14 +191,14 @@ export function CompareFilters({
             </span>
           )}
           <Switch
-            label="In every selected format"
+            label={t.compare.every}
             name="every"
             value="true"
             defaultChecked={every}
             compact
           />
           <ColorFilter
-            label="Colors"
+            label={t.common.colors}
             name="color"
             selected={colors}
             hideLabel
@@ -200,7 +206,7 @@ export function CompareFilters({
         </div>
         <noscript>
           <button type="submit" className="sm">
-            Apply
+            {t.common.apply}
           </button>
         </noscript>
       </div>

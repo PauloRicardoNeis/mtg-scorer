@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { api, ApiError, type ComparePage } from "@/lib/api";
-import { count } from "@/lib/format";
 import { OVERALL_FORMAT, designFormats, formatLabel } from "@/lib/formats";
+import { getI18n } from "@/i18n/server";
+import type { Messages } from "@/i18n/types";
 import { queryParams, type SearchParams } from "@/lib/urls";
 import { CompareFilters, type PickOption } from "@/components/compare-filters";
 import {
@@ -18,7 +19,9 @@ import { Icon } from "@/components/icon";
 import { Problem } from "@/components/problem";
 import { COMPARE_GRADINGS } from "@/components/ranking-data";
 
-export const metadata: Metadata = { title: "MTG Scorer · Compare formats" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.meta.compare };
+}
 
 const statOrder = Object.keys(STATS) as CompareStat[];
 const summaryOrder = Object.keys(SUMMARIES) as CompareSummary[];
@@ -27,16 +30,16 @@ const everyDesignFormat = designFormats.map(([, format]) => format);
 // The design's starting points: a format set and the stats to show for each.
 const presets: [
   key: string,
-  label: string,
+  label: Extract<keyof Messages["compare"], `preset${string}`>,
   formats: string[],
   stats: CompareStat[],
 ][] = [
-  ["grades", "Grades", everyDesignFormat, ["grade"]],
-  ["wr", "Win rates", everyDesignFormat, ["win_rate"]],
-  ["play", "Play rates", everyDesignFormat, ["share"]],
+  ["grades", "presetGrades", everyDesignFormat, ["grade"]],
+  ["wr", "presetWinRates", everyDesignFormat, ["win_rate"]],
+  ["play", "presetPlayRates", everyDesignFormat, ["share"]],
   [
     "deep",
-    "Deep dive",
+    "presetDeepDive",
     ["Modern", "Legacy", "Pauper"],
     ["grade", "win_rate", "share", "top_cut_lift", "trend"],
   ],
@@ -49,8 +52,8 @@ const gradingLabels: Record<string, string> = {
 };
 
 /** Why a grading leaves formats out, where it can say. */
-const ungradedBecause: Record<string, string> = {
-  "signature-score": "have no archetype labels",
+const ungradedBecause: Record<string, "unlabelledFormats"> = {
+  "signature-score": "unlabelledFormats",
 };
 
 function same(a: string[], b: string[]) {
@@ -87,6 +90,14 @@ export default async function Compare({
   for (const key of ["q", "every", "sort", "order", "limit", "offset"])
     if (params.get(key)) query.set(key, params.get(key)!);
   for (const color of params.getAll("color")) query.append("color", color);
+  const { t, fill, plural, method: methodText, term } = await getI18n();
+  // English names come from the menu; other languages translate them by id.
+  const gradingName = (id: string) =>
+    methodText({
+      method_id: id,
+      label: gradingLabels[id] ?? id,
+      description: "",
+    }).label;
   try {
     let page: ComparePage;
     try {
@@ -109,7 +120,13 @@ export default async function Compare({
     // Formats the grading left out, e.g. a signature score without archetype labels.
     const gradedNote =
       graded.length < page.available.length
-        ? `The ${(gradingLabels[page.method_id] ?? page.method_id).toLowerCase()} grades ${graded.length} of ${page.available.length} formats${because ? `; the others ${because}` : ""}.`
+        ? [
+            plural(t.compare.gradedFormats, page.available.length, {
+              method: term(gradingName(page.method_id)),
+              graded: graded.length,
+            }),
+            ...(because ? [t.compare[because]] : []),
+          ].join(" ")
         : null;
     const grading: [string, string][] = method ? [["method", method]] : [];
     // Every link keeps the reader's choices and drops the offset, which no longer applies.
@@ -166,7 +183,7 @@ export default async function Compare({
     )?.[0];
     const tabs: FormatTab[] = [
       {
-        label: OVERALL_FORMAT,
+        label: t.formats.overall,
         format: OVERALL_FORMAT,
         // An API from before active_formats omits it; the tab then waits for data.
         decks:
@@ -203,18 +220,20 @@ export default async function Compare({
         <section className="intro band compare-intro">
           <div className="compare-intro-inner band-inner">
             <div className="compare-heading">
-              <p className="eyebrow">Compare formats</p>
-              <h1>Across formats</h1>
+              <p className="eyebrow">{t.compare.eyebrow}</p>
+              <h1>{t.compare.title}</h1>
               <p className="lead">
-                Pick the formats and stats to show. Each row is a card and each
-                column group is a format. A dash means the card isn&rsquo;t
-                ranked there.{gradedNote && ` ${gradedNote}`}
+                {t.compare.lead}
+                {gradedNote && ` ${gradedNote}`}
               </p>
             </div>
             <div className="compare-presets">
-              <p className="pick-label">Start from</p>
+              <p className="pick-label">{t.compare.startFrom}</p>
               <div className="compare-presets-row">
-                <nav className="segmented preset-links" aria-label="Presets">
+                <nav
+                  className="segmented preset-links"
+                  aria-label={t.compare.presets}
+                >
                   {presets.map(([key, label, formats, presetStats]) => (
                     <Link
                       key={key}
@@ -228,11 +247,13 @@ export default async function Compare({
                       ])}`}
                       aria-current={current === key ? "page" : undefined}
                     >
-                      {label}
+                      {t.compare[label]}
                     </Link>
                   ))}
                 </nav>
-                {!current && <span className="tag tag-accent">Custom</span>}
+                {!current && (
+                  <span className="tag tag-accent">{t.compare.custom}</span>
+                )}
               </div>
             </div>
           </div>
@@ -246,25 +267,25 @@ export default async function Compare({
           stats={option(
             statOrder,
             stats,
-            (stat) => STATS[stat as CompareStat].chip,
+            (stat) => t.compare.statChips[stat as CompareStat],
           )}
           summaries={option(
             summaryOrder,
             summaries,
-            (s) => SUMMARIES[s as CompareSummary].chip,
+            (s) => t.compare.summaryChips[s as CompareSummary],
           )}
           every={page.every}
           query={new URLSearchParams(state).toString()}
           gradings={COMPARE_GRADINGS.map((id, index) => ({
             value: index === 0 ? "" : id,
-            label: gradingLabels[id] ?? id,
+            label: gradingName(id),
             disabled: false,
           }))}
           method={method}
         />
         <section className="compare-results" aria-labelledby="compare-heading">
           <h2 id="compare-heading" className="sr-only">
-            Cards across formats
+            {t.compare.heading}
           </h2>
           <CompareTable
             page={page}
@@ -275,8 +296,15 @@ export default async function Compare({
               <>
                 <p role="status">
                   {page.total === 0
-                    ? "No cards match"
-                    : `${count(first)}–${count(last)} of ${count(page.total)} cards · ${compared.length} ${compared.length === 1 ? "format" : "formats"} · ${compared.length * stats.length + summaries.length} columns`}
+                    ? t.compare.noneMatch
+                    : [
+                        plural(t.compare.range, page.total, { first, last }),
+                        plural(t.compare.formatCount, compared.length),
+                        plural(
+                          t.compare.columnCount,
+                          compared.length * stats.length + summaries.length,
+                        ),
+                      ].join(" · ")}
                 </p>
                 <div className="pagination-links">
                   {page.offset > 0 && (
@@ -286,7 +314,7 @@ export default async function Compare({
                         offset: String(Math.max(0, page.offset - page.limit)),
                       })}
                     >
-                      <Icon name="arrow-left" size={14} /> Previous
+                      <Icon name="arrow-left" size={14} /> {t.common.previous}
                     </Link>
                   )}
                   {last < page.total &&
@@ -296,14 +324,15 @@ export default async function Compare({
                         href={href({ limit: String(more) })}
                         scroll={false}
                       >
-                        Load {more - page.limit} more
+                        {fill(t.common.loadMore, { count: more - page.limit })}
                       </Link>
                     ) : (
                       <Link
                         className="button secondary sm"
                         href={href({ offset: String(last) })}
                       >
-                        Next {page.limit} <Icon name="arrow-right" size={14} />
+                        {fill(t.common.next, { count: page.limit })}{" "}
+                        <Icon name="arrow-right" size={14} />
                       </Link>
                     ))}
                 </div>

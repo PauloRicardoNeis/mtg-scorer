@@ -124,7 +124,7 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   await expect(page).toHaveURL(/type=instant/);
   await expect(results(page)).toHaveText("No ranked cards match");
   await type.selectOption("");
-  await expect(results(page)).toHaveText("1–1 of 1 ranked cards");
+  await expect(results(page)).toHaveText("1–1 of 1 ranked card");
   await expect(search(page)).toHaveValue("bruna");
   await page
     .getByRole("link", { name: "Bruna, the Fading Light" })

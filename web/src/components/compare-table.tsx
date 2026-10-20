@@ -1,15 +1,9 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { useI18n } from "#i18n";
+import type { I18n } from "@/i18n/translator";
 import type { ComparedCard, ComparePage } from "@/lib/api";
-import {
-  deltaTone,
-  grade,
-  gradeTone,
-  lift,
-  liftTone,
-  percent,
-  signed,
-} from "@/lib/format";
+import { deltaTone, grade, gradeTone, liftTone } from "@/lib/format";
 import { formatLabel } from "@/lib/formats";
 import { ManaCost } from "./mana";
 import { GradeRing } from "./ranking-data";
@@ -26,25 +20,19 @@ export type CompareSort = {
   order: "asc" | "desc";
 };
 
-/** Column header, chip label and width (px) of each stat, as the design sizes them. */
-export const STATS: Record<
-  CompareStat,
-  { header: string; chip: string; width: number }
-> = {
-  grade: { header: "Grade", chip: "Grade", width: 92 },
-  score: { header: "Score", chip: "Score", width: 72 },
-  win_rate: { header: "Vs field", chip: "Win rate vs field", width: 88 },
-  share: { header: "Share", chip: "Meta share", width: 84 },
-  top_cut_lift: { header: "Top cut", chip: "Top-cut conversion", width: 80 },
-  trend: { header: "Trend", chip: "Trend", width: 84 },
+/** Each stat's column width (px), as the design sizes them; messages name them. */
+export const STATS: Record<CompareStat, { width: number }> = {
+  grade: { width: 92 },
+  score: { width: 72 },
+  win_rate: { width: 88 },
+  share: { width: 84 },
+  top_cut_lift: { width: 80 },
+  trend: { width: 84 },
 };
 
-export const SUMMARIES: Record<
-  CompareSummary,
-  { header: string; chip: string; width: number }
-> = {
-  best: { header: "Best format", chip: "Best format", width: 156 },
-  count: { header: "Ranked in", chip: "Formats ranked", width: 92 },
+export const SUMMARIES: Record<CompareSummary, { width: number }> = {
+  best: { width: 156 },
+  count: { width: 92 },
 };
 
 /** The card column's smallest width; it takes whatever room the stats leave. */
@@ -85,12 +73,16 @@ function tint(
   return {};
 }
 
-function value(stat: CompareStat, cell: Cell): ReactNode {
+function value(
+  stat: CompareStat,
+  cell: Cell,
+  { decimal, signed, percent, lift }: I18n,
+): ReactNode {
   switch (stat) {
     case "grade":
       return <GradeRing score={cell.score} size="compare" />;
     case "score":
-      return cell.score === null ? "—" : cell.score.toFixed(1);
+      return cell.score === null ? "—" : decimal(cell.score, 1);
     case "win_rate": {
       if (cell.win_rate_delta === null) return "—";
       const points = 100 * cell.win_rate_delta;
@@ -166,10 +158,14 @@ export function CompareTable({
   sorts: (key: string) => CompareSort;
   footer: ReactNode;
 }) {
+  const i18n = useI18n();
+  const { t, fill, plural } = i18n;
   const formats: Format[] = page.formats;
   const multiplayer = (format: Format) => (format.players_per_game ?? 2) > 2;
   const header = (format: Format, stat: CompareStat) =>
-    stat === "share" && multiplayer(format) ? "Inclusion" : STATS[stat].header;
+    stat === "share" && multiplayer(format)
+      ? t.rankings.inclusion
+      : t.compare.statHeaders[stat];
   return (
     <div className="compare-frame">
       <div className="compare-scroll">
@@ -204,7 +200,7 @@ export function CompareTable({
             <tr className="compare-groups">
               <th scope="col" className="sticky-col">
                 <span className="compare-count">
-                  {page.total.toLocaleString("en-US")} cards
+                  {plural(t.compare.cardCount, page.total)}
                 </span>
               </th>
               {formats.map((format, index) => (
@@ -216,7 +212,9 @@ export function CompareTable({
                 >
                   <Link
                     href={`/rankings?format=${encodeURIComponent(format.format_name)}`}
-                    title={`Open ${formatLabel(format.format_name)} rankings`}
+                    title={fill(t.compare.openRankings, {
+                      format: formatLabel(format.format_name),
+                    })}
                   >
                     <span className="format-dot" aria-hidden="true" />
                     {formatLabel(format.format_name)}
@@ -229,13 +227,13 @@ export function CompareTable({
                   colSpan={summaries.length}
                   className="group-start summary-group"
                 >
-                  Summary
+                  {t.compare.summary}
                 </th>
               )}
             </tr>
             <tr className="compare-metrics">
               <Sortable
-                label="Card"
+                label={t.common.card}
                 sort={sorts("name")}
                 className="sticky-col"
               />
@@ -259,7 +257,7 @@ export function CompareTable({
               {summaries.map((summary, position) => (
                 <Sortable
                   key={summary}
-                  label={SUMMARIES[summary].header}
+                  label={t.compare.summaryHeaders[summary]}
                   sort={sorts(summary)}
                   className={position === 0 ? "group-start" : undefined}
                 />
@@ -276,7 +274,7 @@ export function CompareTable({
                     {card.type_line ? (
                       <span className="card-type">{card.type_line}</span>
                     ) : (
-                      <span className="muted">Not in this catalog</span>
+                      <span className="muted">{t.common.notInCatalog}</span>
                     )}
                   </span>
                 </th>
@@ -292,7 +290,9 @@ export function CompareTable({
                         <td
                           key={`${format.format_name}:${stat}`}
                           className={[...classes, "unranked"].join(" ").trim()}
-                          title={`Not ranked in ${formatLabel(format.format_name)}`}
+                          title={fill(t.compare.notRanked, {
+                            format: formatLabel(format.format_name),
+                          })}
                         >
                           —
                         </td>
@@ -314,7 +314,7 @@ export function CompareTable({
                         }
                         title={`${card.name} · ${formatLabel(format.format_name)} · #${cell.rank}`}
                       >
-                        {value(stat, cell)}
+                        {value(stat, cell, i18n)}
                       </td>
                     );
                   });
@@ -347,7 +347,9 @@ export function CompareTable({
                           .join(" ")
                           .trim() || undefined
                       }
-                      title={`Ranked in ${card.ranked_in} of ${formats.length} formats`}
+                      title={plural(t.compare.rankedIn, formats.length, {
+                        ranked: card.ranked_in,
+                      })}
                     >
                       {card.ranked_in} / {formats.length}
                     </td>
@@ -360,35 +362,32 @@ export function CompareTable({
       </div>
       {page.items.length === 0 && (
         <div className="ranking-empty">
-          <h3>No cards match.</h3>
-          <p>
-            Add a format, turn off &ldquo;In every selected format&rdquo;, or
-            clear the color filter.
-          </p>
+          <h3>{t.compare.emptyTitle}</h3>
+          <p>{fill(t.compare.emptyBody, { every: t.compare.every })}</p>
         </div>
       )}
       <div className="ranking-footer compare-footer">
         {footer}
         <dl className="compare-legend">
-          <dt>Grade</dt>
+          <dt>{t.compare.legendGrade}</dt>
           <dd>
-            <span className="tone-a">A</span> Top tier
+            <span className="tone-a">A</span> {t.compare.gradeA}
           </dd>
           <dd>
-            <span className="tone-b">B</span> Strong
+            <span className="tone-b">B</span> {t.compare.gradeB}
           </dd>
           <dd>
-            <span className="tone-c">C</span> Playable
+            <span className="tone-c">C</span> {t.compare.gradeC}
           </dd>
           <dd>
-            <span className="tone-d">D</span> Fringe
+            <span className="tone-d">D</span> {t.compare.gradeD}
           </dd>
           <dd>
-            <span className="tone-f">F</span> Underperforming
+            <span className="tone-f">F</span> {t.compare.gradeF}
           </dd>
           <dd>
-            <span className="legend-swatch" aria-hidden="true" /> Tinted cells
-            stand out in that format
+            <span className="legend-swatch" aria-hidden="true" />{" "}
+            {t.compare.tinted}
           </dd>
         </dl>
       </div>

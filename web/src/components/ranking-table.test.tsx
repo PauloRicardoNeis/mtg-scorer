@@ -157,12 +157,16 @@ const sorts: Record<string, SortLink> = {
 
 function table(
   items: RankedCard[],
-  { catalog = "snap-1" as string | null, method = constructed } = {},
+  {
+    catalog = "snap-1" as string | null,
+    method = constructed,
+    scored = run.scored_cards,
+  } = {},
 ) {
   return (
     <RankingTable
       items={items}
-      run={run}
+      run={{ ...run, scored_cards: scored }}
       method={method}
       graded={method === constructed}
       labels={{
@@ -252,7 +256,7 @@ describe("RankingTable", () => {
     expect(cut.firstElementChild).toHaveClass("tone-positive");
     expect(trend.querySelector("svg path")).toHaveAttribute("d");
     expect(trend).toHaveTextContent("+30.0 points of meta share");
-    expect(archetype).toHaveTextContent("Burn+1 more archetypes");
+    expect(archetype).toHaveTextContent("Burn+1 more archetype");
     expect(container.querySelector(".ring-a")).not.toBeNull();
     expect(
       within(row(/Lightning Bolt/))
@@ -417,6 +421,11 @@ describe("RankingTable", () => {
     ).toHaveAttribute("href", "/cards/bolt?catalog_snapshot_id=snap-1");
     expect(within(row(/Unlisted/)).queryByRole("link")).toBeNull();
     expect(row(/Unlisted/)).not.toHaveAttribute("data-opens");
+  });
+
+  it("names the method in the preview when no percentile can be given", () => {
+    render(table([bolt], { scored: 0 }));
+    expect(preview().getByText("Constructed score")).toBeInTheDocument();
   });
 
   it("previews the top card until a row is hovered or focused", async () => {

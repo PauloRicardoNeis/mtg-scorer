@@ -1,16 +1,8 @@
 import type { CSSProperties } from "react";
+import { useI18n } from "#i18n";
+import type { I18n } from "@/i18n/translator";
 import type { RankedCard, RankingPage } from "@/lib/api";
-import {
-  count,
-  deltaTone,
-  grade,
-  gradeTone,
-  lift,
-  liftTone,
-  movement,
-  percent,
-  signed,
-} from "@/lib/format";
+import { deltaTone, grade, gradeTone, liftTone, movement } from "@/lib/format";
 import { ColorPips } from "./mana";
 
 type Run = RankingPage["score_run"];
@@ -51,10 +43,11 @@ export function GradeRing({
   score: number | null;
   size?: "row" | "compare" | "podium" | "first" | "preview";
 }) {
+  const { t, fill } = useI18n();
   if (score === null)
     return (
       <span className={`grade-ring grade-ring-${size} grade-ring-unknown`}>
-        <span className="grade-letter" aria-label="No grade">
+        <span className="grade-letter" aria-label={t.rankingData.noGrade}>
           —
         </span>
       </span>
@@ -69,7 +62,10 @@ export function GradeRing({
         } as CSSProperties
       }
     >
-      <span className="grade-letter" aria-label={`Grade ${letter}`}>
+      <span
+        className="grade-letter"
+        aria-label={fill(t.rankingData.grade, { letter })}
+      >
         {letter}
       </span>
     </span>
@@ -78,11 +74,12 @@ export function GradeRing({
 
 /** Places gained since the previous run; unknown without one. */
 export function RankMove({ change }: { change: number | null | undefined }) {
+  const { t, plural } = useI18n();
   if (change === null || change === undefined)
     return (
       <span className="rank-move">
         <span aria-hidden="true">—</span>
-        <span className="sr-only">No earlier rank</span>
+        <span className="sr-only">{t.rankingData.noEarlierRank}</span>
       </span>
     );
   const tone = change > 0 ? "up" : change < 0 ? "down" : "flat";
@@ -91,8 +88,11 @@ export function RankMove({ change }: { change: number | null | undefined }) {
       <span aria-hidden="true">{movement(change)}</span>
       <span className="sr-only">
         {change === 0
-          ? "Same rank as before"
-          : `${change > 0 ? "Up" : "Down"} ${Math.abs(change)} ${Math.abs(change) === 1 ? "place" : "places"}`}
+          ? t.rankingData.sameRank
+          : plural(
+              change > 0 ? t.rankingData.up : t.rankingData.down,
+              Math.abs(change),
+            )}
       </span>
     </span>
   );
@@ -104,8 +104,9 @@ export function RankMove({ change }: { change: number | null | undefined }) {
  * only the delta, since win rates of one-on-one and multiplayer formats differ.
  */
 export function WinRate({ card }: { card: RankedCard }) {
+  const { t, fill, percent, signed } = useI18n();
   if (card.win_rate_delta === null)
-    return <span className="muted">Unknown</span>;
+    return <span className="muted">{t.common.unknown}</span>;
   const points = 100 * card.win_rate_delta;
   // A ±6-point delta fills one half of the 72px track.
   const width = Math.min(36, (Math.abs(points) / 6) * 36);
@@ -123,10 +124,13 @@ export function WinRate({ card }: { card: RankedCard }) {
       </span>
       <span className="stacked">
         <span className={`tone-${tone}`}>
-          {signed(points)}%<span className="sr-only"> against the field</span>
+          {signed(points)}%
+          <span className="sr-only"> {t.rankingData.againstField}</span>
         </span>
         {card.win_rate !== null && (
-          <span className="sub">{percent(100 * card.win_rate)} WR</span>
+          <span className="sub">
+            {fill(t.rankings.winRate, { value: percent(100 * card.win_rate) })}
+          </span>
         )}
       </span>
     </span>
@@ -149,15 +153,10 @@ export function MetaShare({
   most: number;
   counted?: boolean;
 }) {
+  const { count, share } = useI18n();
   return (
     <span className="stacked share">
-      <span>
-        {counted
-          ? count(decks)
-          : total > 0
-            ? percent((100 * decks) / total)
-            : "—"}
-      </span>
+      <span>{counted ? count(decks) : share(decks, total)}</span>
       <span
         className="share-bar"
         aria-hidden="true"
@@ -173,7 +172,8 @@ export function MetaShare({
 
 /** Top-cut conversion against the field's, as a lift. */
 export function TopCutLift({ value }: { value: number | null }) {
-  if (value === null) return <span className="muted">Unknown</span>;
+  const { t, lift } = useI18n();
+  if (value === null) return <span className="muted">{t.common.unknown}</span>;
   return <span className={`tone-${liftTone(value)}`}>{lift(value)}</span>;
 }
 
@@ -187,12 +187,12 @@ export function shares(card: RankedCard, run: Run): (number | null)[] {
 }
 
 /** How far the trend series reaches back: "12 mo", "6 mo", or "8 wk" when shorter. */
-export function trendLabel(run: Run): string | null {
+export function trendLabel(run: Run, { t, fill }: I18n): string | null {
   const days = (run.series_period_days ?? 0) * (run.series_decks?.length ?? 0);
   if (!days) return null;
   return days >= 60
-    ? `${Math.round(days / 30)} mo`
-    : `${Math.round(days / 7)} wk`;
+    ? fill(t.rankings.months, { count: Math.round(days / 30) })
+    : fill(t.rankings.weeks, { count: Math.round(days / 7) });
 }
 
 /** Shares within 0.15 points count as flat. */
@@ -205,6 +205,7 @@ function trendTone(delta: number): "up" | "down" | "flat" {
  * beside it. Periods without decks leave a gap in the data, not a zero.
  */
 export function Trend({ card, run }: { card: RankedCard; run: Run }) {
+  const { t, signed } = useI18n();
   const series = shares(card, run);
   const known = series.flatMap((share, index) =>
     share === null ? [] : [[index, share] as const],
@@ -235,7 +236,7 @@ export function Trend({ card, run }: { card: RankedCard; run: Run }) {
       </svg>
       <span>
         {signed(delta)}
-        <span className="sr-only"> points of meta share</span>
+        <span className="sr-only"> {t.rankingData.shareChange}</span>
       </span>
     </span>
   );
@@ -243,9 +244,11 @@ export function Trend({ card, run }: { card: RankedCard; run: Run }) {
 
 /** An archetype's color symbols, its name and how many more archetypes play the card. */
 export function MostPlayedIn({ card }: { card: RankedCard }) {
+  const { t, plural } = useI18n();
   const top = card.archetypes[0];
   if (!top) {
-    if (!card.archetype_label) return <span className="muted">Unlabelled</span>;
+    if (!card.archetype_label)
+      return <span className="muted">{t.rankingData.unlabelled}</span>;
     return <span className="archetype-name">{card.archetype_label}</span>;
   }
   const more = (card.archetype_count ?? card.archetypes.length) - 1;
@@ -256,7 +259,10 @@ export function MostPlayedIn({ card }: { card: RankedCard }) {
       {more > 0 && (
         <span className="archetype-more">
           +{more}
-          <span className="sr-only"> more archetypes</span>
+          <span className="sr-only">
+            {" "}
+            {plural(t.rankingData.moreArchetypes, more)}
+          </span>
         </span>
       )}
     </span>
@@ -264,7 +270,13 @@ export function MostPlayedIn({ card }: { card: RankedCard }) {
 }
 
 /** Rank as a share of the scored cards: rank 3 of 600 is "Top 1%". */
-export function percentile(rank: number, scored: number): string | null {
+export function percentile(
+  rank: number,
+  scored: number,
+  { t, fill }: I18n,
+): string | null {
   if (!scored) return null;
-  return `Top ${Math.max(1, Math.ceil((100 * rank) / scored))}%`;
+  return fill(t.rankings.top, {
+    value: Math.max(1, Math.ceil((100 * rank) / scored)),
+  });
 }

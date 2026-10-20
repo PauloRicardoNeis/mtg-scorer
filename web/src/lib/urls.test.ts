@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Printing } from "./api";
-import {
-  colors,
-  edition,
-  printingParams,
-  queryParams,
-  rankedCardHref,
-} from "./urls";
+import { edition, printingParams, queryParams, rankedCardHref } from "./urls";
 
 describe("queryParams", () => {
   it("returns empty params for empty input", () => {
@@ -66,28 +60,6 @@ describe("printingParams", () => {
     const query = new URLSearchParams("set=m11&q=bolt");
     printingParams(query);
     expect(query.toString()).toBe("set=m11&q=bolt");
-  });
-});
-
-describe("colors", () => {
-  it("names unknown identity", () => {
-    expect(colors(null)).toBe("Unknown color identity");
-  });
-
-  it("names an empty identity colorless", () => {
-    expect(colors([])).toBe("Colorless");
-  });
-
-  it("names each color in the given order", () => {
-    expect(colors(["W"])).toBe("White");
-    expect(colors(["W", "U", "B", "R", "G"])).toBe(
-      "White · Blue · Black · Red · Green",
-    );
-    expect(colors(["G", "W"])).toBe("Green · White");
-  });
-
-  it("falls back to the raw symbol for unknown colors", () => {
-    expect(colors(["W", "P"])).toBe("White · P");
   });
 });
 

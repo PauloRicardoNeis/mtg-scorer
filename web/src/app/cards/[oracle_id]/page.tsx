@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
+import { useI18n } from "#i18n";
+import { getI18n } from "@/i18n/server";
 import {
-  colors,
   edition,
   printingParams,
   queryParams,
@@ -14,9 +15,10 @@ import { ColorPips, ManaCost, Rarity, SymbolText } from "@/components/mana";
 import { redirect } from "next/navigation";
 
 function ManaLine({ value }: { value: string | null }) {
+  const { t } = useI18n();
   return (
     <p className="mana">
-      <span className="mana-label">Mana cost</span>{" "}
+      <span className="mana-label">{t.card.manaCost}</span>{" "}
       {value ? (
         <ManaCost cost={value} size="lg" />
       ) : (
@@ -27,12 +29,13 @@ function ManaLine({ value }: { value: string | null }) {
 }
 
 function KnownText({ value }: { value: string | null }) {
+  const { t } = useI18n();
   return (
     <span className="rules-text">
       {value === null ? (
-        "Not supplied by the source"
+        t.card.notSupplied
       ) : value === "" ? (
-        "None"
+        t.card.none
       ) : (
         <SymbolText text={value} />
       )}
@@ -49,6 +52,7 @@ export default async function Card({
 }) {
   const { oracle_id } = await params;
   const query = queryParams(await searchParams);
+  const { t, fill, colors, count } = await getI18n();
   try {
     if (!query.has("catalog_snapshot_id")) {
       query.set(
@@ -91,14 +95,14 @@ export default async function Card({
         <div className="breadcrumbs">
           <Link className="button secondary sm back" href={`/cards?${back}`}>
             <Icon name="arrow-left" size={14} />
-            Back to search
+            {t.card.back}
           </Link>
           <span className="crumb" aria-hidden="true">
             / {card.name}
           </span>
           <Link className="button ghost sm" href={`/datasets/${snapshot}`}>
             <Icon name="database" size={14} />
-            Methodology
+            {t.nav.methodology}
           </Link>
         </div>
         <section className="detail-hero" aria-labelledby="card-name">
@@ -109,8 +113,11 @@ export default async function Card({
               src={featured?.images[0]?.source_uri ?? null}
               alt={
                 featured
-                  ? `${card.name} — ${edition(featured)}`
-                  : `${card.name}, no eligible printing`
+                  ? fill(t.images.alt, {
+                      name: card.name,
+                      edition: edition(featured),
+                    })
+                  : fill(t.card.noPrintingAlt, { name: card.name })
               }
             />
           </div>
@@ -128,23 +135,27 @@ export default async function Card({
             )}
             <dl className="stat-strip">
               <div>
-                <dt>Mana value</dt>
+                <dt>{t.card.manaValue}</dt>
                 <dd>
-                  {card.mana_value === null ? "Unknown" : card.mana_value}
+                  {card.mana_value === null
+                    ? t.common.unknown
+                    : count(card.mana_value)}
                 </dd>
               </div>
             </dl>
           </div>
         </section>
-        <section aria-label="Card faces" className="faces">
+        <section aria-label={t.card.faces} className="faces">
           {card.faces.length > 0 ? (
             card.faces.map((face) => (
               <article className="face" key={face.face_index}>
-                <p className="eyebrow">Face {face.face_index + 1}</p>
+                <p className="eyebrow">
+                  {fill(t.images.face, { number: face.face_index + 1 })}
+                </p>
                 <h2>{face.name}</h2>
                 <ManaLine value={face.mana_cost} />
                 <p className="type-line">
-                  {face.type_line ?? "Type not supplied"}
+                  {face.type_line ?? t.card.typeNotSupplied}
                 </p>
                 <div className="rules">
                   <KnownText value={face.oracle_text} />
@@ -153,10 +164,10 @@ export default async function Card({
             ))
           ) : (
             <article className="face">
-              <h2>Card text</h2>
+              <h2>{t.card.cardText}</h2>
               <ManaLine value={card.mana_cost} />
               <p className="type-line">
-                {card.type_line ?? "Type not supplied"}
+                {card.type_line ?? t.card.typeNotSupplied}
               </p>
               <div className="rules">
                 <KnownText value={card.oracle_text} />
@@ -165,19 +176,16 @@ export default async function Card({
           )}
         </section>
         <section className="printings" aria-labelledby="printings-heading">
-          <h2 id="printings-heading">Eligible printings</h2>
-          <p>
-            Each printing below satisfies your set, rarity and game filters
-            together.
-          </p>
+          <h2 id="printings-heading">{t.card.printingsHeading}</h2>
+          <p>{t.card.printingsLead}</p>
           {printings.items.length === 0 ? (
             <div className="state">
-              <h3>No eligible printings in this pool.</h3>
+              <h3>{t.card.noPrintings}</h3>
               <Link
                 className="button secondary sm"
                 href={`/cards/${oracle_id}?catalog_snapshot_id=${snapshot}`}
               >
-                Show all printings
+                {t.card.showAllPrintings}
               </Link>
             </div>
           ) : (
@@ -198,8 +206,16 @@ export default async function Card({
                       {printing.language.toUpperCase()}
                     </p>
                     <p className="printing-meta">
-                      {printing.games.join(" · ")} · Released{" "}
-                      {printing.released_on ?? "date unknown"}
+                      {printing.games
+                        .map(
+                          (game) =>
+                            t.games[game as keyof typeof t.games] ?? game,
+                        )
+                        .join(" · ")}{" "}
+                      ·{" "}
+                      {fill(t.card.released, {
+                        date: printing.released_on ?? t.card.dateUnknown,
+                      })}
                     </p>
                   </div>
                   <a
@@ -208,9 +224,9 @@ export default async function Card({
                     rel="noreferrer"
                     target="_blank"
                   >
-                    Scryfall source{" "}
+                    {t.card.source}{" "}
                     <span className="sr-only">
-                      for {printing.set_name} (opens new tab)
+                      {fill(t.card.sourceFor, { set: printing.set_name })}
                     </span>
                     <Icon name="external-link" size={14} />
                   </a>
@@ -223,19 +239,16 @@ export default async function Card({
               className="button secondary more"
               href={`/cards/${oracle_id}?${next}`}
             >
-              More printings <Icon name="arrow-right" size={14} />
+              {t.card.morePrintings} <Icon name="arrow-right" size={14} />
             </Link>
           )}
         </section>
         <aside className="method-note">
           <Icon name="info" size={18} />
-          <strong>Tournament evidence unavailable</strong>
-          <p>
-            No tournament dataset is attached. No usage count or competitive
-            score can be inferred from these printings.
-          </p>
+          <strong>{t.card.noteTitle}</strong>
+          <p>{t.card.noteBody}</p>
           <Link href={`/datasets/${snapshot}`}>
-            Inspect source and methodology
+            {t.card.inspectMethodology}
           </Link>
         </aside>
       </>

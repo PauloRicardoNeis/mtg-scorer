@@ -11,7 +11,7 @@ const formats = [
 describe("FormatGrades", () => {
   it("names the leading formats with their letters and counts the rest", () => {
     const { container } = render(<FormatGrades formats={formats} />);
-    expect(container).toHaveTextContent("LegacyA+CommanderB+1 more formats");
+    expect(container).toHaveTextContent("LegacyA+CommanderB+1 more format");
     expect(screen.getByText("A+")).toHaveClass("tone-a");
   });
 

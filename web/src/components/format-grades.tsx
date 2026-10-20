@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useI18n } from "#i18n";
 import type { RankedCard } from "@/lib/api";
 import { grade, gradeTone } from "@/lib/format";
 import { formatLabel } from "@/lib/formats";
@@ -24,6 +25,7 @@ export function FormatGrades({
   formats: FormatGrade[] | null | undefined;
   shown?: number;
 }) {
+  const { t, plural } = useI18n();
   if (!formats?.length) return <span className="muted">—</span>;
   const more = formats.length - shown;
   return (
@@ -37,7 +39,10 @@ export function FormatGrades({
       {more > 0 && (
         <span className="archetype-more">
           +{more}
-          <span className="sr-only"> more formats</span>
+          <span className="sr-only">
+            {" "}
+            {plural(t.rankingData.moreFormats, more)}
+          </span>
         </span>
       )}
     </span>
@@ -50,14 +55,16 @@ export function FormatGradeRows({
 }: {
   formats: FormatGrade[] | null | undefined;
 }) {
-  if (!formats?.length) return <p className="muted">No format grades</p>;
+  const { t, decimal } = useI18n();
+  if (!formats?.length)
+    return <p className="muted">{t.rankingTable.noFormatGrades}</p>;
   return (
     <>
       {formats.map((format) => (
         <p className="played-row" key={format.format_name}>
           <Letter score={format.score} />
           <span className="played-name">{formatLabel(format.format_name)}</span>
-          <span className="played-share">{format.score.toFixed(1)}</span>
+          <span className="played-share">{decimal(format.score, 1)}</span>
           <span
             className="played-bar"
             aria-hidden="true"

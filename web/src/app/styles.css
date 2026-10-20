@@ -203,6 +203,24 @@ main > .band {
   line-height: 1;
   color: var(--text-1);
 }
+/* Language picker: a labelled select under the tagline, each language in its own words. */
+.language-select {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
+}
+.language-select label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-meta);
+  color: var(--text-3);
+}
+.language-select .select {
+  width: 200px;
+}
 .skip-link {
   position: absolute;
   top: -80px;

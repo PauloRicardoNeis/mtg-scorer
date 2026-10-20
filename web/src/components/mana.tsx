@@ -1,4 +1,5 @@
 import { Fragment, type CSSProperties } from "react";
+import { useI18n } from "#i18n";
 
 /** Scryfall hosts the official card symbols as SVGs, alongside the card scans. */
 const symbolBase = "https://svgs.scryfall.io/card-symbols";
@@ -117,14 +118,7 @@ export function ColorPips({ values }: { values: string[] | null }) {
   );
 }
 
-const filterColors: [string, string][] = [
-  ["W", "White"],
-  ["U", "Blue"],
-  ["B", "Black"],
-  ["R", "Red"],
-  ["G", "Green"],
-  ["C", "Colorless"],
-];
+const filterColors = ["W", "U", "B", "R", "G", "C"] as const;
 
 /**
  * Multi-select card colors as a segmented bar; a card matches any selected color.
@@ -143,6 +137,7 @@ export function ColorFilter({
   form?: string;
   hideLabel?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div>
       <span
@@ -156,8 +151,8 @@ export function ColorFilter({
         aria-labelledby={`${name}-label`}
         className="segmented color-filter"
       >
-        {filterColors.map(([color, colorName]) => (
-          <label key={color} title={colorName}>
+        {filterColors.map((color) => (
+          <label key={color} title={t.colors[color]}>
             <input
               type="checkbox"
               name={name}
@@ -178,7 +173,7 @@ export function ColorFilter({
                 } as CSSProperties
               }
             />
-            <span className="sr-only">{colorName}</span>
+            <span className="sr-only">{t.colors[color]}</span>
           </label>
         ))}
       </div>
@@ -190,13 +185,14 @@ const rarities = new Set(["common", "uncommon", "rare", "mythic"]);
 
 /** Rarity gem followed by the rarity name. */
 export function Rarity({ rarity }: { rarity: string }) {
+  const { t } = useI18n();
   return (
     <span className="rarity">
       <span
         className={`gem gem-${rarities.has(rarity) ? rarity : "common"}`}
         aria-hidden="true"
       />
-      {rarity}
+      {t.rarities[rarity as keyof typeof t.rarities] ?? rarity}
     </span>
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { descriptors, designFormats, formatLabel } from "./formats";
+import { en } from "@/i18n/messages/en";
+import { designFormats, formatLabel } from "./formats";
 
 describe("formats", () => {
   it("names TopDeck's EDH as Commander and keeps other names", () => {
@@ -10,6 +11,8 @@ describe("formats", () => {
 
   it("describes every design format", () => {
     for (const [, format] of designFormats)
-      expect(descriptors[format]).toBeTruthy();
+      expect(
+        en.formats.descriptors[format as keyof typeof en.formats.descriptors],
+      ).toBeTruthy();
   });
 });

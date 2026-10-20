@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { RankedCard, RankingPage } from "@/lib/api";
+import { english } from "@/test/i18n";
 import {
   GradeRing,
   MetaShare,
@@ -202,18 +203,22 @@ describe("Trend", () => {
 
 describe("trendLabel", () => {
   it("reads the series reach in months or weeks", () => {
-    expect(trendLabel(run)).toBe("12 mo");
-    expect(trendLabel({ ...run, series_period_days: 16 })).toBe("6 mo");
-    expect(trendLabel({ ...run, series_period_days: 3 })).toBe("5 wk");
-    expect(trendLabel({ ...run, series_period_days: null })).toBeNull();
-    expect(trendLabel({ ...run, series_decks: null })).toBeNull();
+    expect(trendLabel(run, english)).toBe("12 mo");
+    expect(trendLabel({ ...run, series_period_days: 16 }, english)).toBe(
+      "6 mo",
+    );
+    expect(trendLabel({ ...run, series_period_days: 3 }, english)).toBe("5 wk");
+    expect(
+      trendLabel({ ...run, series_period_days: null }, english),
+    ).toBeNull();
+    expect(trendLabel({ ...run, series_decks: null }, english)).toBeNull();
   });
 });
 
 describe("MostPlayedIn", () => {
   it("shows the leading archetype with its colors and how many others play the card", () => {
     const { container } = render(<MostPlayedIn card={card({})} />);
-    expect(container).toHaveTextContent("Burn+1 more archetypes");
+    expect(container).toHaveTextContent("Burn+1 more archetype");
     expect(
       container.querySelector('.color-pips img[src$="/R.svg"]'),
     ).not.toBeNull();
@@ -254,8 +259,8 @@ describe("MostPlayedIn", () => {
 
 describe("percentile", () => {
   it("rounds up to a whole percent of at least 1", () => {
-    expect(percentile(1, 8)).toBe("Top 13%");
-    expect(percentile(1, 939)).toBe("Top 1%");
-    expect(percentile(1, 0)).toBeNull();
+    expect(percentile(1, 8, english)).toBe("Top 13%");
+    expect(percentile(1, 939, english)).toBe("Top 1%");
+    expect(percentile(1, 0, english)).toBeNull();
   });
 });
