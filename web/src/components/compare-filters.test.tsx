@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { router } from "@/test/navigation";
 import { CompareFilters, type PickOption } from "./compare-filters";
@@ -197,5 +198,15 @@ describe("CompareFilters", () => {
       screen.getByRole("switch", { name: "In every selected format" }),
     ).toBeChecked();
     expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("keeps a choice made before the page hydrated", () => {
+    const container = document.body.appendChild(document.createElement("div"));
+    container.innerHTML = renderToString(filters());
+    container.querySelector<HTMLInputElement>(
+      'input[name="format"][value="Legacy"]',
+    )!.checked = true;
+    render(filters(), { container, hydrate: true });
+    expect(screen.getByRole("checkbox", { name: "Legacy" })).toBeChecked();
   });
 });

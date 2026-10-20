@@ -90,8 +90,14 @@ export function RankingFilters({
   const filtered = Boolean(current.get("q") || type || colors.length);
   // A link elsewhere (clear filters, the header search, history) changes the
   // address without remounting the form, so its controls follow the address.
+  // The server rendered them from this address, so mounting leaves them alone:
+  // a choice made before hydration would otherwise be undone.
   const colorKey = colors.join();
+  const address = [colorKey, type, scoreRunId, method].join("\n");
+  const synced = useRef(address);
   useEffect(() => {
+    if (synced.current === address) return;
+    synced.current = address;
     const controls = form.current!.elements;
     for (const box of controls.namedItem("color") as RadioNodeList)
       (box as HTMLInputElement).checked = colorKey
@@ -103,7 +109,7 @@ export function RankingFilters({
     ).value = scoreRunId;
     const grading = controls.namedItem("method");
     if (grading instanceof HTMLSelectElement) grading.value = method;
-  }, [colorKey, type, scoreRunId, method]);
+  }, [address, colorKey, type, scoreRunId, method]);
   useRefocus(form, `${scoreRunId}?${query}`);
   const apply = () =>
     startTransition(() =>

@@ -83,6 +83,8 @@ export function CompareFilters({
     return value ? [[key, value] as const] : [];
   });
   // Presets and links elsewhere change the address without remounting the form.
+  // The server rendered the controls from this address, so mounting leaves them
+  // alone: a choice made before hydration would otherwise be undone.
   const state = JSON.stringify([
     formats,
     stats,
@@ -91,7 +93,10 @@ export function CompareFilters({
     colors,
     method,
   ]);
+  const synced = useRef(state);
   useEffect(() => {
+    if (synced.current === state) return;
+    synced.current = state;
     const [f, s, m, e, c, g] = JSON.parse(state) as [
       PickOption[],
       PickOption[],
