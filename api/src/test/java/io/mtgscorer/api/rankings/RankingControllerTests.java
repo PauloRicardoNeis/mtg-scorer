@@ -27,12 +27,13 @@ class RankingControllerTests {
   private static final String RUN = "scores-" + "a".repeat(64);
 
   @Mock private RankingService rankings;
+  @Mock private CompareService compare;
   private MockMvc mvc;
 
   @BeforeEach
   void setUp() {
     mvc =
-        MockMvcBuilders.standaloneSetup(new RankingController(rankings))
+        MockMvcBuilders.standaloneSetup(new RankingController(rankings, compare))
             .setControllerAdvice(new CatalogExceptionHandler())
             .build();
   }
@@ -53,10 +54,34 @@ class RankingControllerTests {
             249,
             231,
             67,
+            0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             List.of());
     when(rankings.rankings(query.capture()))
         .thenReturn(
-            new RankingPage(run, "max-ratio", "max_ratio", List.of(), null, 0, 0, 24, List.of()));
+            new RankingPage(
+                run,
+                "max-ratio",
+                "max_ratio",
+                List.of(),
+                null,
+                0,
+                0,
+                25,
+                "score",
+                "desc",
+                "all",
+                new ViewCounts(0, 0, 0),
+                null,
+                0,
+                List.of(),
+                List.of()));
 
     mvc.perform(get("/api/v1/rankings").param("color", "R").param("color", "C"))
         .andExpect(status().isOk())
@@ -83,5 +108,43 @@ class RankingControllerTests {
     mvc.perform(get("/api/v1/rankings"))
         .andExpect(status().isServiceUnavailable())
         .andExpect(jsonPath("$.code").value("rankings_unavailable"));
+  }
+
+  @Test
+  void theCompareQueryIsParsedStrictlyAndThePageIsReturned() throws Exception {
+    ArgumentCaptor<CompareQuery> query = ArgumentCaptor.forClass(CompareQuery.class);
+    when(compare.compare(query.capture()))
+        .thenReturn(
+            new ComparePage(
+                List.of(new CompareFormat("Modern", RUN, 667, 2)),
+                List.of(new CompareFormat("Modern", RUN, 667, 2)),
+                null,
+                0,
+                0,
+                50,
+                "best",
+                "desc",
+                true,
+                List.of()));
+
+    mvc.perform(
+            get("/api/v1/rankings/compare")
+                .param("format", "Modern")
+                .param("format", "Legacy")
+                .param("every", "true"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.formats[0].format_name").value("Modern"))
+        .andExpect(jsonPath("$.every").value(true));
+
+    assertThat(query.getValue().formats()).containsExactly("Modern", "Legacy");
+  }
+
+  @Test
+  void anUnknownCompareParameterIsAProblemBeforeTheServiceRuns() throws Exception {
+    mvc.perform(get("/api/v1/rankings/compare").param("view", "risers"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("invalid_query"));
+
+    verifyNoInteractions(compare);
   }
 }

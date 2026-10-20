@@ -5,9 +5,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-/** Published score runs as Python wrote them; nothing here is computed by the API. */
+/**
+ * Published score runs as Python wrote them; nothing here is computed by the API beyond ranks, the
+ * change against the previous run and an average of stored counts.
+ */
 public final class RankingModels {
   private RankingModels() {}
 
@@ -31,13 +35,73 @@ public final class RankingModels {
       @Schema(minimum = "0") int players,
       @Schema(minimum = "0", description = "Published decks in the cohort.") int decks,
       @Schema(minimum = "0") int top_cut_decks,
+      @Schema(minimum = "0", description = "Cards the methods scored; ranks run up to this.")
+          int scored_cards,
+      @Schema(
+              types = {"integer", "null"},
+              description = "Games reported in standings; null for runs that did not record them.")
+          Integer matches,
+      @Schema(
+              types = {"integer", "null"},
+              description = "2 for one-on-one formats, 4 for pods; null for older runs.")
+          Integer players_per_game,
+      @Schema(
+              types = {"number", "null"},
+              description = "The field's match points per game, 0-1.")
+          Double field_win_rate,
+      @Schema(
+              types = {"number", "null"},
+              description = "Share of decks with a known result that made the top cut, 0-1.")
+          Double field_top_cut_rate,
+      @Schema(
+              types = {"string", "null"},
+              format = "date",
+              description = "First day of the trend series.")
+          LocalDate series_starts_on,
+      @Schema(types = {"integer", "null"}) Integer series_period_days,
+      @Schema(
+              types = {"array", "null"},
+              description = "The cohort's decks in each trend period, oldest first.")
+          List<Integer> series_decks,
       List<ScoreMethod> methods) {}
 
-  public record RankedFormat(String format_name, String source, String score_run_id) {}
+  public record RankedFormat(
+      String format_name,
+      String source,
+      String score_run_id,
+      @Schema(minimum = "0") int decks,
+      @Schema(types = {"integer", "null"}) Integer players_per_game) {}
+
+  public record RunWindow(
+      String score_run_id,
+      String source,
+      @Schema(format = "date") LocalDate window_starts_on,
+      @Schema(format = "date", description = "Exclusive end of the cohort window.")
+          LocalDate window_ends_before,
+      @Schema(minimum = "0") int decks,
+      @Schema(description = "Whether this is the run shown without a pinned run.")
+          boolean active) {}
+
+  public record ArchetypeShare(
+      String label,
+      @Schema(minimum = "1", description = "The card's decks with this label.") int deck_count,
+      @Schema(description = "Colors the archetype's core cards span, in WUBRG order.")
+          List<String> colors) {}
+
+  public record ViewCounts(
+      @Schema(minimum = "0") long all,
+      @Schema(minimum = "0") long risers,
+      @Schema(minimum = "0") long fallers) {}
 
   public record RankedCard(
       @Schema(minimum = "1", description = "Position by the selected score among all scored cards.")
           long rank,
+      @Schema(
+              types = {"integer", "null"},
+              description =
+                  "Places gained since the previous run of this format; null without one or when"
+                      + " the card was not ranked there.")
+          Integer rank_change,
       UUID oracle_id,
       String name,
       @Schema(
@@ -54,6 +118,44 @@ public final class RankingModels {
       @Schema(types = {"string", "null"}) String archetype_label,
       @Schema(minimum = "0") int archetype_deck_count,
       @Schema(minimum = "0") int labelled_deck_count,
+      @Schema(
+              types = {"number", "null"},
+              description = "Match points per game of the card's decks, 0-1.")
+          Double win_rate,
+      @Schema(
+              types = {"number", "null"},
+              description = "Win rate minus the field's, as a fraction.")
+          Double win_rate_delta,
+      @Schema(
+              types = {"number", "null"},
+              description = "Half-width of the 95% interval.")
+          Double win_rate_ci95,
+      @Schema(
+              types = {"integer", "null"},
+              description = "Games behind the win rate.")
+          Integer games,
+      @Schema(
+              types = {"number", "null"},
+              description = "Top-cut conversion divided by the field's.")
+          Double top_cut_lift,
+      @Schema(
+              types = {"number", "null"},
+              description = "Meta share in the last trend period minus the first, as a fraction.")
+          Double share_delta,
+      @Schema(
+              types = {"number", "null"},
+              description = "Mainboard copies per deck.")
+          Double avg_copies,
+      @Schema(
+              types = {"array", "null"},
+              description = "The card's decks in each trend period, oldest first.")
+          List<Integer> series_decks,
+      @Schema(description = "Up to three archetypes playing the card, most decks first.")
+          List<ArchetypeShare> archetypes,
+      @Schema(
+              types = {"integer", "null"},
+              description = "Distinct archetype labels among the card's decks.")
+          Integer archetype_count,
       @Schema(types = {"string", "null"}) String mana_cost,
       @Schema(types = {"string", "null"}) String type_line,
       @Schema(types = {"array", "null"}) List<String> color_identity,
@@ -69,5 +171,66 @@ public final class RankingModels {
       @Schema(minimum = "0") long total,
       @Schema(minimum = "0") int offset,
       @Schema(minimum = "1") int limit,
+      String sort,
+      @Schema(allowableValues = {"asc", "desc"}) String order,
+      @Schema(allowableValues = {"all", "risers", "fallers"}) String view,
+      @Schema(description = "Matches per view under the same filters.") ViewCounts view_counts,
+      @Schema(
+              types = {"string", "null"},
+              description = "The run rank changes are measured against.")
+          String previous_score_run_id,
+      @Schema(minimum = "0", description = "The most decks any scored card has in this run.")
+          int max_deck_count,
+      @Schema(
+              description =
+                  "Every published window of this format, latest end first, one run per source"
+                      + " and window.")
+          List<RunWindow> windows,
       List<RankedCard> items) {}
+
+  public record CompareFormat(
+      String format_name,
+      String score_run_id,
+      @Schema(minimum = "0") int decks,
+      @Schema(types = {"integer", "null"}) Integer players_per_game) {}
+
+  public record CompareCell(
+      @Schema(minimum = "1", description = "The card's rank in this format.") long rank,
+      @Schema(
+              types = {"number", "null"},
+              description = "Constructed score, 0-100.")
+          Double score,
+      @Schema(types = {"number", "null"}) Double win_rate_delta,
+      @Schema(
+              types = {"number", "null"},
+              description = "Share of the format's decks, 0-1.")
+          Double share,
+      @Schema(types = {"number", "null"}) Double top_cut_lift,
+      @Schema(types = {"number", "null"}) Double share_delta) {}
+
+  public record ComparedCard(
+      UUID oracle_id,
+      String name,
+      @Schema(types = {"string", "null"}) String mana_cost,
+      @Schema(types = {"string", "null"}) String type_line,
+      @Schema(types = {"array", "null"}) List<String> color_identity,
+      @Schema(minimum = "1", description = "Compared formats that rank the card.") int ranked_in,
+      @Schema(description = "The compared format where the card scores highest.")
+          String best_format,
+      @Schema(types = {"number", "null"}) Double best_score,
+      @Schema(description = "One cell per compared format that ranks the card.")
+          Map<String, CompareCell> formats) {}
+
+  public record ComparePage(
+      @Schema(description = "The compared formats.") List<CompareFormat> formats,
+      @Schema(description = "Every format with a constructed score, comparable or not chosen.")
+          List<CompareFormat> available,
+      @Schema(types = {"string", "null"}) String catalog_snapshot_id,
+      @Schema(minimum = "0") long total,
+      @Schema(minimum = "0") int offset,
+      @Schema(minimum = "1") int limit,
+      String sort,
+      @Schema(allowableValues = {"asc", "desc"}) String order,
+      boolean every,
+      List<ComparedCard> items) {}
 }

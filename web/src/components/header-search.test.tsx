@@ -284,6 +284,22 @@ describe("HeaderSearch", () => {
       expect(router.push).toHaveBeenCalledExactlyOnceWith("/rankings");
     });
 
+    it("searches the compare table from the compare page", async () => {
+      const user = userEvent.setup();
+      window.history.pushState(
+        null,
+        "",
+        "/rankings/compare?format=Modern&q=old",
+      );
+      setPathname("/rankings/compare");
+      render(<HeaderSearch />);
+      await user.clear(rankedBox());
+      await user.type(rankedBox(), "bolt{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith(
+        "/rankings/compare?format=Modern&q=bolt",
+      );
+    });
+
     it("follows the name filter as the address changes, and clears it on leaving", () => {
       onRankings("?q=bolt");
       const { rerender } = render(<HeaderSearch />);

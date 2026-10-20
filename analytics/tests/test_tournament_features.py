@@ -206,3 +206,86 @@ def test_the_rules_hash_changes_with_any_setting() -> None:
     )
 
     assert RULES.fingerprint != stricter.fingerprint
+
+
+def test_a_draw_shares_the_win_among_the_players_at_the_table() -> None:
+    from mtg_scorer.tournament_features import Record
+
+    record = Record(decks=2, wins=2, losses=1, draws=1)
+
+    assert record.win_rate(2) == pytest.approx(2.5 / 4)
+    assert record.win_rate(4) == pytest.approx(2.25 / 4)
+    assert Record().win_rate(2) is None
+
+
+def test_cards_carry_their_copies_record_and_leading_archetypes(tmp_path) -> None:
+    usage = usage_by_id(cohort_of(tmp_path, open_event(), weekly_event()))
+
+    bolt = usage[BOLT]
+    assert bolt.mainboard_copies == 10
+    assert (bolt.record.decks, bolt.record.wins, bolt.record.losses) == (3, 6, 1)
+    assert bolt.archetypes == (("Burn", 2), ("Control", 1))
+    assert bolt.archetype_count == 2
+
+
+def test_only_three_archetypes_are_named_and_the_rest_counted(tmp_path) -> None:
+    rows = [
+        row(1, deck_obj=deck({"Bolt": (BOLT, 4)}), archetype=label)
+        for label in ("Burn", "Prowess", "Jund", "Zoo")
+    ]
+    usage = usage_by_id(cohort_of(tmp_path, event("synthetic-many", rows)))
+
+    assert [label for label, _ in usage[BOLT].archetypes] == ["Burn", "Jund", "Prowess"]
+    assert usage[BOLT].archetype_count == 4
+
+
+def test_the_trend_series_counts_decks_per_period_up_to_the_window_end(tmp_path) -> None:
+    from mtg_scorer.tournament_features import card_performance, cohort_performance
+
+    listed = deck({"Bolt": (BOLT, 4)})
+    other = deck({"Counterspell": (COUNTERSPELL, 4)})
+    wide = CohortRules(
+        version="synthetic-cohort-v1",
+        format_name="Modern",
+        starts_on="2025-01-01",
+        ends_before="2026-09-01",
+    )
+    cohort = cohort_of(
+        tmp_path,
+        event(
+            "synthetic-early", [row(1, deck_obj=listed), row(0, deck_obj=other)], day="2025-09-10"
+        ),
+        event(
+            "synthetic-late", [row(1, deck_obj=listed), row(0, deck_obj=listed)], day="2026-08-31"
+        ),
+        event("synthetic-old", [row(1, deck_obj=listed)], day="2025-08-01"),
+        rules=wide,
+    )
+    field = cohort_performance(cohort)
+    bolt = usage_by_id(cohort)[BOLT]
+
+    assert field.series == (2,) + (0,) * 10 + (2,)
+    assert bolt.series == (1,) + (0,) * 10 + (2,)
+    # Bolt went from half the decks to all of them.
+    assert card_performance(bolt, field).share_delta == pytest.approx(0.5)
+
+
+def test_top_cut_lift_compares_with_the_field_rate(tmp_path) -> None:
+    from mtg_scorer.tournament_features import card_performance, cohort_performance
+
+    cohort = cohort_of(tmp_path, open_event(), weekly_event())
+    field = cohort_performance(cohort)
+
+    assert field.top_cut_rate == pytest.approx(2 / 3)
+    assert card_performance(usage_by_id(cohort)[BOLT], field).top_cut_lift == pytest.approx(1.5)
+
+
+def test_multiplayer_rules_need_at_least_two_players() -> None:
+    with pytest.raises(ValueError, match="players_per_game"):
+        CohortRules(
+            version="v1",
+            format_name="EDH",
+            starts_on="2026-03-01",
+            ends_before="2026-09-01",
+            players_per_game=1,
+        )

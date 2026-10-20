@@ -90,8 +90,34 @@ def test_the_cohort_summary_keeps_events_exclusions_and_totals(tmp_path) -> None
         "top_cut_decks": 2,
         "quarantined_card_lines_in_source": 0,
         "team_events_skipped_in_source": 0,
+        "top_cut_known_decks": 3,
+        "record_decks": 5,
+        "matches": 5,
     }
     assert cohort["rules"]["hash"] == RULES.fingerprint
+    assert cohort["rules"]["players_per_game"] == 2
+
+
+def test_the_cohort_summary_states_the_field_baselines_trend_and_archetypes(tmp_path) -> None:
+    cohort = document(tmp_path)["cohort"]
+
+    assert cohort["performance"] == {
+        "players_per_game": 2,
+        "record": {"decks": 5, "wins": 7, "losses": 4, "draws": 0},
+        "win_rate": 0.6364,
+        "top_cut_rate": 0.6667,
+    }
+    # A 184-day window splits into twelve 16-day periods; the events fall in two of them.
+    assert cohort["series"] == {
+        "starts_on": "2026-02-21",
+        "period_days": 16,
+        "decks": [0, 3, 2] + [0] * 9,
+    }
+    assert [(a["label"], a["deck_count"]) for a in cohort["archetypes"]] == [
+        ("Burn", 2),
+        ("Control", 3),
+    ]
+    assert cohort["archetypes"][1]["core_cards"] == [COUNTERSPELL]
 
 
 def test_basic_lands_are_described_but_not_scored(tmp_path) -> None:
@@ -116,6 +142,20 @@ def test_cards_carry_their_usage_with_denominators(tmp_path) -> None:
         "top_cut_count": 2,
         "top_cut_known_decks": 2,
         "archetype": {"label": "Burn", "deck_count": 2, "labelled_deck_count": 3},
+        "archetypes": {
+            "distinct": 2,
+            "top": [{"label": "Burn", "deck_count": 2}, {"label": "Control", "deck_count": 1}],
+        },
+        "mainboard_copies": 10,
+        "record": {"decks": 3, "wins": 6, "losses": 1, "draws": 0},
+        "performance": {
+            "win_rate": 0.8571,
+            "win_rate_delta": 0.2208,
+            "win_rate_ci95": 0.2592,
+            "top_cut_lift": 1.5,
+            "share_delta": None,
+        },
+        "series": [0, 2, 1] + [0] * 9,
     }
 
 
@@ -126,6 +166,7 @@ def test_every_registered_method_scores_the_population(tmp_path) -> None:
     assert scores(runs["max-ratio"], "max_ratio") == {BOLT: 100.0, COUNTERSPELL: 100.0}
     assert runs["max-ratio"]["label"] == MaxRatioMethod.label
     assert set(scores(runs["foundation"], "staple")) == {BOLT, COUNTERSPELL}
+    assert scores(runs["constructed-score"], "score") == {BOLT: 75.0, COUNTERSPELL: 25.0}
 
 
 def test_writing_names_the_file_after_its_identity(tmp_path) -> None:
@@ -207,6 +248,13 @@ def test_the_database_header_counts_every_row_it_will_load(tmp_path) -> None:
         "2026-03-01",
         "2026-09-01",
     )
-    assert header["row_counts"] == {"cards": 3, "methods": 2, "scores": 14, "inputs": 4}
+    assert header["row_counts"] == {
+        "cards": 3,
+        "methods": 3,
+        "scores": 16,
+        "inputs": 12,
+        "card_archetypes": 5,
+        "archetypes": 2,
+    }
     assert header["results_sha256"] == results_sha256(run)
     assert header["summary"]["cohort"] == run["cohort"]

@@ -2,6 +2,7 @@ package io.mtgscorer.api.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.mtgscorer.api.rankings.CompareQuery;
 import io.mtgscorer.api.rankings.RankingQuery;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -83,6 +84,48 @@ class RankingOpenApiTests {
   }
 
   @Test
+  void theCompareOperationDocumentsExactlyItsQueryParameters() {
+    var operation = api.getPaths().get("/api/v1/rankings/compare").getGet();
+    var parameters =
+        operation.getParameters().stream()
+            .collect(Collectors.toMap(Parameter::getName, parameter -> parameter));
+    assertThat(operation.getParameters().stream().map(Parameter::getName))
+        .containsExactlyElementsOf(CompareQuery.PARAMETERS.stream().sorted().toList());
+    assertThat(parameters.get("format").getSchema().getMaxItems())
+        .isEqualTo(CompareQuery.MAX_FORMATS);
+    assertThat(parameters.get("format").getExplode()).isTrue();
+    assertThat(parameters.get("format").getDescription()).isNotBlank();
+    assertThat(parameters.get("every").getSchema().getDefault()).isEqualTo(false);
+    assertThat(parameters.get("every").getDescription()).isNotBlank();
+    assertThat(parameters.get("sort").getSchema().getPattern())
+        .startsWith("^(best|count|name|")
+        .contains("grade|score|share|top_cut_lift|trend|win_rate");
+    assertThat(parameters.get("sort").getSchema().getDefault()).isEqualTo("best");
+    assertThat(parameters.get("sort").getDescription()).isNotBlank();
+    assertThat(parameters.get("order").getSchema().getEnum())
+        .containsExactlyElementsOf(RankingQuery.ORDERS);
+    assertThat(parameters.get("order").getDescription()).isNull();
+    assertThat(parameters.get("limit").getSchema().getDefault())
+        .isEqualTo(CompareQuery.DEFAULT_LIMIT);
+    assertThat(parameters.get("offset").getSchema().getMaximum())
+        .isEqualByComparingTo(BigDecimal.valueOf(10_000));
+    assertThat(parameters.get("q").getSchema().getMaxLength()).isEqualTo(100);
+    assertThat(parameters.get("color").getExplode()).isTrue();
+    assertThat(operation.getResponses().keySet()).contains("400", "503", "500");
+  }
+
+  @Test
+  void rankingsOrderAndViewStateTheirChoices() {
+    var parameters = parameters();
+    assertThat(parameters.get("order").getSchema().getEnum())
+        .containsExactlyElementsOf(RankingQuery.ORDERS);
+    assertThat(parameters.get("order").getDescription()).isNotBlank();
+    assertThat(parameters.get("view").getSchema().getEnum())
+        .containsExactlyElementsOf(RankingQuery.VIEWS);
+    assertThat(parameters.get("view").getDescription()).isNotBlank();
+  }
+
+  @Test
   void aPreviewPrintingIsAPrintingOrAnExplicitNull() {
     Schema<?> preview =
         (Schema<?>)
@@ -101,15 +144,16 @@ class RankingOpenApiTests {
 
   private static OpenAPI customized() {
     var api = new OpenAPI().paths(new Paths()).components(new Components());
-    api.getPaths()
-        .addPathItem(
-            "/api/v1/rankings",
-            new PathItem()
-                .get(
-                    new Operation()
-                        .responses(
-                            new ApiResponses()
-                                .addApiResponse("200", new ApiResponse().description("OK")))));
+    for (String path : java.util.List.of("/api/v1/rankings", "/api/v1/rankings/compare"))
+      api.getPaths()
+          .addPathItem(
+              path,
+              new PathItem()
+                  .get(
+                      new Operation()
+                          .responses(
+                              new ApiResponses()
+                                  .addApiResponse("200", new ApiResponse().description("OK")))));
     api.getComponents()
         .addSchemas(
             "RankedCard",

@@ -1,4 +1,4 @@
-"""Executable score-run v1 validation; shared by run-file writing and publication."""
+"""Executable score-run v2 validation; shared by run-file writing and publication."""
 
 from __future__ import annotations
 
@@ -28,6 +28,18 @@ def validate_score_run(document: dict[str, Any]) -> None:
         archetype = card["archetype"]
         if (archetype["label"] is None) != (archetype["labelled_deck_count"] == 0):
             raise ValueError(f"{card['oracle_id']}: archetype label and labelled decks disagree")
+        top = card["archetypes"]["top"]
+        leader = (top[0]["label"], top[0]["deck_count"]) if top else (None, 0)
+        if leader != (archetype["label"], archetype["deck_count"]) or card["archetypes"][
+            "distinct"
+        ] < len(top):
+            raise ValueError(f"{card['oracle_id']}: archetypes disagree with the leading label")
+        record = card["record"]
+        if record["decks"] > card["deck_count"] or card["mainboard_copies"] < card["deck_count"]:
+            raise ValueError(f"{card['oracle_id']}: record or copies exceed the card's decks")
+        games = record["wins"] + record["losses"] + record["draws"]
+        if (card["performance"]["win_rate"] is None) != (games == 0):
+            raise ValueError(f"{card['oracle_id']}: win rate must be unknown exactly without games")
     scored = {oracle_id for oracle_id, card in cards.items() if card["scored"]}
     if document["population"]["scored_cards"] != len(scored):
         raise ValueError("population scored_cards does not match the scored cards")

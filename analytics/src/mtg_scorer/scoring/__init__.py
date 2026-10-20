@@ -9,6 +9,7 @@ from .base import (
     build_run,
     config_fingerprint,
 )
+from .constructed import ConstructedConfig, ConstructedMethod
 from .foundation import DEFAULT_CONFIG, FoundationMethod, ScoreBreakdown, ScoreConfig, score_card
 from .max_ratio import COUNT_MEASURES, MaxRatioConfig, MaxRatioMethod
 from .registry import SCORE_METHODS, ScoreMethodRegistry
@@ -18,6 +19,8 @@ __all__ = [
     "DEFAULT_CONFIG",
     "SCORE_METHODS",
     "CardScore",
+    "ConstructedConfig",
+    "ConstructedMethod",
     "FoundationMethod",
     "MaxRatioConfig",
     "MaxRatioMethod",

@@ -92,7 +92,7 @@ def test_a_new_run_is_loaded_promoted_and_unlocked(run_file) -> None:
     result = publish_score_run(run_file, "unused", connection=connection)
 
     assert result["state"] == "published"
-    assert [len(rows) for rows in connection.copies] == [3, 2, 14, 4]
+    assert [len(rows) for rows in connection.copies] == [3, 5, 2, 3, 16, 12]
     assert connection.called("promote_score_publication")
     assert not connection.called("fail_score_publication")
     assert connection.statements[-1] == "SELECT pg_advisory_unlock(%s)"

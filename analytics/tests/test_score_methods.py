@@ -101,15 +101,15 @@ def test_every_method_scores_an_empty_stratum_as_an_empty_run(method) -> None:
 # Registry
 
 
-def test_registry_lists_the_foundation_model_and_max_ratio() -> None:
-    assert SCORE_METHODS.method_ids == ("foundation", "max-ratio")
+def test_registry_lists_the_constructed_score_foundation_model_and_max_ratio() -> None:
+    assert SCORE_METHODS.method_ids == ("constructed-score", "foundation", "max-ratio")
     assert "max-ratio" in SCORE_METHODS
     assert "unknown" not in SCORE_METHODS
     assert isinstance(SCORE_METHODS.get("foundation"), FoundationMethod)
 
 
 def test_registry_lookup_names_the_available_methods() -> None:
-    with pytest.raises(KeyError, match="available: foundation, max-ratio"):
+    with pytest.raises(KeyError, match="available: constructed-score, foundation, max-ratio"):
         SCORE_METHODS.get("power-ranking")
 
 

@@ -4,18 +4,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { RankedCard, RankingPage } from "@/lib/api";
-import { count, share } from "@/lib/format";
+import { deltaTone, lift, percent, share, signed } from "@/lib/format";
 import { edition, rankedCardHref } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { Icon } from "./icon";
-import { ManaCost } from "./mana";
+import { ColorDots, ManaCost } from "./mana";
+import {
+  GradeRing,
+  MetaShare,
+  MostPlayedIn,
+  RankMove,
+  TopCutLift,
+  Trend,
+  WinRate,
+  percentile,
+} from "./ranking-data";
 import { Tooltip } from "./tooltip";
 
-type Method = RankingPage["score_run"]["methods"][number];
+type Run = RankingPage["score_run"];
+type Method = Run["methods"][number];
 
-function fill(percent: number): CSSProperties {
-  return { "--fill": `${percent}%` } as CSSProperties;
-}
+export type SortLink = { href: string; active: boolean; order: "asc" | "desc" };
+
+export type ColumnLabels = { share: string; cut: string; trend: string | null };
 
 function score(card: RankedCard): string | null {
   return card.score === null ? null : card.score.toFixed(1);
@@ -41,33 +52,67 @@ function Thumb({ card }: { card: RankedCard }) {
   );
 }
 
-function TopCuts({ card }: { card: RankedCard }) {
-  if (card.top_cut_count === null)
-    return <span className="muted">Unknown</span>;
+/** A sortable column header: the active one reads text-1 with its direction. */
+function Sortable({
+  label,
+  link,
+  children,
+}: {
+  label: string;
+  link: SortLink | undefined;
+  children?: ReactNode;
+}) {
+  if (!link) return <th scope="col">{label}</th>;
   return (
-    <span className="stacked">
-      <span>{count(card.top_cut_count)}</span>
-      <span className="sub">of {count(card.top_cut_known_decks)} known</span>
-    </span>
+    <th
+      scope="col"
+      aria-sort={
+        link.active
+          ? link.order === "desc"
+            ? "descending"
+            : "ascending"
+          : undefined
+      }
+    >
+      <span className="th-info">
+        <Link className="sort-link" href={link.href} scroll={false}>
+          {label}
+          {link.active && (
+            <span aria-hidden="true">
+              {link.order === "desc" ? " ↓" : " ↑"}
+            </span>
+          )}
+        </Link>
+        {children}
+      </span>
+    </th>
   );
 }
 
-/** The selected card with the run's current numbers for it. */
+/** The selected card with the run's numbers for it. */
 function Preview({
   card,
-  decks,
+  run,
+  graded,
   method,
+  labels,
   href,
 }: {
   card: RankedCard;
-  decks: number;
+  run: Run;
+  graded: boolean;
   method: Method;
+  labels: ColumnLabels;
   href: string | null;
 }) {
   const printing = card.preview_printing;
+  const top = percentile(card.rank, run.scored_cards);
   return (
     <aside className="ranking-preview" aria-label="Selected card">
-      <p className="preview-rank">Rank {card.rank}</p>
+      <p className="preview-rank">
+        <span>Rank {card.rank}</span>
+        <RankMove change={card.rank_change} />
+      </p>
       <div className="preview-art">
         {printing ? (
           <CardImage
@@ -80,45 +125,83 @@ function Preview({
           <div className="preview-placeholder">{card.name}</div>
         )}
       </div>
-      <p className="preview-score">
-        <span className="preview-score-value">{score(card) ?? "—"}</span>
-        <span>{method.label}</span>
-      </p>
+      <div className="preview-score">
+        {graded && <GradeRing score={card.score} size="preview" />}
+        <p>
+          <span className="preview-score-value">{score(card) ?? "—"}</span>
+          <span>{graded ? (top ?? method.label) : method.label}</span>
+        </p>
+      </div>
       <dl className="preview-stats">
         <div>
-          <dt>Meta share</dt>
-          <dd>{share(card.deck_count, decks)}</dd>
-        </div>
-        <div>
-          <dt>Decks</dt>
-          <dd>{count(card.deck_count)}</dd>
-        </div>
-        <div>
-          <dt>Events</dt>
-          <dd>{count(card.event_count)}</dd>
-        </div>
-        <div>
-          <dt>Top cuts</dt>
+          <dt>Win rate</dt>
           <dd>
-            <TopCuts card={card} />
+            {card.win_rate === null ? (
+              "—"
+            ) : (
+              <>
+                {percent(100 * card.win_rate)}{" "}
+                {card.win_rate_ci95 !== null && (
+                  <span className="sub">
+                    ±{percent(100 * card.win_rate_ci95)}
+                  </span>
+                )}
+              </>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Vs field</dt>
+          <dd
+            className={
+              card.win_rate_delta === null
+                ? undefined
+                : `tone-${deltaTone(100 * card.win_rate_delta)}`
+            }
+          >
+            {card.win_rate_delta === null
+              ? "—"
+              : `${signed(100 * card.win_rate_delta)}%`}
+          </dd>
+        </div>
+        <div>
+          <dt>{labels.share}</dt>
+          <dd>{share(card.deck_count, run.decks)}</dd>
+        </div>
+        <div>
+          <dt>{labels.cut} · copies</dt>
+          <dd>
+            {card.top_cut_lift === null ? "—" : lift(card.top_cut_lift)}{" "}
+            <span className="sub">
+              · {card.avg_copies === null ? "—" : card.avg_copies.toFixed(1)}
+            </span>
           </dd>
         </div>
       </dl>
       <div className="preview-played">
         <p className="preview-label">Played in</p>
-        {card.archetype_label ? (
+        {card.archetypes.length > 0 ? (
+          card.archetypes.map((archetype) => {
+            const part = (100 * archetype.deck_count) / card.deck_count;
+            return (
+              <p className="played-row" key={archetype.label}>
+                <ColorDots values={archetype.colors} />
+                <span className="played-name">{archetype.label}</span>
+                <span className="played-share">{percent(part)}</span>
+                <span
+                  className="played-bar"
+                  aria-hidden="true"
+                  style={{ "--fill": `${part}%` } as CSSProperties}
+                />
+              </p>
+            );
+          })
+        ) : card.archetype_label ? (
           <p className="played-row">
             <span className="played-name">{card.archetype_label}</span>
             <span className="played-share">
-              {share(card.archetype_deck_count, card.labelled_deck_count)}
+              {share(card.archetype_deck_count, card.deck_count)}
             </span>
-            <span
-              className="played-bar"
-              aria-hidden="true"
-              style={fill(
-                (100 * card.archetype_deck_count) / card.labelled_deck_count,
-              )}
-            />
           </p>
         ) : (
           <p className="muted">No labelled decks</p>
@@ -144,15 +227,23 @@ function Preview({
  */
 export function RankingTable({
   items,
-  decks,
+  run,
   method,
+  graded,
+  labels,
+  sorts,
+  maxDeckCount,
   catalogSnapshotId,
   clearHref,
   footer,
 }: {
   items: RankedCard[];
-  decks: number;
+  run: Run;
   method: Method;
+  graded: boolean;
+  labels: ColumnLabels;
+  sorts: Record<string, SortLink>;
+  maxDeckCount: number;
   catalogSnapshotId: string | null;
   clearHref: string;
   footer: ReactNode;
@@ -162,8 +253,6 @@ export function RankingTable({
   // A new page or filter may drop the selected card; the top row stands in.
   const selected =
     items.find((card) => card.oracle_id === selectedId) ?? items[0];
-  // Share bars are relative to the largest share on this page.
-  const most = Math.max(1, ...items.map((card) => card.deck_count));
   return (
     <div className="ranking-body">
       <div className="ranking-frame">
@@ -173,34 +262,39 @@ export function RankingTable({
               <col className="col-rank" />
               <col />
               <col className="col-score" />
+              <col className="col-win" />
               <col className="col-share" />
-              <col className="col-events" />
-              <col className="col-cuts" />
+              <col className="col-cut" />
+              <col className="col-trend" />
               <col className="col-archetype" />
             </colgroup>
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Card</th>
-                <th scope="col">
-                  <span className="th-info">
-                    <span>{method.label}</span>
-                    <Tooltip
-                      label="About this score"
-                      eyebrow="Method"
-                      title={method.label}
-                      placement="below"
-                    >
-                      {method.description}
-                      <span className="tooltip-meta">
-                        {method.method_version}
-                      </span>
-                    </Tooltip>
-                  </span>
-                </th>
-                <th scope="col">Meta share</th>
-                <th scope="col">Events</th>
-                <th scope="col">Top cuts</th>
+                <Sortable label="Card" link={sorts.name} />
+                <Sortable
+                  label={graded ? "Grade" : method.label}
+                  link={sorts.score}
+                >
+                  <Tooltip
+                    label="About this score"
+                    eyebrow="Method"
+                    title={method.label}
+                    placement="below"
+                  >
+                    {method.description}
+                    <span className="tooltip-meta">
+                      {method.method_version}
+                    </span>
+                  </Tooltip>
+                </Sortable>
+                <Sortable label="Win rate vs field" link={sorts.win_rate} />
+                <Sortable label={labels.share} link={sorts.decks} />
+                <Sortable label={labels.cut} link={sorts.top_cut_lift} />
+                <Sortable
+                  label={labels.trend ? `Trend · ${labels.trend}` : "Trend"}
+                  link={sorts.trend}
+                />
                 <th scope="col">Most played in</th>
               </tr>
             </thead>
@@ -215,17 +309,22 @@ export function RankingTable({
                     onPointerEnter={() => setSelectedId(card.oracle_id)}
                     onFocus={() => setSelectedId(card.oracle_id)}
                     onClick={(event) => {
-                      // The name link navigates itself; selected text is left to copy.
+                      // Links navigate themselves; selected text is left to copy.
                       if (
                         !href ||
-                        (event.target as Element).closest("a") ||
+                        (event.target as Element).closest("a, button") ||
                         String(window.getSelection())
                       )
                         return;
                       router.push(href);
                     }}
                   >
-                    <td className="rank">{card.rank}</td>
+                    <td className="rank-cell">
+                      <span className="stacked">
+                        <span className="rank">{card.rank}</span>
+                        <RankMove change={card.rank_change} />
+                      </span>
+                    </td>
                     <th scope="row" className="card-cell">
                       <span className="card-cell-inner">
                         <Thumb card={card} />
@@ -253,36 +352,35 @@ export function RankingTable({
                       </span>
                     </th>
                     <td>
-                      {score(card) ?? <span className="muted">Unknown</span>}
-                    </td>
-                    <td>
-                      <span className="stacked">
-                        <span>{share(card.deck_count, decks)}</span>
-                        <span
-                          className="share-bar"
-                          aria-hidden="true"
-                          style={fill((100 * card.deck_count) / most)}
-                        />
-                      </span>
-                    </td>
-                    <td>{count(card.event_count)}</td>
-                    <td>
-                      <TopCuts card={card} />
-                    </td>
-                    <td>
-                      {card.archetype_label ? (
-                        <span className="stacked archetype">
-                          <span className="archetype-name">
-                            {card.archetype_label}
-                          </span>
-                          <span className="sub">
-                            {count(card.archetype_deck_count)} of{" "}
-                            {count(card.labelled_deck_count)} decks
+                      {graded ? (
+                        <span className="grade-cell">
+                          <GradeRing score={card.score} />
+                          <span className="grade-score">
+                            {score(card) ?? "—"}
                           </span>
                         </span>
                       ) : (
-                        <span className="muted">Unlabelled</span>
+                        (score(card) ?? <span className="muted">Unknown</span>)
                       )}
+                    </td>
+                    <td>
+                      <WinRate card={card} />
+                    </td>
+                    <td>
+                      <MetaShare
+                        decks={card.deck_count}
+                        total={run.decks}
+                        most={maxDeckCount}
+                      />
+                    </td>
+                    <td>
+                      <TopCutLift value={card.top_cut_lift} />
+                    </td>
+                    <td>
+                      <Trend card={card} run={run} />
+                    </td>
+                    <td>
+                      <MostPlayedIn card={card} />
                     </td>
                   </tr>
                 );
@@ -304,8 +402,10 @@ export function RankingTable({
       {selected && (
         <Preview
           card={selected}
-          decks={decks}
+          run={run}
+          graded={graded}
           method={method}
+          labels={labels}
           href={rankedCardHref(selected, catalogSnapshotId)}
         />
       )}

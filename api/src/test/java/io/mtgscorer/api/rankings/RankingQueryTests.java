@@ -21,6 +21,8 @@ class RankingQueryTests {
     assertThat(query.type()).isNull();
     assertThat(query.colors()).isEmpty();
     assertThat(query.sort()).isEqualTo("score");
+    assertThat(query.order()).isEqualTo("desc");
+    assertThat(query.view()).isEqualTo("all");
     assertThat(query.limit()).isEqualTo(RankingQuery.DEFAULT_LIMIT);
     assertThat(query.offset()).isZero();
     assertThat(query.scoreRun()).isNull();
@@ -37,6 +39,7 @@ class RankingQueryTests {
                 "type", List.of("instant"),
                 "color", List.of("C", "R", "W", "R"),
                 "sort", List.of("top_cuts"),
+                "order", List.of("asc"),
                 "limit", List.of("100"),
                 "offset", List.of("10000"),
                 "score_run_id", List.of(RUN)));
@@ -50,9 +53,23 @@ class RankingQueryTests {
                 "instant",
                 List.of("W", "R", "C"),
                 "top_cuts",
+                "asc",
+                "all",
                 100,
                 10000,
                 RUN));
+  }
+
+  @Test
+  void nameSortsAToZByDefaultAndEveryOtherSortHighestFirst() {
+    assertThat(RankingQuery.parse(Map.of("sort", List.of("name"))).order()).isEqualTo("asc");
+    for (String sort : List.of("win_rate", "top_cut_lift", "trend", "movement"))
+      assertThat(RankingQuery.parse(Map.of("sort", List.of(sort))).order()).isEqualTo("desc");
+  }
+
+  @Test
+  void aViewKeepsRisersOrFallers() {
+    assertThat(RankingQuery.parse(Map.of("view", List.of("fallers"))).view()).isEqualTo("fallers");
   }
 
   @Test
@@ -81,6 +98,8 @@ class RankingQueryTests {
             Map.of("color", List.of("X")),
             Map.of("color", List.of("W", "U", "B", "R", "G", "C", "W")),
             Map.of("sort", List.of("grade")),
+            Map.of("order", List.of("up")),
+            Map.of("view", List.of("new")),
             Map.of("limit", List.of("0")),
             Map.of("limit", List.of("101")),
             Map.of("limit", List.of("ten")),

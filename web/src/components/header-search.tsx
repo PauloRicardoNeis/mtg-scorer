@@ -49,7 +49,11 @@ function rankingSearch(name: string | undefined): string {
   query.delete("q");
   query.delete("offset");
   if (name) query.set("q", name);
-  return query.size ? `/rankings?${query}` : "/rankings";
+  // The compare page searches its own table; every other rankings page the run.
+  const path = location.pathname.startsWith("/rankings/compare")
+    ? "/rankings/compare"
+    : "/rankings";
+  return query.size ? `${path}?${query}` : path;
 }
 
 /**

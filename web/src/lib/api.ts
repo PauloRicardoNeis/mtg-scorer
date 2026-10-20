@@ -8,6 +8,8 @@ export type Snapshot = components["schemas"]["Snapshot"];
 export type SnapshotList = components["schemas"]["SnapshotList"];
 export type RankingPage = components["schemas"]["RankingPage"];
 export type RankedCard = components["schemas"]["RankedCard"];
+export type ComparePage = components["schemas"]["ComparePage"];
+export type ComparedCard = components["schemas"]["ComparedCard"];
 type CatalogError = components["schemas"]["CatalogError"];
 
 export class ApiError extends Error {
@@ -57,4 +59,6 @@ export const api = {
     read<Snapshot>(`/snapshots/${encodeURIComponent(id)}`),
   snapshots: () => read<SnapshotList>("/snapshots"),
   rankings: (query: URLSearchParams) => read<RankingPage>("/rankings", query),
+  compare: (query: URLSearchParams) =>
+    read<ComparePage>("/rankings/compare", query),
 };

@@ -99,6 +99,26 @@ export function dateWindow(startsOn: string, endsBefore: string): string {
   return `${first} – ${dayWithYear.format(end)}`;
 }
 
+/**
+ * A published window as the window select names it: "Last 90 days" or "Since Jan 1,
+ * 2024" when it ends with the latest data, its dates otherwise.
+ */
+export function windowLabel(
+  startsOn: string,
+  endsBefore: string,
+  latestEnd: string,
+): string {
+  if (endsBefore !== latestEnd) return dateWindow(startsOn, endsBefore);
+  const days = Math.round(
+    (Date.parse(`${endsBefore}T00:00:00Z`) -
+      Date.parse(`${startsOn}T00:00:00Z`)) /
+      86_400_000,
+  );
+  return days <= 120
+    ? `Last ${days} days`
+    : `Since ${dayWithYear.format(new Date(`${startsOn}T00:00:00Z`))}`;
+}
+
 const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
 const units: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 86_400],

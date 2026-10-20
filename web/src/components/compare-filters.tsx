@@ -1,0 +1,169 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useTransition, type ChangeEvent } from "react";
+import { Chip, Switch } from "./forms";
+import { ColorFilter } from "./mana";
+import { rememberFocus, useRefocus } from "./refocus";
+
+export type PickOption = { value: string; label: string; checked: boolean };
+
+/** The form's values as a query; every control here always carries a value. */
+function values(form: HTMLFormElement): URLSearchParams {
+  const query = new URLSearchParams();
+  for (const [key, value] of new FormData(form))
+    query.append(key, String(value));
+  return query;
+}
+
+// The table always shows at least one format and one stat; summaries may all go.
+const KEEP_ONE = new Set(["format", "stat"]);
+
+/** One labelled group of chips. */
+function Picks({
+  label,
+  name,
+  options,
+}: {
+  label: string;
+  name: string;
+  options: PickOption[];
+}) {
+  return (
+    <fieldset className="pick-group">
+      <legend className="sr-only">{label}</legend>
+      <span className="pick-label" aria-hidden="true">
+        {label}
+      </span>
+      {options.map((option) => (
+        <Chip
+          key={option.value}
+          label={option.label}
+          name={name}
+          value={option.value}
+          defaultChecked={option.checked}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+/**
+ * The formats, stats and summaries the compare table shows, and its filters. Each
+ * change replaces the URL so the server re-renders; without JavaScript it is a GET form.
+ */
+export function CompareFilters({
+  formats,
+  stats,
+  summaries,
+  every,
+  query,
+}: {
+  formats: PickOption[];
+  stats: PickOption[];
+  summaries: PickOption[];
+  every: boolean;
+  query: string;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const form = useRef<HTMLFormElement>(null);
+  const current = new URLSearchParams(query);
+  const colors = current.getAll("color");
+  // Kept as they are: a change re-sorts the same name search under the same order.
+  const kept = ["q", "sort", "order", "limit"].flatMap((key) => {
+    const value = current.get(key);
+    return value ? [[key, value] as const] : [];
+  });
+  // Presets and links elsewhere change the address without remounting the form.
+  const state = JSON.stringify([formats, stats, summaries, every, colors]);
+  useEffect(() => {
+    const [f, s, m, e, c] = JSON.parse(state) as [
+      PickOption[],
+      PickOption[],
+      PickOption[],
+      boolean,
+      string[],
+    ];
+    // A group of one control is not a RadioNodeList, so look the boxes up by name.
+    const sync = (name: string, on: (value: string) => boolean) => {
+      for (const box of form.current!.querySelectorAll<HTMLInputElement>(
+        `input[name="${name}"]`,
+      ))
+        box.checked = on(box.value);
+    };
+    sync("format", (value) => f.some((o) => o.value === value && o.checked));
+    sync("stat", (value) => s.some((o) => o.value === value && o.checked));
+    sync("summary", (value) => m.some((o) => o.value === value && o.checked));
+    sync("color", (value) => c.includes(value));
+    sync("every", () => e);
+  }, [state]);
+  useRefocus(form, query);
+  const apply = () =>
+    startTransition(() =>
+      router.replace(`/rankings/compare?${values(form.current!)}`, {
+        scroll: false,
+      }),
+    );
+  return (
+    <form
+      ref={form}
+      className="toolbar band compare-toolbar"
+      action="/rankings/compare"
+      method="get"
+      aria-label="Compare settings"
+      aria-busy={pending || undefined}
+      onChange={(event: ChangeEvent<HTMLFormElement>) => {
+        const box = event.target as unknown as HTMLInputElement;
+        // Unchecking the last format or stat puts it back instead of applying.
+        if (
+          KEEP_ONE.has(box.name) &&
+          !form.current!.querySelector(`input[name="${box.name}"]:checked`)
+        ) {
+          box.checked = true;
+          return;
+        }
+        rememberFocus(box);
+        apply();
+      }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        apply();
+      }}
+    >
+      <div className="compare-toolbar-inner band-inner">
+        {/* Marks the choices as made, so an empty summary stays empty. */}
+        <input type="hidden" name="picked" value="1" />
+        {kept.map(([key, value]) => (
+          <input key={key} type="hidden" name={key} value={value} />
+        ))}
+        <Picks label="Formats" name="format" options={formats} />
+        <div className="compare-toolbar-row">
+          <Picks label="Stats" name="stat" options={stats} />
+          <Picks label="Summary" name="summary" options={summaries} />
+          <span role="status" className="toolbar-status">
+            {pending ? "Updating comparison…" : ""}
+          </span>
+          <Switch
+            label="In every selected format"
+            name="every"
+            value="true"
+            defaultChecked={every}
+            compact
+          />
+          <ColorFilter
+            label="Colors"
+            name="color"
+            selected={colors}
+            hideLabel
+          />
+        </div>
+        <noscript>
+          <button type="submit" className="sm">
+            Apply
+          </button>
+        </noscript>
+      </div>
+    </form>
+  );
+}

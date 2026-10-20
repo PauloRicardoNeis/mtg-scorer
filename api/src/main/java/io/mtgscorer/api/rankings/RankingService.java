@@ -44,7 +44,9 @@ public class RankingService {
     }
     ScoreMethod method = method(run, query.method());
     String output = method.outputs().getFirst();
-    long total = repository.count(run.score_run_id(), method.method_id(), output, query);
+    String id = run.score_run_id();
+    String previous = repository.previousRun(run, method.method_id());
+    long total = repository.count(id, previous, method.method_id(), output, query);
     return new RankingPage(
         run,
         method.method_id(),
@@ -54,14 +56,29 @@ public class RankingService {
         total,
         query.offset(),
         query.limit(),
-        repository.page(run.score_run_id(), method.method_id(), output, query));
+        query.sort(),
+        query.order(),
+        query.view(),
+        repository.viewCounts(id, previous, method.method_id(), output, query),
+        previous,
+        repository.maxDeckCount(id),
+        repository.windows(run.format_name()),
+        repository.page(id, previous, method.method_id(), output, query));
   }
 
-  /** An explicit method must exist in the run; the default falls back to the run's first. */
+  /**
+   * An explicit method must exist in the run; without one, the first preferred method the run has,
+   * else the run's first.
+   */
   private static ScoreMethod method(ScoreRunSummary run, String requested) {
-    String wanted = requested == null ? RankingQuery.DEFAULT_METHOD : requested;
-    for (ScoreMethod method : run.methods()) if (method.method_id().equals(wanted)) return method;
-    if (requested != null) throw CatalogProblem.query("Unknown score method for this run.");
+    if (requested != null)
+      return run.methods().stream()
+          .filter(method -> method.method_id().equals(requested))
+          .findFirst()
+          .orElseThrow(() -> CatalogProblem.query("Unknown score method for this run."));
+    for (String preferred : RankingQuery.PREFERRED_METHODS)
+      for (ScoreMethod method : run.methods())
+        if (method.method_id().equals(preferred)) return method;
     return run.methods().getFirst();
   }
 }

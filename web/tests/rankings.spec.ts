@@ -48,22 +48,31 @@ test("Modern rankings show the published run, its credit and every ranked card",
   await expect(page.getByText("Mar 1 – Aug 31, 2026")).toBeVisible();
   await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
 
+  await expect(
+    page.getByRole("main").getByText("Matches", { exact: true }),
+  ).toBeVisible();
+
   const table = page.getByRole("table");
   await expect(table.getByRole("columnheader")).toHaveText([
     "#",
     "Card",
-    /Relative volume/,
+    /Grade/,
+    "Win rate vs field",
     "Meta share",
-    "Events",
-    "Top cuts",
+    "Top cut",
+    "Trend · 6 mo",
     "Most played in",
   ]);
   const rows = table.getByRole("row");
   await expect(rows).toHaveCount(9);
   await expect(rows.nth(1)).toContainText("Lightning Bolt");
-  await expect(rows.nth(1).getByRole("cell").first()).toHaveText("1");
-  await expect(rows.nth(1)).toContainText("100.0");
+  await expect(rows.nth(1).getByRole("cell").first()).toHaveText(/^1/);
+  await expect(rows.nth(1).getByLabel("Grade A+")).toBeVisible();
+  await expect(rows.nth(1)).toContainText("93.8");
+  await expect(rows.nth(1)).toContainText("+30.0%");
+  await expect(rows.nth(1)).toContainText("80.0% WR");
   await expect(rows.nth(1)).toContainText("57.1%");
+  await expect(rows.nth(1)).toContainText("2.00×");
   await expect(rows.nth(1)).toContainText("Burn");
   await expect(table).not.toContainText("Island");
   await expect(
@@ -71,13 +80,14 @@ test("Modern rankings show the published run, its credit and every ranked card",
   ).toContainText("Not in this catalog");
 
   await expect(preview(page)).toContainText("Rank 1");
+  await expect(preview(page)).toContainText("Top 13%");
   await expect(
     preview(page).getByRole("link", { name: "Open card: Lightning Bolt" }),
   ).toBeVisible();
 
-  const podium = page.getByRole("region", { name: "Most played cards" });
+  const podium = page.getByRole("region", { name: "Top ranked cards" });
   await expect(
-    podium.getByRole("link", { name: "Lightning Bolt" }),
+    podium.getByRole("link", { name: "Rank 1: Lightning Bolt" }),
   ).toBeVisible();
 
   const vintage = page
@@ -98,10 +108,10 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   // The toolbar is not rebuilt, so the control keeps focus.
   await expect(type).toBeFocused();
   await expect(
-    page.getByRole("region", { name: "Most played cards" }),
+    page.getByRole("region", { name: "Top ranked cards" }),
   ).toHaveCount(0);
   const fire = page.getByRole("row", { name: /Fire \/\/ Ice/ });
-  await expect(fire.getByRole("cell").first()).toHaveText("2");
+  await expect(fire.getByRole("cell").first()).toHaveText(/^4/);
   await expect(page.getByRole("table")).not.toContainText("Bruna");
 
   await search(page).fill("bruna");
@@ -144,10 +154,10 @@ test("hovering a row previews its card, the header explains the method, and a ro
 }) => {
   await page.goto("/rankings");
   await page.getByRole("row", { name: /Fire \/\/ Ice/ }).hover();
-  await expect(preview(page)).toContainText("Rank 2");
+  await expect(preview(page)).toContainText("Rank 4");
 
   await page.getByRole("button", { name: "About this score" }).hover();
-  await expect(page.getByRole("tooltip")).toContainText("Relative volume");
+  await expect(page.getByRole("tooltip")).toContainText("Constructed score");
 
   await page
     .getByRole("row", { name: /Lightning Bolt/ })
@@ -159,14 +169,45 @@ test("hovering a row previews its card, the header explains the method, and a ro
   ).toBeVisible();
 });
 
-test("paging stays on the pinned run", async ({ page }) => {
+test("loading more and paging stay on the pinned run", async ({ page }) => {
   await page.goto("/rankings?sort=name&limit=3");
   await expect(results(page)).toHaveText("1–3 of 8 ranked cards");
-  await page.getByRole("link", { name: "Next 3" }).click();
+  await page.getByRole("link", { name: "Load 25 more" }).click();
   await expect(page).toHaveURL(/score_run_id=scores-[0-9a-f]{64}/);
+  await expect(page).toHaveURL(/limit=28/);
+  await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
+
+  await page.goto("/rankings?sort=name&limit=3&offset=3");
   await expect(results(page)).toHaveText("4–6 of 8 ranked cards");
+  await page.getByRole("link", { name: "Next 3" }).click();
+  await expect(results(page)).toHaveText("7–8 of 8 ranked cards");
   await page.getByRole("link", { name: "Previous" }).click();
-  await expect(results(page)).toHaveText("1–3 of 8 ranked cards");
+  await expect(results(page)).toHaveText("4–6 of 8 ranked cards");
+});
+
+test("column headers sort and the view tabs count risers and fallers", async ({
+  page,
+}) => {
+  await page.goto("/rankings");
+  const views = page.getByRole("navigation", { name: "Views" });
+  await expect(views.getByRole("link")).toHaveText([
+    "All8",
+    "Risers0",
+    "Fallers0",
+  ]);
+  const header = page.getByRole("columnheader", { name: /Win rate vs field/ });
+  await header.getByRole("link").click();
+  await expect(page).toHaveURL(/sort=win_rate/);
+  await expect(header).toHaveAttribute("aria-sort", "descending");
+  const rows = page.getByRole("table").getByRole("row");
+  await expect(rows.nth(1)).toContainText("Bonecrusher Giant");
+  await header.getByRole("link").click();
+  await expect(page).toHaveURL(/order=asc/);
+  await expect(header).toHaveAttribute("aria-sort", "ascending");
+  await expect(rows.nth(1)).toContainText("Bruna, the Fading Light");
+  await views.getByRole("link", { name: /Risers/ }).click();
+  await expect(page).toHaveURL(/view=risers/);
+  await expect(results(page)).toHaveText("No ranked cards match");
 });
 
 test("a format without published rankings explains itself", async ({

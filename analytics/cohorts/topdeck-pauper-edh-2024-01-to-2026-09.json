@@ -1,8 +1,9 @@
 {
-  "version": "topdeck-pauper-edh-2024-01-to-2026-09-v1",
+  "version": "topdeck-pauper-edh-2024-01-to-2026-09-v2",
   "format_name": "Pauper EDH",
   "starts_on": "2024-01-01",
   "ends_before": "2026-10-01",
   "min_decklist_coverage": 0.5,
+  "players_per_game": 4,
   "excluded_events": []
 }

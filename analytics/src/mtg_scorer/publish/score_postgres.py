@@ -20,7 +20,14 @@ from .score_validation import validate_score_run
 LOGGER = logging.getLogger(__name__)
 LOCK_ID = 724603
 # Children before parents, so a retry can clear unpublished staging rows.
-STAGING_TABLES = ("card_score_input", "card_score", "score_run_method", "score_run_card")
+STAGING_TABLES = (
+    "card_score_input",
+    "card_score",
+    "score_run_card_archetype",
+    "score_run_method",
+    "score_run_card",
+    "score_run_archetype",
+)
 
 
 def score_run_header(document: dict[str, Any]) -> dict[str, Any]:
@@ -51,6 +58,8 @@ def score_run_header(document: dict[str, Any]) -> dict[str, Any]:
             "methods": len(document["runs"]),
             "scores": sum(len(s["values"]) for run in document["runs"] for s in run["scores"]),
             "inputs": sum(len(s["inputs"]) for run in document["runs"] for s in run["scores"]),
+            "card_archetypes": sum(len(card["archetypes"]["top"]) for card in document["cards"]),
+            "archetypes": len(document["cohort"]["archetypes"]),
         },
         "results_sha256": results_sha256(document),
     }
@@ -66,10 +75,14 @@ def _load_rows(connection: psycopg.Connection, document: dict[str, Any]) -> None
     with connection.cursor().copy(
         "COPY scores.score_run_card (score_run_id,oracle_id,name,scored,deck_count,event_count,"
         "top_cut_count,top_cut_known_decks,archetype_label,archetype_deck_count,"
-        "labelled_deck_count) FROM STDIN"
+        "labelled_deck_count,mainboard_copies,record_decks,record_wins,record_losses,"
+        "record_draws,win_rate,win_rate_delta,win_rate_ci95,top_cut_lift,share_delta,"
+        "series_decks,archetype_count) FROM STDIN"
     ) as copy:
         for card in document["cards"]:
             archetype = card["archetype"]
+            record = card["record"]
+            performance = card["performance"]
             copy.write_row(
                 (
                     run_id,
@@ -83,7 +96,35 @@ def _load_rows(connection: psycopg.Connection, document: dict[str, Any]) -> None
                     archetype["label"],
                     archetype["deck_count"],
                     archetype["labelled_deck_count"],
+                    card["mainboard_copies"],
+                    record["decks"],
+                    record["wins"],
+                    record["losses"],
+                    record["draws"],
+                    performance["win_rate"],
+                    performance["win_rate_delta"],
+                    performance["win_rate_ci95"],
+                    performance["top_cut_lift"],
+                    performance["share_delta"],
+                    card["series"],
+                    card["archetypes"]["distinct"],
                 )
+            )
+    with connection.cursor().copy(
+        "COPY scores.score_run_card_archetype (score_run_id,oracle_id,position,label,deck_count)"
+        " FROM STDIN"
+    ) as copy:
+        for card in document["cards"]:
+            for position, share in enumerate(card["archetypes"]["top"], start=1):
+                copy.write_row(
+                    (run_id, card["oracle_id"], position, share["label"], share["deck_count"])
+                )
+    with connection.cursor().copy(
+        "COPY scores.score_run_archetype (score_run_id,label,deck_count,core_cards) FROM STDIN"
+    ) as copy:
+        for archetype in document["cohort"]["archetypes"]:
+            copy.write_row(
+                (run_id, archetype["label"], archetype["deck_count"], archetype["core_cards"])
             )
     with connection.cursor().copy(
         "COPY scores.score_run_method (score_run_id,method_id,method_version,method_config_hash,"
@@ -151,6 +192,12 @@ def publish_score_run(
             try:
                 with connection.transaction():
                     _load_rows(connection, document)
+                    # Fresh statistics: a run the planner has never seen is estimated at one
+                    # row, which turns promotion checks and the first rankings reads into
+                    # nested loops over the whole run.
+                    connection.execute(
+                        "ANALYZE " + ",".join(f"scores.{table}" for table in STAGING_TABLES)
+                    )
                     if before_promote is not None:
                         before_promote(run_id)
                     connection.execute("SELECT scores.promote_score_publication(%s)", (attempt,))

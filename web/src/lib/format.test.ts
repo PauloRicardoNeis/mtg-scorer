@@ -12,6 +12,7 @@ import {
   percent,
   share,
   signed,
+  windowLabel,
 } from "./format";
 
 const MINUS = "−";
@@ -238,6 +239,23 @@ describe("ago", () => {
   it("measures from the current time by default", () => {
     expect(ago(new Date(Date.now() - 3 * 3_600_000).toISOString())).toBe(
       "3 hours ago",
+    );
+  });
+});
+
+describe("windowLabel", () => {
+  it("names a recent window by its length and a long one by its start", () => {
+    expect(windowLabel("2026-07-03", "2026-10-01", "2026-10-01")).toBe(
+      "Last 90 days",
+    );
+    expect(windowLabel("2024-01-01", "2026-10-01", "2026-10-01")).toBe(
+      "Since Jan 1, 2024",
+    );
+  });
+
+  it("gives an older window its dates", () => {
+    expect(windowLabel("2026-03-01", "2026-09-01", "2026-10-01")).toBe(
+      "Mar 1 – Aug 31, 2026",
     );
   });
 });

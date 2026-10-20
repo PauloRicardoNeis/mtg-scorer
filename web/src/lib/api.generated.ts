@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rankings/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compare cards across the active runs of several formats by constructed score */
+        get: operations["compareRankings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/snapshots": {
         parameters: {
             query?: never;
@@ -178,6 +195,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ArchetypeShare: {
+            /** @description Colors the archetype's core cards span, in WUBRG order. */
+            colors: string[];
+            /**
+             * Format: int32
+             * @description The card's decks with this label.
+             */
+            deck_count: number;
+            label: string;
+        };
         Attribution: {
             label: string;
             url: string;
@@ -226,6 +253,76 @@ export interface components {
             status: number;
             title: string;
             type: string;
+        };
+        CompareCell: {
+            /**
+             * Format: int64
+             * @description The card's rank in this format.
+             */
+            rank: number;
+            /**
+             * Format: double
+             * @description Constructed score, 0-100.
+             */
+            score: number | null;
+            /**
+             * Format: double
+             * @description Share of the format's decks, 0-1.
+             */
+            share: number | null;
+            /** Format: double */
+            share_delta: number | null;
+            /** Format: double */
+            top_cut_lift: number | null;
+            /** Format: double */
+            win_rate_delta: number | null;
+        };
+        CompareFormat: {
+            /** Format: int32 */
+            decks: number;
+            format_name: string;
+            /** Format: int32 */
+            players_per_game: number | null;
+            score_run_id: string;
+        };
+        ComparePage: {
+            /** @description Every format with a constructed score, comparable or not chosen. */
+            available: components["schemas"]["CompareFormat"][];
+            catalog_snapshot_id: string | null;
+            every: boolean;
+            /** @description The compared formats. */
+            formats: components["schemas"]["CompareFormat"][];
+            items: components["schemas"]["ComparedCard"][];
+            /** Format: int32 */
+            limit: number;
+            /** Format: int32 */
+            offset: number;
+            /** @enum {string} */
+            order: "asc" | "desc";
+            sort: string;
+            /** Format: int64 */
+            total: number;
+        };
+        ComparedCard: {
+            /** @description The compared format where the card scores highest. */
+            best_format: string;
+            /** Format: double */
+            best_score: number | null;
+            color_identity: string[] | null;
+            /** @description One cell per compared format that ranks the card. */
+            formats: {
+                [key: string]: components["schemas"]["CompareCell"];
+            };
+            mana_cost: string | null;
+            name: string;
+            /** Format: uuid */
+            oracle_id: string;
+            /**
+             * Format: int32
+             * @description Compared formats that rank the card.
+             */
+            ranked_in: number;
+            type_line: string | null;
         };
         Face: {
             colors: string[] | null;
@@ -317,14 +414,31 @@ export interface components {
             oracle_id: string;
         };
         RankedCard: {
+            /**
+             * Format: int32
+             * @description Distinct archetype labels among the card's decks.
+             */
+            archetype_count: number | null;
             /** Format: int32 */
             archetype_deck_count: number;
             archetype_label: string | null;
+            /** @description Up to three archetypes playing the card, most decks first. */
+            archetypes: components["schemas"]["ArchetypeShare"][];
+            /**
+             * Format: double
+             * @description Mainboard copies per deck.
+             */
+            avg_copies: number | null;
             color_identity: string[] | null;
             /** Format: int32 */
             deck_count: number;
             /** Format: int32 */
             event_count: number;
+            /**
+             * Format: int32
+             * @description Games behind the win rate.
+             */
+            games: number | null;
             /** Format: int32 */
             labelled_deck_count: number;
             mana_cost: string | null;
@@ -339,10 +453,22 @@ export interface components {
              */
             rank: number;
             /**
+             * Format: int32
+             * @description Places gained since the previous run of this format; null without one or when the card was not ranked there.
+             */
+            rank_change: number | null;
+            /**
              * Format: double
              * @description The selected output; null when the method could not score the card.
              */
             score: number | null;
+            /** @description The card's decks in each trend period, oldest first. */
+            series_decks: number[] | null;
+            /**
+             * Format: double
+             * @description Meta share in the last trend period minus the first, as a fraction.
+             */
+            share_delta: number | null;
             /**
              * Format: int32
              * @description Unknown when no deck with this card has a known top-cut result.
@@ -350,10 +476,34 @@ export interface components {
             top_cut_count: number | null;
             /** Format: int32 */
             top_cut_known_decks: number;
+            /**
+             * Format: double
+             * @description Top-cut conversion divided by the field's.
+             */
+            top_cut_lift: number | null;
             type_line: string | null;
+            /**
+             * Format: double
+             * @description Match points per game of the card's decks, 0-1.
+             */
+            win_rate: number | null;
+            /**
+             * Format: double
+             * @description Half-width of the 95% interval.
+             */
+            win_rate_ci95: number | null;
+            /**
+             * Format: double
+             * @description Win rate minus the field's, as a fraction.
+             */
+            win_rate_delta: number | null;
         };
         RankedFormat: {
+            /** Format: int32 */
+            decks: number;
             format_name: string;
+            /** Format: int32 */
+            players_per_game: number | null;
             score_run_id: string;
             source: string;
         };
@@ -363,13 +513,44 @@ export interface components {
             items: components["schemas"]["RankedCard"][];
             /** Format: int32 */
             limit: number;
+            /**
+             * Format: int32
+             * @description The most decks any scored card has in this run.
+             */
+            max_deck_count: number;
             method_id: string;
             /** Format: int32 */
             offset: number;
+            /** @enum {string} */
+            order: "asc" | "desc";
             output: string;
+            /** @description The run rank changes are measured against. */
+            previous_score_run_id: string | null;
             score_run: components["schemas"]["ScoreRunSummary"];
+            sort: string;
             /** Format: int64 */
             total: number;
+            /** @enum {string} */
+            view: "all" | "risers" | "fallers";
+            /** @description Matches per view under the same filters. */
+            view_counts: components["schemas"]["ViewCounts"];
+            /** @description Every published window of this format, latest end first, one run per source and window. */
+            windows: components["schemas"]["RunWindow"][];
+        };
+        RunWindow: {
+            /** @description Whether this is the run shown without a pinned run. */
+            active: boolean;
+            /** Format: int32 */
+            decks: number;
+            score_run_id: string;
+            source: string;
+            /**
+             * Format: date
+             * @description Exclusive end of the cohort window.
+             */
+            window_ends_before: string;
+            /** Format: date */
+            window_starts_on: string;
         };
         ScoreMethod: {
             description: string;
@@ -387,13 +568,47 @@ export interface components {
             decks: number;
             /** Format: int32 */
             events: number;
+            /**
+             * Format: double
+             * @description Share of decks with a known result that made the top cut, 0-1.
+             */
+            field_top_cut_rate: number | null;
+            /**
+             * Format: double
+             * @description The field's match points per game, 0-1.
+             */
+            field_win_rate: number | null;
             format_name: string;
+            /**
+             * Format: int32
+             * @description Games reported in standings; null for runs that did not record them.
+             */
+            matches: number | null;
             methods: components["schemas"]["ScoreMethod"][];
             /** Format: int32 */
             players: number;
+            /**
+             * Format: int32
+             * @description 2 for one-on-one formats, 4 for pods; null for older runs.
+             */
+            players_per_game: number | null;
             /** Format: date-time */
             published_at: string;
             score_run_id: string;
+            /**
+             * Format: int32
+             * @description Cards the methods scored; ranks run up to this.
+             */
+            scored_cards: number;
+            /** @description The cohort's decks in each trend period, oldest first. */
+            series_decks: number[] | null;
+            /** Format: int32 */
+            series_period_days: number | null;
+            /**
+             * Format: date
+             * @description First day of the trend series.
+             */
+            series_starts_on: string | null;
             source: string;
             /** Format: int32 */
             top_cut_decks: number;
@@ -445,6 +660,14 @@ export interface components {
         TournamentEvidence: {
             reason_codes: string[];
             state: string;
+        };
+        ViewCounts: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            fallers: number;
+            /** Format: int64 */
+            risers: number;
         };
     };
     responses: never;
@@ -835,16 +1058,20 @@ export interface operations {
                 color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
                 format?: string;
                 limit?: number;
-                /** @description A score method in the run; without one, max-ratio when present. */
+                /** @description A score method in the run; without one, constructed-score, else max-ratio, when present. */
                 method?: string;
                 offset?: number;
+                /** @description Defaults to desc, except asc for name. Unknown values sort last. */
+                order?: "asc" | "desc";
                 q?: string;
                 /** @description Pin a published run so every page shows the same results. */
                 score_run_id?: string;
-                /** @description score orders by the selected method's first output. */
-                sort?: "score" | "decks" | "top_cuts" | "name";
+                /** @description score orders by the selected method's first output; movement by places gained since the previous run. */
+                sort?: "score" | "decks" | "top_cuts" | "name" | "win_rate" | "top_cut_lift" | "trend" | "movement";
                 /** @description A card type on any face's type line. */
                 type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
+                /** @description risers and fallers keep cards that gained or lost places. */
+                view?: "all" | "risers" | "fallers";
             };
             header?: never;
             path?: never;
@@ -859,6 +1086,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RankingPage"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+        };
+    };
+    compareRankings: {
+        parameters: {
+            query?: {
+                /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
+                color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
+                /** @description Keep only cards ranked in every compared format. */
+                every?: boolean;
+                /** @description Formats to compare; without one, every format with a constructed score. */
+                format?: string[];
+                limit?: number;
+                offset?: number;
+                order?: "asc" | "desc";
+                q?: string;
+                /** @description best orders by the highest score in any compared format, count by formats ranked, and {format}:{metric} by one column. */
+                sort?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparePage"];
                 };
             };
             /** @description Sanitized Problem Details with a stable code */

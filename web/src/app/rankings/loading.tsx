@@ -26,6 +26,7 @@ export default function Loading() {
                       <span className="skeleton-bar short" />
                     </div>
                   </div>
+                  <span className="skeleton-ring" />
                   <span className="skeleton-bar" />
                   <span className="skeleton-bar" />
                   <span className="skeleton-bar short" />

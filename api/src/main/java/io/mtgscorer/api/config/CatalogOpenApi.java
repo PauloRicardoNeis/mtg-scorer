@@ -1,6 +1,7 @@
 package io.mtgscorer.api.config;
 
 import io.mtgscorer.api.catalog.CatalogQuery;
+import io.mtgscorer.api.rankings.CompareQuery;
 import io.mtgscorer.api.rankings.RankingQuery;
 import io.swagger.v3.oas.models.media.*;
 import io.swagger.v3.oas.models.parameters.Parameter;
@@ -24,25 +25,30 @@ public class CatalogOpenApi {
               (path, item) -> {
                 if (!path.startsWith("/api/v1/cards")
                     && !path.startsWith("/api/v1/snapshots")
-                    && !path.equals("/api/v1/rankings")) return;
+                    && !path.startsWith("/api/v1/rankings")) return;
                 var operation = item.getGet();
                 boolean rankings = path.equals("/api/v1/rankings");
+                boolean compare = path.equals("/api/v1/rankings/compare");
                 Set<String> names =
-                    rankings
-                        ? RankingQuery.PARAMETERS
-                        : path.equals("/api/v1/cards")
-                            ? CatalogQuery.CARD_PARAMETERS
-                            : path.endsWith("/printings")
-                                ? CatalogQuery.PRINTING_PARAMETERS
-                                : path.startsWith("/api/v1/cards/")
-                                    ? Set.of("catalog_snapshot_id")
-                                    : Set.of();
+                    compare
+                        ? CompareQuery.PARAMETERS
+                        : rankings
+                            ? RankingQuery.PARAMETERS
+                            : path.equals("/api/v1/cards")
+                                ? CatalogQuery.CARD_PARAMETERS
+                                : path.endsWith("/printings")
+                                    ? CatalogQuery.PRINTING_PARAMETERS
+                                    : path.startsWith("/api/v1/cards/")
+                                        ? Set.of("catalog_snapshot_id")
+                                        : Set.of();
                 names.stream()
                     .sorted()
                     .forEach(
                         name ->
                             operation.addParametersItem(
-                                rankings ? rankingParameter(name) : parameter(name)));
+                                compare
+                                    ? compareParameter(name)
+                                    : rankings ? rankingParameter(name) : parameter(name)));
                 for (String status : List.of("400", "404", "503", "500")) {
                   operation
                       .getResponses()
@@ -146,6 +152,13 @@ public class CatalogOpenApi {
                   .pattern("^[a-z0-9][a-z0-9-]{0,63}$")
                   ._default(RankingQuery.DEFAULT_METHOD);
           case "sort" -> new StringSchema()._enum(RankingQuery.SORTS)._default("score");
+          case "order" -> new StringSchema()._enum(RankingQuery.ORDERS);
+          case "view" -> new StringSchema()._enum(RankingQuery.VIEWS)._default("all");
+          case "limit" ->
+              new IntegerSchema()
+                  .minimum(BigDecimal.ONE)
+                  .maximum(BigDecimal.valueOf(100))
+                  ._default(RankingQuery.DEFAULT_LIMIT);
           case "offset" ->
               new IntegerSchema()
                   .minimum(BigDecimal.ZERO)
@@ -157,11 +170,61 @@ public class CatalogOpenApi {
     if (schema == null) return parameter(name);
     Parameter parameter = new Parameter().name(name).in("query").required(false).schema(schema);
     if (name.equals("method"))
-      parameter.description("A score method in the run; without one, max-ratio when present.");
+      parameter.description(
+          "A score method in the run; without one, constructed-score, else max-ratio, when"
+              + " present.");
     if (name.equals("sort"))
-      parameter.description("score orders by the selected method's first output.");
+      parameter.description(
+          "score orders by the selected method's first output; movement by places gained since"
+              + " the previous run.");
+    if (name.equals("order"))
+      parameter.description("Defaults to desc, except asc for name. Unknown values sort last.");
+    if (name.equals("view"))
+      parameter.description("risers and fallers keep cards that gained or lost places.");
     if (name.equals("score_run_id"))
       parameter.description("Pin a published run so every page shows the same results.");
+    return parameter;
+  }
+
+  /** Compare-only parameters; q and color share the catalog's bounds. */
+  private Parameter compareParameter(String name) {
+    Schema<?> schema =
+        switch (name) {
+          case "format" ->
+              new ArraySchema()
+                  .items(new StringSchema().pattern("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$"))
+                  .maxItems(CompareQuery.MAX_FORMATS);
+          case "every" -> new BooleanSchema()._default(false);
+          case "sort" ->
+              new StringSchema()
+                  .pattern(
+                      "^(best|count|name|[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}:("
+                          + String.join(
+                              "|", CompareQuery.METRICS.keySet().stream().sorted().toList())
+                          + "))$")
+                  ._default("best");
+          case "order" -> new StringSchema()._enum(RankingQuery.ORDERS);
+          case "limit" ->
+              new IntegerSchema()
+                  .minimum(BigDecimal.ONE)
+                  .maximum(BigDecimal.valueOf(200))
+                  ._default(CompareQuery.DEFAULT_LIMIT);
+          case "offset" -> rankingParameter("offset").getSchema();
+          default -> null;
+        };
+    if (schema == null) return parameter(name);
+    Parameter parameter = new Parameter().name(name).in("query").required(false).schema(schema);
+    if (name.equals("format"))
+      parameter
+          .description("Formats to compare; without one, every format with a constructed score.")
+          .style(Parameter.StyleEnum.FORM)
+          .explode(true);
+    if (name.equals("every"))
+      parameter.description("Keep only cards ranked in every compared format.");
+    if (name.equals("sort"))
+      parameter.description(
+          "best orders by the highest score in any compared format, count by formats ranked,"
+              + " and {format}:{metric} by one column.");
     return parameter;
   }
 

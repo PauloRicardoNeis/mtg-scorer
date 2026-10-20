@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useTransition } from "react";
+import { count } from "@/lib/format";
 import { ColorFilter } from "./mana";
+import { rememberFocus, useRefocus } from "./refocus";
 
 const cardTypes = [
   ["creature", "Creatures"],
@@ -15,12 +17,22 @@ const cardTypes = [
   ["land", "Lands"],
 ];
 
-const sorts = [
-  ["score", "Sort: Relative volume"],
-  ["decks", "Sort: Meta share"],
-  ["top_cuts", "Sort: Top cuts"],
-  ["name", "Sort: Name A–Z"],
-];
+export type WindowOption = { scoreRunId: string; label: string };
+
+export type SourceTab = {
+  source: string;
+  label: string;
+  href: string;
+  current: boolean;
+};
+
+export type ViewTab = {
+  view: string;
+  label: string;
+  count: number;
+  href: string;
+  current: boolean;
+};
 
 /** The form's set values as a query; the API rejects empty ones. */
 function values(form: HTMLFormElement): URLSearchParams {
@@ -31,19 +43,26 @@ function values(form: HTMLFormElement): URLSearchParams {
 }
 
 /**
- * Color, type and sort for one pinned run. Each change replaces the URL, so the
- * server re-ranks; without JavaScript the form submits as a plain GET.
+ * The views, colors and card type of one pinned run. Each filter change replaces
+ * the URL, so the server re-ranks; without JavaScript the form submits as a GET.
+ * Sorting lives in the table's column headers and the name search in the header.
  */
 export function RankingFilters({
   format,
   scoreRunId,
   query,
   clearHref,
+  views,
+  windows = [],
+  sources = [],
 }: {
   format: string;
   scoreRunId: string;
   query: string;
   clearHref: string;
+  views: ViewTab[];
+  windows?: WindowOption[];
+  sources?: SourceTab[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -51,10 +70,12 @@ export function RankingFilters({
   const current = new URLSearchParams(query);
   const colors = current.getAll("color");
   const type = current.get("type") ?? "";
-  const sort = current.get("sort") ?? "score";
-  const q = current.get("q");
-  const limit = current.get("limit");
-  const filtered = Boolean(q || type || colors.length);
+  // Kept as they are: a filter change re-ranks under the same order, view and size.
+  const kept = ["q", "sort", "order", "view", "limit"].flatMap((key) => {
+    const value = current.get(key);
+    return value ? [[key, value] as const] : [];
+  });
+  const filtered = Boolean(current.get("q") || type || colors.length);
   // A link elsewhere (clear filters, the header search, history) changes the
   // address without remounting the form, so its controls follow the address.
   const colorKey = colors.join();
@@ -65,8 +86,11 @@ export function RankingFilters({
         .split(",")
         .includes((box as HTMLInputElement).value);
     (controls.namedItem("type") as HTMLSelectElement).value = type;
-    (controls.namedItem("sort") as HTMLSelectElement).value = sort;
-  }, [colorKey, type, sort]);
+    (
+      controls.namedItem("score_run_id") as HTMLInputElement | HTMLSelectElement
+    ).value = scoreRunId;
+  }, [colorKey, type, scoreRunId]);
+  useRefocus(form, `${scoreRunId}?${query}`);
   const apply = () =>
     startTransition(() =>
       router.replace(`/rankings?${values(form.current!)}`, { scroll: false }),
@@ -79,7 +103,10 @@ export function RankingFilters({
       method="get"
       aria-label="Ranking filters"
       aria-busy={pending || undefined}
-      onChange={apply}
+      onChange={(event) => {
+        rememberFocus(event.target);
+        apply();
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         apply();
@@ -87,9 +114,25 @@ export function RankingFilters({
     >
       <div className="toolbar-inner band-inner">
         <input type="hidden" name="format" value={format} />
-        <input type="hidden" name="score_run_id" value={scoreRunId} />
-        {q && <input type="hidden" name="q" value={q} />}
-        {limit && <input type="hidden" name="limit" value={limit} />}
+        {windows.length < 2 && (
+          <input type="hidden" name="score_run_id" value={scoreRunId} />
+        )}
+        {kept.map(([key, value]) => (
+          <input key={key} type="hidden" name={key} value={value} />
+        ))}
+        <nav className="view-tabs" aria-label="Views">
+          {views.map((tab) => (
+            <Link
+              key={tab.view}
+              href={tab.href}
+              aria-current={tab.current ? "page" : undefined}
+              scroll={false}
+            >
+              {tab.label}
+              <span className="tab-count">{count(tab.count)}</span>
+            </Link>
+          ))}
+        </nav>
         <span role="status" className="toolbar-status">
           {pending ? "Updating rankings…" : ""}
         </span>
@@ -104,15 +147,34 @@ export function RankingFilters({
             ))}
           </select>
         </span>
-        <span className="select">
-          <select aria-label="Sort by" name="sort" defaultValue={sort}>
-            {sorts.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
+        {windows.length > 1 && (
+          <span className="select">
+            <select
+              aria-label="Window"
+              name="score_run_id"
+              defaultValue={scoreRunId}
+            >
+              {windows.map((window) => (
+                <option key={window.scoreRunId} value={window.scoreRunId}>
+                  {window.label}
+                </option>
+              ))}
+            </select>
+          </span>
+        )}
+        {sources.length > 1 && (
+          <nav className="segmented sm source-tabs" aria-label="Sources">
+            {sources.map((tab) => (
+              <Link
+                key={tab.source}
+                href={tab.href}
+                aria-current={tab.current ? "page" : undefined}
+              >
+                {tab.label}
+              </Link>
             ))}
-          </select>
-        </span>
+          </nav>
+        )}
         {filtered && (
           <Link className="button ghost sm" href={clearHref}>
             Clear filters
