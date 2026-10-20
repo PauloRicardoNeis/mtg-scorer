@@ -8,7 +8,7 @@ import { deltaTone, lift, percent, share, signed } from "@/lib/format";
 import { edition, rankedCardHref } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { Icon } from "./icon";
-import { ColorDots, ManaCost } from "./mana";
+import { ColorPips, ManaCost } from "./mana";
 import {
   GradeRing,
   MetaShare,
@@ -185,7 +185,7 @@ function Preview({
             const part = (100 * archetype.deck_count) / card.deck_count;
             return (
               <p className="played-row" key={archetype.label}>
-                <ColorDots values={archetype.colors} />
+                <ColorPips values={archetype.colors} />
                 <span className="played-name">{archetype.label}</span>
                 <span className="played-share">{percent(part)}</span>
                 <span

@@ -1,30 +1,40 @@
 import { Fragment, type CSSProperties } from "react";
 
-const manaColors = new Set(["W", "U", "B", "R", "G", "C"]);
+/** Scryfall hosts the official card symbols as SVGs, alongside the card scans. */
+const symbolBase = "https://svgs.scryfall.io/card-symbols";
 
-function fill(symbol: string): string {
-  return manaColors.has(symbol)
-    ? `var(--mana-${symbol.toLowerCase()})`
-    : "transparent";
+// Every symbol Scryfall draws (api.scryfall.com/symbology), as written inside the braces.
+const cardSymbols = new Set([
+  ..."T Q E P PW CHAOS A TK X Y Z S L D H HW HR ½ ∞ 100 1000000".split(" "),
+  ...Array.from({ length: 21 }, (_, n) => String(n)),
+  ..."W U B R G C".split(" "),
+  ..."W/U W/B U/B U/R B/R B/G R/G R/W G/W G/U".split(" "),
+  ..."C/W C/U C/B C/R C/G 2/W 2/U 2/B 2/R 2/G".split(" "),
+  ..."W/P U/P B/P R/P G/P C/P".split(" "),
+  ..."W/U/P W/B/P U/B/P U/R/P B/R/P B/G/P R/G/P R/W/P G/W/P G/U/P".split(" "),
+]);
+
+const symbolFiles: Record<string, string> = { "½": "HALF", "∞": "INFINITY" };
+
+/** The SVG for one symbol ("W/U" → WU.svg), or null when Scryfall draws none. */
+export function symbolSrc(symbol: string): string | null {
+  if (!cardSymbols.has(symbol)) return null;
+  return `${symbolBase}/${symbolFiles[symbol] ?? symbol.replaceAll("/", "")}.svg`;
 }
 
+/** One card symbol, decorative: callers keep the source text for assistive tech. */
 function Pip({ symbol }: { symbol: string }) {
-  const [first, second] = symbol.split("/");
-  if (second && second !== "P") {
-    // Hybrid symbols ({W/U}, {2/W}) split the pip diagonally.
-    const style = {
-      "--pip-a": fill(first),
-      "--pip-b": fill(second),
-    } as CSSProperties;
-    return <span className="pip pip-hybrid" style={style} />;
-  }
-  const color = manaColors.has(first) ? first.toLowerCase() : "generic";
-  return (
-    <span className={`pip pip-${color}`}>{second === "P" ? "P" : first}</span>
+  const src = symbolSrc(symbol);
+  return src ? (
+    <img className="pip" src={src} alt="" decoding="async" draggable={false} />
+  ) : (
+    <span className="pip pip-text">{symbol}</span>
   );
 }
 
-/** Mana symbols drawn as pips; the source text stays available to assistive tech. */
+const symbolPattern = /\{[^}]+\}/g;
+
+/** Mana symbols drawn as the official card symbols; the source text stays available to assistive tech. */
 export function ManaCost({
   cost,
   size = "sm",
@@ -35,7 +45,9 @@ export function ManaCost({
   const halves = cost
     .split("//")
     .map((half) =>
-      (half.match(/\{[^}]+\}/g) ?? []).map((s) => s.slice(1, -1).toUpperCase()),
+      (half.match(symbolPattern) ?? []).map((s) =>
+        s.slice(1, -1).toUpperCase(),
+      ),
     );
   if (halves.every((symbols) => symbols.length === 0)) return <>{cost}</>;
   return (
@@ -55,18 +67,52 @@ export function ManaCost({
   );
 }
 
-/** Color identity as small dots, placed before a text label. */
-export function ColorDots({ values }: { values: string[] | null }) {
+/**
+ * Rules text with its {T}, {W} and other symbols drawn inline. Each symbol keeps its
+ * source text for assistive tech and copying; unknown symbols stay as text.
+ */
+export function SymbolText({ text }: { text: string }) {
+  const parts = text.split(/(\{[^}]+\})/);
+  return (
+    <>
+      {parts.map((part, index) => {
+        const src =
+          index % 2 === 1 ? symbolSrc(part.slice(1, -1).toUpperCase()) : null;
+        if (!src) return part;
+        return (
+          <span className="inline-symbol" key={index}>
+            <span className="sr-only">{part}</span>
+            <img
+              className="pip"
+              src={src}
+              alt=""
+              decoding="async"
+              draggable={false}
+            />
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+const manaColors = new Set(["W", "U", "B", "R", "G", "C"]);
+
+/** Color identity as small mana symbols, placed before a text label. */
+export function ColorPips({ values }: { values: string[] | null }) {
   if (values === null) return null;
   const shown = values.length === 0 ? ["C"] : values;
   return (
-    <span className="color-dots" aria-hidden="true">
-      {shown.map((value) => (
-        <span
-          key={value}
-          className={`color-dot pip-${manaColors.has(value) ? value.toLowerCase() : "generic"}`}
-        />
-      ))}
+    <span className="color-pips" aria-hidden="true">
+      {shown.map((value) =>
+        manaColors.has(value) ? (
+          <Pip key={value} symbol={value} />
+        ) : (
+          <span key={value} className="pip pip-text">
+            {value}
+          </span>
+        ),
+      )}
     </span>
   );
 }
@@ -119,17 +165,19 @@ export function ColorFilter({
               form={form}
               defaultChecked={selected.includes(color)}
             />
-            <span
-              className="filter-dot"
+            <img
+              className="filter-symbol"
               data-color={color}
+              src={symbolSrc(color)!}
+              alt=""
+              decoding="async"
+              draggable={false}
               style={
                 {
-                  "--dot": `var(--mana-${color.toLowerCase()})`,
+                  "--glow": `var(--mana-${color.toLowerCase()})`,
                 } as CSSProperties
               }
-              aria-hidden="true"
             />
-            <span aria-hidden="true">{color}</span>
             <span className="sr-only">{colorName}</span>
           </label>
         ))}

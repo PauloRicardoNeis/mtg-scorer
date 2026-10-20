@@ -8,7 +8,7 @@ import { CopySearch } from "@/components/actions";
 import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
-import { ColorDots, ManaCost } from "@/components/mana";
+import { ColorPips, ManaCost } from "@/components/mana";
 
 export default async function Cards({
   searchParams,
@@ -126,7 +126,7 @@ export default async function Cards({
                       </p>
                     )}
                     <p className="color-label">
-                      <ColorDots values={card.color_identity} />
+                      <ColorPips values={card.color_identity} />
                       {colors(card.color_identity)}
                     </p>
                     <div className="tile-bottom">

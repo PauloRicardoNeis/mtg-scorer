@@ -10,7 +10,7 @@ import {
 import { Problem } from "@/components/problem";
 import { CardImage, CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
-import { ColorDots, ManaCost, Rarity } from "@/components/mana";
+import { ColorPips, ManaCost, Rarity, SymbolText } from "@/components/mana";
 import { redirect } from "next/navigation";
 
 function ManaLine({ value }: { value: string | null }) {
@@ -29,11 +29,13 @@ function ManaLine({ value }: { value: string | null }) {
 function KnownText({ value }: { value: string | null }) {
   return (
     <span className="rules-text">
-      {value === null
-        ? "Not supplied by the source"
-        : value === ""
-          ? "None"
-          : value}
+      {value === null ? (
+        "Not supplied by the source"
+      ) : value === "" ? (
+        "None"
+      ) : (
+        <SymbolText text={value} />
+      )}
     </span>
   );
 }
@@ -114,7 +116,7 @@ export default async function Card({
           </div>
           <div className="detail-copy">
             <p className="eyebrow">
-              <ColorDots values={card.color_identity} />
+              <ColorPips values={card.color_identity} />
               {card.layout.replaceAll("_", " ")} · {colors(card.color_identity)}
             </p>
             <h1 id="card-name">{card.name}</h1>

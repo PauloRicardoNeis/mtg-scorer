@@ -187,7 +187,9 @@ describe("MostPlayedIn", () => {
   it("shows the leading archetype with its colors and how many others play the card", () => {
     const { container } = render(<MostPlayedIn card={card({})} />);
     expect(container).toHaveTextContent("Burn+1 more archetypes");
-    expect(container.querySelector(".color-dot.pip-r")).not.toBeNull();
+    expect(
+      container.querySelector('.color-pips img[src$="/R.svg"]'),
+    ).not.toBeNull();
   });
 
   it("falls back to the label, then to unlabelled", () => {

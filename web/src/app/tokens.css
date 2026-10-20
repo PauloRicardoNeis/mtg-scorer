@@ -112,16 +112,16 @@
   --sigil-edge: oklch(0.86 0.1 195 / 0.55);
   --sigil-edge-strong: oklch(0.86 0.1 195 / 0.7);
 
-  /* MTG color identity (pips, filters). Letter codes W U B R G C. */
+  /* MTG colors: the glow behind a selected color filter. Letter codes W U B R G C. */
   --mana-w: oklch(0.93 0.05 95);
   --mana-u: oklch(0.74 0.13 250);
-  --mana-b: oklch(0.32 0.04 300);
-  --mana-b-ring: oklch(0.6 0.05 300);
+  --mana-b: oklch(0.6 0.05 300);
   --mana-r: oklch(0.72 0.15 35);
   --mana-g: oklch(0.74 0.13 150);
   --mana-c: oklch(0.7 0.012 255);
   --mana-generic-ring: oklch(0.62 0.02 255);
-  --mana-ink: oklch(0.165 0.014 255);
+  /* The drop shadow printed under mana symbols on cards. */
+  --mana-shadow: oklch(0 0 0 / 0.85);
 
   /* Rarity */
   --rarity-common: oklch(0.72 0.016 255);

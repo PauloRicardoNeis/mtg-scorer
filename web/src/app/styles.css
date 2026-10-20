@@ -833,28 +833,25 @@ select[multiple] option:checked {
   opacity: 0;
   pointer-events: none;
 }
-/* Color filter: a mana dot and mono letter per color. The B dot keeps its ring. */
+/* Color filter: one mana symbol per color, dimmed until it is selected. */
 .color-filter > label {
   padding: 0 var(--space-2_5);
-  font-family: var(--font-mono);
-  font-size: var(--fs-eyebrow);
 }
-.filter-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--dot);
+.filter-symbol {
+  width: 16px;
+  height: 16px;
   opacity: 0.55;
+  filter: saturate(0.7);
+  transition:
+    opacity 120ms ease,
+    filter 120ms ease;
 }
-.filter-dot[data-color="B"] {
-  box-shadow: inset 0 0 0 1px var(--mana-b-ring);
+.color-filter > label:hover .filter-symbol {
+  opacity: 0.8;
+}
+.color-filter > label:has(:checked) .filter-symbol {
   opacity: 1;
-}
-.color-filter > label:has(:checked) .filter-dot {
-  opacity: 1;
-}
-.color-filter > label:has(:checked) .filter-dot:not([data-color="B"]) {
-  box-shadow: 0 0 8px var(--dot);
+  filter: drop-shadow(0 0 4px var(--glow));
 }
 
 /* Primitives: underline tabs. Each tab is a link; the current one is marked. */
@@ -1489,7 +1486,7 @@ button.toast-action:focus-visible {
   color: var(--danger);
 }
 
-/* Data: mana pips, color identity dots, rarity gems */
+/* Data: mana symbols, color identity, rarity gems. Symbols carry the card's drop shadow. */
 .mana-cost {
   display: inline-flex;
   vertical-align: middle;
@@ -1497,57 +1494,37 @@ button.toast-action:focus-visible {
 .pips {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 .pip {
-  display: inline-flex;
   flex: none;
+  width: 15px;
+  height: 15px;
+  filter: drop-shadow(-1px 1px 0 var(--mana-shadow));
+}
+.mana-cost-lg .pips {
+  gap: 4px;
+}
+.mana-cost-lg .pip {
+  width: 22px;
+  height: 22px;
+}
+/* A symbol Scryfall does not draw keeps its text in a ring. */
+.pip-text {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
   border-radius: 50%;
-  color: var(--mana-ink);
+  box-shadow: inset 0 0 0 1px var(--mana-generic-ring);
+  filter: none;
+  color: var(--text-1);
   font-family: var(--font-mono);
   font-size: 7.5px;
   font-weight: var(--fw-medium);
   line-height: 1;
 }
-.mana-cost-lg .pips {
-  gap: 5px;
-}
-.mana-cost-lg .pip {
-  width: 22px;
-  height: 22px;
+.mana-cost-lg .pip-text {
   font-size: 11px;
-}
-.pip-w {
-  background: var(--mana-w);
-}
-.pip-u {
-  background: var(--mana-u);
-}
-.pip-b {
-  background: var(--mana-b);
-  color: var(--text-1);
-  box-shadow: inset 0 0 0 1px var(--mana-b-ring);
-}
-.pip-r {
-  background: var(--mana-r);
-}
-.pip-g {
-  background: var(--mana-g);
-}
-.pip-c {
-  background: var(--mana-c);
-}
-.pip-generic {
-  color: var(--text-1);
-  box-shadow: inset 0 0 0 1px var(--mana-generic-ring);
-}
-.pip-hybrid {
-  background: linear-gradient(135deg, var(--pip-a) 50%, var(--pip-b) 50%);
-  box-shadow: inset 0 0 0 1px var(--mana-generic-ring);
 }
 .pip-split {
   margin: 0 var(--space-1);
@@ -1555,15 +1532,22 @@ button.toast-action:focus-visible {
   font-family: var(--font-mono);
   font-size: var(--fs-mono-meta);
 }
-.color-dots {
+.color-pips {
   display: inline-flex;
   flex: none;
   gap: 2px;
 }
-.color-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.color-pips .pip {
+  width: 13px;
+  height: 13px;
+}
+/* Rules text: symbols sit on the text line at the text's size. */
+.inline-symbol .pip {
+  display: inline-block;
+  width: 0.95em;
+  height: 0.95em;
+  margin: 0 0.06em;
+  vertical-align: -0.14em;
 }
 .rarity {
   display: inline-flex;
@@ -2946,7 +2930,7 @@ th[aria-sort] .sort-link {
   gap: var(--space-2);
   min-width: 0;
 }
-.archetype .color-dots {
+.archetype .color-pips {
   flex: none;
 }
 .archetype-more {

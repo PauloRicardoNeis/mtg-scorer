@@ -10,7 +10,7 @@ import {
   percent,
   signed,
 } from "@/lib/format";
-import { ColorDots } from "./mana";
+import { ColorPips } from "./mana";
 
 type Run = RankingPage["score_run"];
 
@@ -203,7 +203,7 @@ export function Trend({ card, run }: { card: RankedCard; run: Run }) {
   );
 }
 
-/** An archetype's color dots, its name and how many more archetypes play the card. */
+/** An archetype's color symbols, its name and how many more archetypes play the card. */
 export function MostPlayedIn({ card }: { card: RankedCard }) {
   const top = card.archetypes[0];
   if (!top) {
@@ -213,7 +213,7 @@ export function MostPlayedIn({ card }: { card: RankedCard }) {
   const more = (card.archetype_count ?? card.archetypes.length) - 1;
   return (
     <span className="archetype">
-      <ColorDots values={top.colors} />
+      <ColorPips values={top.colors} />
       <span className="archetype-name">{top.label}</span>
       {more > 0 && (
         <span className="archetype-more">
