@@ -139,7 +139,7 @@ public class CatalogOpenApi {
         switch (name) {
           case "format" ->
               new StringSchema()
-                  .pattern("^[A-Za-z0-9][A-Za-z0-9 ]{0,39}$")
+                  .pattern("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$")
                   ._default(RankingQuery.DEFAULT_FORMAT);
           case "method" ->
               new StringSchema()

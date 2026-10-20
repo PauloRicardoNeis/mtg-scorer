@@ -44,7 +44,7 @@ class RankingOpenApiTests {
     assertThat(parameters.get("format").getSchema().getDefault())
         .isEqualTo(RankingQuery.DEFAULT_FORMAT);
     assertThat(parameters.get("format").getSchema().getPattern())
-        .isEqualTo("^[A-Za-z0-9][A-Za-z0-9 ]{0,39}$");
+        .isEqualTo("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$");
     assertThat(parameters.get("method").getSchema().getDefault())
         .isEqualTo(RankingQuery.DEFAULT_METHOD);
     assertThat(parameters.get("method").getDescription()).isNotBlank();

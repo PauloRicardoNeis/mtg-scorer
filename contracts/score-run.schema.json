@@ -133,7 +133,8 @@
             "incomplete_decks_excluded": { "$ref": "#/$defs/count" },
             "top_cut_players": { "$ref": "#/$defs/count" },
             "top_cut_decks": { "$ref": "#/$defs/count" },
-            "quarantined_card_lines_in_source": { "$ref": "#/$defs/count" }
+            "quarantined_card_lines_in_source": { "$ref": "#/$defs/count" },
+            "team_events_skipped_in_source": { "$ref": "#/$defs/count" }
           }
         }
       }

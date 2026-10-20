@@ -89,6 +89,7 @@ def test_the_cohort_summary_keeps_events_exclusions_and_totals(tmp_path) -> None
         "top_cut_players": 2,
         "top_cut_decks": 2,
         "quarantined_card_lines_in_source": 0,
+        "team_events_skipped_in_source": 0,
     }
     assert cohort["rules"]["hash"] == RULES.fingerprint
 

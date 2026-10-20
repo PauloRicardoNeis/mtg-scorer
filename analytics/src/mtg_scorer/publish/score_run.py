@@ -155,6 +155,7 @@ def _cohort_summary(cohort: Cohort, snapshot: TopDeckSnapshot) -> dict[str, Any]
                 made_cut.get(deck.source_deck_id) is True for deck in cohort.decks
             ),
             "quarantined_card_lines_in_source": snapshot.quarantined_card_lines,
+            "team_events_skipped_in_source": snapshot.team_events_skipped,
         },
     }
 

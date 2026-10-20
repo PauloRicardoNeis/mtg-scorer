@@ -106,6 +106,31 @@ def test_unreadable_lines_are_quarantined_and_mark_the_mainboard_incomplete(tmp_
     assert [card.oracle_id for card in snapshot.decks[0].cards] == [BOLT]
 
 
+def test_a_commander_counts_as_a_played_card(tmp_path) -> None:
+    listed = {
+        "Commanders": {"Counterspell": {"id": COUNTERSPELL, "count": 1}},
+        "Mainboard": {"Bolt": {"id": BOLT, "count": 1}},
+        "metadata": {"game": "Magic: The Gathering", "format": "EDH"},
+    }
+    snapshot = read(tmp_path, event("synthetic-edh", [row(1, deck_obj=listed)], fmt="EDH"))
+    cards = {card.oracle_id: card for card in snapshot.decks[0].cards}
+
+    assert (cards[COUNTERSPELL].mainboard_count, cards[BOLT].mainboard_count) == (1, 1)
+    assert not snapshot.decks[0].sideboard_observed
+
+
+def test_team_events_are_skipped_and_counted(tmp_path) -> None:
+    team = {
+        **event("synthetic-trios", [row(1, deck_obj=deck({"Bolt": (BOLT, 4)}))]),
+        "isTeamEvent": True,
+    }
+    snapshot = read(tmp_path, team, open_event())
+
+    assert snapshot.team_events_skipped == 1
+    assert [t.source_event_id for t in snapshot.tournaments] == ["synthetic-open"]
+    assert all(deck.source_event_id == "synthetic-open" for deck in snapshot.decks)
+
+
 def test_card_ids_that_are_not_oracle_uuids_are_quarantined(tmp_path) -> None:
     listed = deck({"Bolt": (BOLT, 4), "Typo": ("not-a-uuid", 1), "Number": (7, 1)})
     snapshot = read(tmp_path, event("synthetic-ids", [row(1, deck_obj=listed)]))

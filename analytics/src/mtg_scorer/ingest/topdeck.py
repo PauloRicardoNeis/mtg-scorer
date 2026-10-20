@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
+from sys import intern
 from typing import Any
 from uuid import UUID
 
@@ -28,7 +29,10 @@ from ..domain import (
 )
 
 SOURCE = "topdeck"
-PARSER_VERSION = "topdeck-bulk-v1"
+PARSER_VERSION = "topdeck-bulk-v2"
+# Zones whose cards are played: commander formats keep the commander apart from the
+# Mainboard, and it counts as played. The Sideboard is kept separately.
+PLAYED_ZONES = ("Mainboard", "Commanders")
 
 # How each event's top-cut membership was established.
 BRACKET_RECORD = "bracket_record"
@@ -61,14 +65,20 @@ class TopDeckSnapshot:
     quarantined_card_lines: int
     # Decks with an unreadable mainboard line; their card usage is not complete.
     incomplete_mainboards: frozenset[str]
+    # Team events report one standing per team, not per deck, so none of them is read.
+    team_events_skipped: int = 0
 
 
 def read_saved_responses(directory: Path) -> TopDeckSnapshot:
-    """Verify and parse every bulk-search response listed in ``manifest.json``."""
+    """Verify and parse every bulk-search response listed in ``manifest.json``.
+
+    Each file's events become facts as soon as it is read, keeping only a content hash
+    per event, so memory holds the facts rather than every raw response at once.
+    """
 
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     raw_files: list[RawFile] = []
-    events: dict[str, tuple[dict[str, Any], RawFile]] = {}
+    parsed: dict[str, tuple[str, _EventFacts | None]] = {}
     for request in manifest["requests"]:
         path = directory / request["raw_file"]
         payload = path.read_bytes()
@@ -79,9 +89,15 @@ def read_saved_responses(directory: Path) -> TopDeckSnapshot:
         raw_files.append(raw)
         for event in json.loads(payload):
             tid = event["TID"]
-            if tid in events and events[tid][0] != event:
-                raise ValueError(f"event {tid} appears twice with different content")
-            events.setdefault(tid, (event, raw))
+            content = sha256(
+                json.dumps(event, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            if tid in parsed:
+                if parsed[tid][0] != content:
+                    raise ValueError(f"event {tid} appears twice with different content")
+                continue
+            facts = None if event.get("isTeamEvent") else _event_facts(event, raw, directory)
+            parsed[tid] = (content, facts)
 
     tournaments: list[Tournament] = []
     decks: list[DeckEntry] = []
@@ -89,31 +105,18 @@ def read_saved_responses(directory: Path) -> TopDeckSnapshot:
     basis: dict[str, str] = {}
     quarantined = 0
     incomplete: set[str] = set()
-    for tid, (event, raw) in sorted(events.items()):
-        rows = event.get("standings") or []
-        made_cut, basis[tid] = _top_cut(rows, event.get("topCut") or 0)
-        tournaments.append(_tournament(event, rows, _provenance(tid, raw, directory)))
-        for position, row in enumerate(rows, start=1):
-            deck_id = f"{tid}#{position}"
-            provenance = _provenance(deck_id, raw, directory)
-            standings.append(
-                Standing(
-                    provenance=provenance,
-                    source_event_id=tid,
-                    source_deck_id=deck_id,
-                    wins=row.get("wins"),
-                    losses=row.get("losses"),
-                    draws=row.get("draws"),
-                    byes=row.get("byes"),
-                    made_top_cut=made_cut[position - 1],
-                )
-            )
-            deck, skipped_main, skipped_side = _deck(row, tid, provenance)
-            quarantined += skipped_main + skipped_side
-            if deck is not None:
-                decks.append(deck)
-                if skipped_main:
-                    incomplete.add(deck_id)
+    teams = 0
+    for tid in sorted(parsed):
+        facts = parsed[tid][1]
+        if facts is None:
+            teams += 1
+            continue
+        tournaments.append(facts.tournament)
+        standings.extend(facts.standings)
+        decks.extend(facts.decks)
+        basis[tid] = facts.top_cut_basis
+        quarantined += facts.quarantined
+        incomplete.update(facts.incomplete)
 
     identity = sha256(
         json.dumps(
@@ -135,6 +138,52 @@ def read_saved_responses(directory: Path) -> TopDeckSnapshot:
         top_cut_basis=basis,
         quarantined_card_lines=quarantined,
         incomplete_mainboards=frozenset(incomplete),
+        team_events_skipped=teams,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _EventFacts:
+    tournament: Tournament
+    standings: tuple[Standing, ...]
+    decks: tuple[DeckEntry, ...]
+    top_cut_basis: str
+    quarantined: int
+    incomplete: tuple[str, ...]
+
+
+def _event_facts(event: Mapping[str, Any], raw: RawFile, directory: Path) -> _EventFacts:
+    tid = event["TID"]
+    rows = event.get("standings") or []
+    made_cut, top_cut_basis = _top_cut(rows, event.get("topCut") or 0)
+    tournament = _tournament(event, rows, _provenance(tid, raw, directory))
+    standings: list[Standing] = []
+    decks: list[DeckEntry] = []
+    quarantined = 0
+    incomplete: list[str] = []
+    for position, row in enumerate(rows, start=1):
+        deck_id = f"{tid}#{position}"
+        provenance = _provenance(deck_id, raw, directory)
+        standings.append(
+            Standing(
+                provenance=provenance,
+                source_event_id=tid,
+                source_deck_id=deck_id,
+                wins=row.get("wins"),
+                losses=row.get("losses"),
+                draws=row.get("draws"),
+                byes=row.get("byes"),
+                made_top_cut=made_cut[position - 1],
+            )
+        )
+        deck, skipped_main, skipped_side = _deck(row, tid, provenance)
+        quarantined += skipped_main + skipped_side
+        if deck is not None:
+            decks.append(deck)
+            if skipped_main:
+                incomplete.append(deck_id)
+    return _EventFacts(
+        tournament, tuple(standings), tuple(decks), top_cut_basis, quarantined, tuple(incomplete)
     )
 
 
@@ -152,7 +201,7 @@ def _provenance(record_id: str, raw: RawFile, directory: Path) -> Provenance:
         source_record_id=record_id,
         retrieved_at=raw.retrieved_at,
         parser_version=PARSER_VERSION,
-        raw_snapshot_ref=f"{directory.name}/{raw.name}",
+        raw_snapshot_ref=intern(f"{directory.name}/{raw.name}"),
     )
 
 
@@ -231,14 +280,15 @@ def _deck(
     # One entry per oracle id: [first name seen, mainboard copies, sideboard copies].
     copies: dict[str, list[Any]] = {}
     skipped = [0, 0]
-    for slot, zone in enumerate(("Mainboard", "Sideboard")):
+    for slot, zone in [(0, zone) for zone in PLAYED_ZONES] + [(1, "Sideboard")]:
         for name, line in (deck.get(zone) or {}).items():
             oracle_id = _oracle_id((line or {}).get("id"))
             count = (line or {}).get("count")
             if oracle_id is None or not isinstance(count, int) or count <= 0:
                 skipped[slot] += 1
                 continue
-            copies.setdefault(oracle_id, [name, 0, 0])[1 + slot] += count
+            entry = copies.setdefault(intern(oracle_id), [intern(name), 0, 0])
+            entry[1 + slot] += count
     label = (row.get("archetype") or "").strip() or None
     cards = tuple(
         DeckCard(oracle_id, name, mainboard_count=main, sideboard_count=side)

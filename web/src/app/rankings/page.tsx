@@ -12,8 +12,9 @@ import { UnderlineTabs } from "@/components/primitives";
 
 export const metadata: Metadata = { title: "MTG Scorer · Card rankings" };
 
-// Formats the design names; only those with a published run are selectable.
-const formats = [
+// The design's formats always show, so missing data is visible; any other format
+// with a published run follows them.
+const designFormats = [
   "Standard",
   "Pioneer",
   "Modern",
@@ -93,6 +94,10 @@ export default async function Rankings({
       (candidate) => candidate.method_id === page.method_id,
     )!;
     const active = new Set(page.formats.map((format) => format.format_name));
+    const formats = [
+      ...designFormats,
+      ...[...active].filter((format) => !designFormats.includes(format)).sort(),
+    ];
     const kept = [...query].filter(([key]) =>
       ["q", "type", "color", "sort", "limit"].includes(key),
     );

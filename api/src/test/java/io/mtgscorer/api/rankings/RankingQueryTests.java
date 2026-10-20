@@ -61,9 +61,9 @@ class RankingQueryTests {
   }
 
   @Test
-  void formatsMayContainSpaces() {
-    assertThat(RankingQuery.parse(Map.of("format", List.of("Premodern Cube"))).format())
-        .isEqualTo("Premodern Cube");
+  void formatsMayContainTopDecksSpacesSlashesAndDigits() {
+    for (String format : List.of("Pauper EDH", "Old School 93/94", "7pt Highlander"))
+      assertThat(RankingQuery.parse(Map.of("format", List.of(format))).format()).isEqualTo(format);
   }
 
   @Test
@@ -73,6 +73,7 @@ class RankingQueryTests {
             Map.of("grade", List.of("A")),
             Map.of("format", List.of("Modern", "Legacy")),
             Map.of("format", List.of(" Modern")),
+            Map.of("format", List.of("Modern;drop")),
             Map.of("format", List.of("M".repeat(41))),
             Map.of("method", List.of("Max-Ratio")),
             Map.of("q", List.of("x".repeat(101))),

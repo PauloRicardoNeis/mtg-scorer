@@ -35,7 +35,7 @@ public record RankingQuery(
   public static RankingQuery parse(Map<String, List<String>> input) {
     CatalogQuery.validateKeys(input, PARAMETERS);
     String format = scalar(input, "format");
-    if (format != null && !format.matches("[A-Za-z0-9][A-Za-z0-9 ]{0,39}"))
+    if (format != null && !format.matches("[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}"))
       throw CatalogProblem.query("Invalid format.");
     String method = scalar(input, "method");
     if (method != null && !method.matches("[a-z0-9][a-z0-9-]{0,63}"))
