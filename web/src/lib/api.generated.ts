@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rankings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rank one format's scored cards by a published score method */
+        get: operations["listRankings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/snapshots": {
         parameters: {
             query?: never;
@@ -201,7 +218,7 @@ export interface components {
         };
         CatalogError: {
             /** @enum {string} */
-            code: "invalid_query" | "invalid_cursor" | "snapshot_not_found" | "card_not_found" | "catalog_unavailable" | "internal_error";
+            code: "invalid_query" | "invalid_cursor" | "snapshot_not_found" | "card_not_found" | "catalog_unavailable" | "rankings_unavailable" | "score_run_not_found" | "internal_error";
             detail: string;
             instance: string;
             request_id: string;
@@ -298,6 +315,95 @@ export interface components {
             next_cursor: string | null;
             /** Format: uuid */
             oracle_id: string;
+        };
+        RankedCard: {
+            /** Format: int32 */
+            archetype_deck_count: number;
+            archetype_label: string | null;
+            color_identity: string[] | null;
+            /** Format: int32 */
+            deck_count: number;
+            /** Format: int32 */
+            event_count: number;
+            /** Format: int32 */
+            labelled_deck_count: number;
+            mana_cost: string | null;
+            name: string;
+            /** Format: uuid */
+            oracle_id: string;
+            /** @description Null when the card is not in the active catalog. */
+            preview_printing: components["schemas"]["Printing"] | null;
+            /**
+             * Format: int64
+             * @description Position by the selected score among all scored cards.
+             */
+            rank: number;
+            /**
+             * Format: double
+             * @description The selected output; null when the method could not score the card.
+             */
+            score: number | null;
+            /**
+             * Format: int32
+             * @description Unknown when no deck with this card has a known top-cut result.
+             */
+            top_cut_count: number | null;
+            /** Format: int32 */
+            top_cut_known_decks: number;
+            type_line: string | null;
+        };
+        RankedFormat: {
+            format_name: string;
+            score_run_id: string;
+            source: string;
+        };
+        RankingPage: {
+            catalog_snapshot_id: string | null;
+            formats: components["schemas"]["RankedFormat"][];
+            items: components["schemas"]["RankedCard"][];
+            /** Format: int32 */
+            limit: number;
+            method_id: string;
+            /** Format: int32 */
+            offset: number;
+            output: string;
+            score_run: components["schemas"]["ScoreRunSummary"];
+            /** Format: int64 */
+            total: number;
+        };
+        ScoreMethod: {
+            description: string;
+            label: string;
+            method_id: string;
+            method_version: string;
+            outputs: string[];
+        };
+        ScoreRunSummary: {
+            attribution: string;
+            /**
+             * Format: int32
+             * @description Published decks in the cohort.
+             */
+            decks: number;
+            /** Format: int32 */
+            events: number;
+            format_name: string;
+            methods: components["schemas"]["ScoreMethod"][];
+            /** Format: int32 */
+            players: number;
+            /** Format: date-time */
+            published_at: string;
+            score_run_id: string;
+            source: string;
+            /** Format: int32 */
+            top_cut_decks: number;
+            /**
+             * Format: date
+             * @description Exclusive end of the cohort window.
+             */
+            window_ends_before: string;
+            /** Format: date */
+            window_starts_on: string;
         };
         Selection: {
             description: string;
@@ -718,6 +824,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InfoResponse"];
+                };
+            };
+        };
+    };
+    listRankings: {
+        parameters: {
+            query?: {
+                /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
+                color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
+                format?: string;
+                limit?: number;
+                /** @description A score method in the run; without one, max-ratio when present. */
+                method?: string;
+                offset?: number;
+                q?: string;
+                /** @description Pin a published run so every page shows the same results. */
+                score_run_id?: string;
+                /** @description score orders by the selected method's first output. */
+                sort?: "score" | "decks" | "top_cuts" | "name";
+                /** @description A card type on any face's type line. */
+                type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankingPage"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
                 };
             };
         };

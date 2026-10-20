@@ -1,0 +1,114 @@
+import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+// verify publishes a SYNTHETIC TopDeck run over the seed catalog's cards before
+// these journeys: two events, seven decks, Lightning Bolt in four of them.
+const results = (page: Page) =>
+  page.getByRole("region", { name: "Modern rankings" }).getByRole("status");
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://cards.scryfall.io/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="488" height="680"><rect width="488" height="680" fill="#e7e3d8"/></svg>',
+    }),
+  );
+});
+
+test("Modern rankings show the published run, its credit and every ranked card", async ({
+  page,
+}) => {
+  await page.goto("/cards");
+  await page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Rankings" })
+    .click();
+  await expect(page).toHaveURL(/\/rankings$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Modern" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("main").getByRole("link", { name: "TopDeck.gg" }),
+  ).toHaveAttribute("href", "https://topdeck.gg");
+  await expect(
+    page.getByRole("contentinfo").getByRole("link", { name: "TopDeck.gg" }),
+  ).toHaveAttribute("href", "https://topdeck.gg");
+  await expect(page.getByText("Mar 1 – Aug 31, 2026")).toBeVisible();
+  await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
+
+  const rows = page.getByRole("table").getByRole("row");
+  await expect(rows).toHaveCount(9);
+  await expect(rows.nth(1)).toContainText("Lightning Bolt");
+  await expect(rows.nth(1).getByRole("cell").first()).toHaveText("1");
+  await expect(rows.nth(1)).toContainText("100.0");
+  await expect(rows.nth(1)).toContainText("Burn");
+  await expect(page.getByRole("table")).not.toContainText("Island");
+  await expect(
+    page.getByRole("row", { name: /Synthetic Unlisted Card/ }),
+  ).toContainText("Not in this catalog");
+
+  const podium = page.getByRole("region", { name: "Most played cards" });
+  await expect(
+    podium.getByRole("link", { name: "Lightning Bolt" }),
+  ).toBeVisible();
+
+  const vintage = page
+    .getByRole("navigation", { name: "Formats" })
+    .getByRole("link", { name: /Vintage/ });
+  await expect(vintage).toHaveAttribute("aria-disabled", "true");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("filters keep overall ranks, and a card opens its catalog page", async ({
+  page,
+}) => {
+  await page.goto("/rankings");
+  await page.getByLabel("Card type").selectOption("instant");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page).toHaveURL(/type=instant/);
+  await expect(
+    page.getByRole("region", { name: "Most played cards" }),
+  ).toHaveCount(0);
+  const fire = page.getByRole("row", { name: /Fire \/\/ Ice/ });
+  await expect(fire.getByRole("cell").first()).toHaveText("2");
+  await expect(page.getByRole("table")).not.toContainText("Bruna");
+
+  await page.getByLabel("Card name").fill("bruna");
+  await page.getByLabel("Card type").selectOption("");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(results(page)).toHaveText("1–1 of 1 ranked cards");
+  await page
+    .getByRole("link", { name: "Bruna, the Fading Light" })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Bruna, the Fading Light" }),
+  ).toBeVisible();
+});
+
+test("paging stays on the pinned run", async ({ page }) => {
+  await page.goto("/rankings?sort=name&limit=3");
+  await expect(results(page)).toHaveText("1–3 of 8 ranked cards");
+  await page.getByRole("link", { name: "Next 3" }).click();
+  await expect(page).toHaveURL(/score_run_id=scores-[0-9a-f]{64}/);
+  await expect(results(page)).toHaveText("4–6 of 8 ranked cards");
+  await page.getByRole("link", { name: "Previous" }).click();
+  await expect(results(page)).toHaveText("1–3 of 8 ranked cards");
+});
+
+test("a format without published rankings explains itself", async ({
+  page,
+}) => {
+  await page.goto("/rankings?format=Vintage");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "No rankings are published for this format yet.",
+    }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Back to rankings" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Modern" }),
+  ).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

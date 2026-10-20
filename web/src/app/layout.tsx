@@ -37,13 +37,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div>
               <p className="footer-mark">MTG Scorer</p>
               <p>
-                A versioned card catalog. Tournament evidence is not available.
+                A versioned card catalog, with rankings from published
+                tournament score runs.
               </p>
             </div>
             <div>
               <p>
-                Card metadata and images: Scryfall. Magic: The Gathering is a
-                trademark of Wizards of the Coast.
+                Card metadata and images: Scryfall. Tournament data:{" "}
+                <a href="https://topdeck.gg" rel="noreferrer">
+                  TopDeck.gg
+                </a>
+                . Magic: The Gathering is a trademark of Wizards of the Coast.
               </p>
               <p>
                 MTG Scorer is unofficial Fan Content permitted under the Fan

@@ -44,6 +44,20 @@ describe("request URLs", () => {
     );
   });
 
+  it("requests rankings with the given filters", async () => {
+    vi.stubEnv("CATALOG_API_URL", "http://api");
+    await api.rankings(
+      new URLSearchParams([
+        ["format", "Modern"],
+        ["color", "R"],
+        ["color", "C"],
+      ]),
+    );
+    expect(requested().url).toBe(
+      "http://api/api/v1/rankings?format=Modern&color=R&color=C",
+    );
+  });
+
   it("omits the question mark for an empty query", async () => {
     vi.stubEnv("CATALOG_API_URL", "http://api");
     await api.cards(new URLSearchParams());

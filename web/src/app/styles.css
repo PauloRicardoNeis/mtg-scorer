@@ -2314,3 +2314,161 @@ fieldset.gallery-stack {
     transform: rotate(var(--tilt, 0deg));
   }
 }
+
+/* Rankings: a published score run's cards, ordered by stored values. */
+.rankings-intro .intro-copy h1 {
+  font-size: var(--fs-hero);
+}
+.mono-label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.credit {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-small);
+  color: var(--text-3);
+}
+/* Credits sit inside sentences, so their links need more than color. */
+.credit a,
+.site-footer p a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.format-tabs {
+  border-bottom: 1px solid var(--line-1);
+}
+.podium {
+  border-bottom: 1px solid var(--line-1);
+}
+.podium-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--space-8);
+  margin: 0 auto;
+  padding-block: var(--space-8);
+  list-style: none;
+}
+.podium-inner li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 160px;
+  text-align: center;
+}
+.podium-inner li[data-place="I"] {
+  width: 190px;
+}
+.podium-inner li p {
+  margin: 0;
+}
+.podium-place {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-title);
+  color: var(--accent);
+}
+.podium-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: var(--card-ratio);
+  padding: 0 12%;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-card);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ph-a) 0 6px,
+    var(--ph-b) 6px 12px
+  );
+  font-family: var(--font-display);
+  color: var(--text-2);
+}
+.ranking-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-lg);
+  background: var(--table-bg);
+}
+.ranking-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+.ranking-table th,
+.ranking-table td {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line-1);
+  text-align: left;
+  vertical-align: middle;
+  font-weight: var(--fw-regular);
+}
+.ranking-table thead th {
+  border-top: 0;
+  white-space: nowrap;
+  background: var(--surface-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-col);
+  letter-spacing: var(--tracking-col);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ranking-table td {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+}
+.ranking-table small {
+  color: var(--text-3);
+}
+.ranking-table .rank {
+  width: 3.5rem;
+  font-weight: var(--fw-medium);
+}
+.card-cell a {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--fs-ui);
+  font-weight: var(--fw-medium);
+  color: var(--text-1);
+}
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--fs-small);
+  color: var(--text-3);
+}
+.score-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.score-cell .bar {
+  position: relative;
+  width: 72px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+.score-cell .bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
+  border-radius: inherit;
+  background: var(--accent);
+}
+.muted {
+  color: var(--text-3);
+}

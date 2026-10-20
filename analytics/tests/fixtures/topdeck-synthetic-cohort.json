@@ -1,0 +1,8 @@
+{
+  "version": "synthetic-verify-rankings-v1",
+  "format_name": "Modern",
+  "starts_on": "2026-03-01",
+  "ends_before": "2026-09-01",
+  "min_decklist_coverage": 0.5,
+  "excluded_events": []
+}

@@ -31,8 +31,23 @@ describe("Problem", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "This card or retained dataset could not be found.",
+      "This card, dataset or score run could not be found.",
     );
+  });
+
+  it("explains a format without published rankings", () => {
+    render(<Problem error={new ApiError("rankings_unavailable", 503)} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Rankings unavailable");
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "No rankings are published for this format yet.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Back to rankings" }),
+    ).toHaveAttribute("href", "/rankings");
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 
   it("points other failures back to the search", () => {

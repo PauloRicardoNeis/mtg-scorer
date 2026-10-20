@@ -24,6 +24,9 @@ PYTHON = Path(os.environ.get("UV_PROJECT_ENVIRONMENT", ROOT / "analytics/.venv")
     "Scripts/python.exe" if os.name == "nt" else "bin/python"
 )
 SEED = ROOT / "analytics/seeds/scryfall-layouts-v1"
+# SYNTHETIC TopDeck responses over the seed's cards; only verify publishes them.
+SYNTHETIC_SCORES = ROOT / "analytics/tests/fixtures/topdeck-synthetic"
+SYNTHETIC_COHORT = ROOT / "analytics/tests/fixtures/topdeck-synthetic-cohort.json"
 PG_URL = "https://get.enterprisedb.com/postgresql/postgresql-17.11-3-windows-x64-binaries.zip"
 PG_HASH = "4b8db0930c38f6ef845db919551dedda3b6b845aeb0927b3d79a6e8e9e4537cf"
 
@@ -287,6 +290,16 @@ def seed(env: dict[str, str], output_root: Path) -> Path:
     return artifact
 
 
+# Score and publish the SYNTHETIC verify run so ranking checks have data. Only verify's
+# disposable database gets it; the preview never shows synthetic statistics.
+def seed_scores(env: dict[str, str], output_root: Path) -> None:
+    from mtg_scorer.publish.score_postgres import publish_score_run
+    from mtg_scorer.publish.score_run import score_topdeck
+
+    run_file = score_topdeck(SYNTHETIC_SCORES, SYNTHETIC_COHORT, output_root)
+    print(json.dumps(publish_score_run(run_file, env["CATALOG_TEST_PUBLISH_DSN"])), flush=True)
+
+
 # Prepare the database and run the API and web app with the retained catalog.
 # Copy the JAR before launching Java to avoid locking Maven's build output on Windows.
 # Check API liveness before any explicit seed, then readiness after seeding. Verification
@@ -365,6 +378,8 @@ def serve_and_verify(args: argparse.Namespace) -> None:
             )
         if verify or args.seed_sample:
             artifact = seed(env, run_dir / "catalog")
+            if verify:
+                seed_scores(env, run_dir / "scores")
             wait_http(api_url + "/actuator/health/readiness", api_process)
         if verify:
             print(
@@ -372,7 +387,14 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 flush=True,
             )
             run(
-                [PYTHON, "-m", "pytest", "analytics/tests/test_catalog_http.py", "-q"],
+                [
+                    PYTHON,
+                    "-m",
+                    "pytest",
+                    "analytics/tests/test_catalog_http.py",
+                    "analytics/tests/test_rankings_http.py",
+                    "-q",
+                ],
                 env=env,
             )
         with server(
