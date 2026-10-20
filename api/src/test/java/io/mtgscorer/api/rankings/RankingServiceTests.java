@@ -27,14 +27,27 @@ class RankingServiceTests {
   private static final String PIONEER = "scores-" + "b".repeat(64);
   private static final ScoreMethod VOLUME =
       new ScoreMethod(
-          "max-ratio", "max-ratio-v1", "Relative volume", "Count ÷ max.", List.of("max_ratio"));
+          "max-ratio",
+          "max-ratio-v1",
+          "Relative volume",
+          "Count ÷ max.",
+          List.of("max_ratio"),
+          608);
+  private static final ScoreMethod CONSTRUCTED =
+      new ScoreMethod(
+          "constructed-score",
+          "constructed-score-v1",
+          "Constructed score",
+          "Blend.",
+          List.of("score"),
+          608);
   private static final ScoreMethod FOUNDATION =
       new ScoreMethod(
-          "foundation", "foundation-v2", "Staple", "Weighted.", List.of("staple", "evidence"));
+          "foundation", "foundation-v2", "Staple", "Weighted.", List.of("staple", "evidence"), 608);
   private static final List<RankedFormat> FORMATS =
       List.of(
-          new RankedFormat("Modern", "topdeck", MODERN),
-          new RankedFormat("Pioneer", "topdeck", PIONEER));
+          new RankedFormat("Modern", "topdeck", MODERN, 231, 2),
+          new RankedFormat("Pioneer", "topdeck", PIONEER, 120, 2));
 
   @Mock private RankingRepository repository;
 
@@ -55,12 +68,22 @@ class RankingServiceTests {
         249,
         231,
         67,
-        List.of(methods));
+        608,
+        1798,
+        2,
+        0.499,
+        0.2479,
+        LocalDate.of(2025, 9, 6),
+        30,
+        List.of(0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0),
+        List.of(methods),
+        null);
   }
 
   private static RankedCard card() {
     return new RankedCard(
         1,
+        2,
         UUID.fromString("4457ed35-7c10-48c8-9776-456485fdf070"),
         "Lightning Bolt",
         100.0,
@@ -71,9 +94,22 @@ class RankingServiceTests {
         "Burn",
         8,
         20,
+        0.55,
+        0.05,
+        0.04,
+        120,
+        1.2,
+        0.01,
+        4.0,
+        List.of(0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0),
+        List.of(new ArchetypeShare("Burn", 8, List.of("R"))),
+        2,
         "{R}",
         "Instant",
         List.of("R"),
+        null,
+        0.6,
+        166.67,
         null);
   }
 
@@ -85,21 +121,42 @@ class RankingServiceTests {
   }
 
   @Test
-  void withoutAFormatTheActiveModernRunIsRankedByRelativeVolume() {
+  void withoutAFormatTheActiveModernRunIsRankedByTheConstructedScore() {
+    String previous = "scores-" + "d".repeat(64);
     var query = query("limit", "10");
+    var run = run(MODERN, "Modern", CONSTRUCTED, FOUNDATION, VOLUME);
+    var counts = new ViewCounts(608, 40, 35);
     when(repository.activeFormats()).thenReturn(FORMATS);
-    when(repository.run(MODERN)).thenReturn(Optional.of(run(MODERN, "Modern", FOUNDATION, VOLUME)));
-    when(repository.count(MODERN, "max-ratio", "max_ratio", query)).thenReturn(608L);
-    when(repository.page(MODERN, "max-ratio", "max_ratio", query)).thenReturn(List.of(card()));
+    when(repository.run(MODERN)).thenReturn(Optional.of(run));
+    when(repository.previousRun(run, "constructed-score")).thenReturn(previous);
+    when(repository.count(MODERN, previous, "constructed-score", "score", query)).thenReturn(608L);
+    when(repository.viewCounts(MODERN, previous, "constructed-score", "score", query))
+        .thenReturn(counts);
+    when(repository.maxDeckCount(MODERN)).thenReturn(91);
+    var windows =
+        List.of(
+            new RunWindow(
+                MODERN, "topdeck", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 9, 1), 231, true));
+    when(repository.windows("Modern")).thenReturn(windows);
+    when(repository.page(MODERN, previous, "constructed-score", "score", query))
+        .thenReturn(List.of(card()));
     when(repository.activeCatalog()).thenReturn("catalog-a");
+    var prices = OffsetDateTime.parse("2026-09-27T21:05:46.301Z");
+    when(repository.pricesUpdatedAt()).thenReturn(prices);
 
     var page = service().rankings(query);
 
     assertThat(page.score_run().score_run_id()).isEqualTo(MODERN);
-    assertThat(page.method_id()).isEqualTo("max-ratio");
-    assertThat(page.output()).isEqualTo("max_ratio");
+    assertThat(page.method_id()).isEqualTo("constructed-score");
+    assertThat(page.output()).isEqualTo("score");
+    assertThat(page.previous_score_run_id()).isEqualTo(previous);
+    assertThat(page.view_counts()).isEqualTo(counts);
+    assertThat(page.max_deck_count()).isEqualTo(91);
+    assertThat(page.windows()).isEqualTo(windows);
+    assertThat((page.sort() + " " + page.order() + " " + page.view())).isEqualTo("score desc all");
     assertThat(page.formats()).isEqualTo(FORMATS);
     assertThat(page.catalog_snapshot_id()).isEqualTo("catalog-a");
+    assertThat(page.prices_updated_at()).isEqualTo(prices);
     assertThat(page.total()).isEqualTo(608);
     assertThat(page.offset()).isZero();
     assertThat(page.limit()).isEqualTo(10);
@@ -117,7 +174,7 @@ class RankingServiceTests {
 
     assertThat(page.method_id()).isEqualTo("foundation");
     assertThat(page.output()).isEqualTo("staple");
-    verify(repository).count(PIONEER, "foundation", "staple", query);
+    verify(repository).count(PIONEER, null, "foundation", "staple", query);
   }
 
   @Test
@@ -178,7 +235,15 @@ class RankingServiceTests {
   }
 
   @Test
-  void withoutMaxRatioTheDefaultFallsBackToTheRunsFirstMethod() {
+  void withoutTheConstructedScoreTheDefaultFallsBackToMaxRatio() {
+    when(repository.activeFormats()).thenReturn(FORMATS);
+    when(repository.run(MODERN)).thenReturn(Optional.of(run(MODERN, "Modern", FOUNDATION, VOLUME)));
+
+    assertThat(service().rankings(query()).method_id()).isEqualTo("max-ratio");
+  }
+
+  @Test
+  void withoutAPreferredMethodTheDefaultFallsBackToTheRunsFirstMethod() {
     when(repository.activeFormats()).thenReturn(FORMATS);
     when(repository.run(MODERN)).thenReturn(Optional.of(run(MODERN, "Modern", FOUNDATION)));
 
@@ -193,6 +258,6 @@ class RankingServiceTests {
     assertThatThrownBy(() -> service().rankings(query("method", "elo")))
         .isInstanceOfSatisfying(
             CatalogProblem.class, problem -> assertThat(problem.status()).isEqualTo(400));
-    verify(repository, never()).count(anyString(), anyString(), anyString(), any());
+    verify(repository, never()).count(anyString(), any(), anyString(), anyString(), any());
   }
 }

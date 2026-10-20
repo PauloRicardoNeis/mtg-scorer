@@ -7,6 +7,12 @@
     "npm": ">=11 <12"
   },
   "packageManager": "npm@11.11.0",
+  "imports": {
+    "#i18n": {
+      "react-server": "./src/i18n/use-i18n.server.ts",
+      "default": "./src/i18n/use-i18n.ts"
+    }
+  },
   "scripts": {
     "dev": "next dev --hostname 127.0.0.1 --port 3300",
     "build": "next build",

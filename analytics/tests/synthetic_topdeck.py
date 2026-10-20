@@ -25,6 +25,16 @@ def deck(main: dict, side: dict | None = None) -> dict:
     return {**zones, "metadata": {"game": "Magic: The Gathering", "format": "Modern"}}
 
 
+def commander_deck(commanders: dict, main: dict, *, zone: str = "Commanders") -> dict:
+    """A commander-format deck; both maps go from names to (oracle id, copies)."""
+
+    return {
+        zone: {name: {"id": i, "count": c} for name, (i, c) in commanders.items()},
+        "Mainboard": {name: {"id": i, "count": c} for name, (i, c) in main.items()},
+        "metadata": {"game": "Magic: The Gathering", "format": "EDH"},
+    }
+
+
 def row(wins: int, losses: int = 0, draws: int = 0, *, deck_obj=None, archetype=None, **extra):
     return {
         "decklist": None,

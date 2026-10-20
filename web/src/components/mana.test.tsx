@@ -1,84 +1,100 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { ColorDots, ColorFilter, ManaCost, Rarity } from "./mana";
+import {
+  ColorFilter,
+  ColorPips,
+  ManaCost,
+  Rarity,
+  SymbolText,
+  symbolSrc,
+} from "./mana";
+
+const base = "https://svgs.scryfall.io/card-symbols/";
 
 function pips(container: HTMLElement) {
   return [
     ...container.querySelectorAll(".pips > .pip, .pips > .pip-split"),
-  ].map((pip) => ({ className: pip.className, text: pip.textContent }));
+  ].map((pip) =>
+    pip.tagName === "IMG"
+      ? pip.getAttribute("src")!.replace(base, "")
+      : pip.textContent,
+  );
 }
 
+describe("symbolSrc", () => {
+  it.each([
+    ["W", "W.svg"],
+    ["2", "2.svg"],
+    ["20", "20.svg"],
+    ["T", "T.svg"],
+    ["W/U", "WU.svg"],
+    ["2/B", "2B.svg"],
+    ["G/P", "GP.svg"],
+    ["W/U/P", "WUP.svg"],
+    ["C/R", "CR.svg"],
+    ["½", "HALF.svg"],
+    ["∞", "INFINITY.svg"],
+  ])("draws {%s} from Scryfall's %s", (symbol, file) => {
+    expect(symbolSrc(symbol)).toBe(base + file);
+  });
+
+  it.each(["21", "W/X", "w", "FOO", ""])(
+    "has no drawing for {%s}",
+    (symbol) => {
+      expect(symbolSrc(symbol)).toBeNull();
+    },
+  );
+});
+
 describe("ManaCost", () => {
-  it("keeps the source text for assistive tech and hides the pips", () => {
+  it("keeps the source text for assistive tech and hides the symbols", () => {
     const { container } = render(<ManaCost cost="{2}{W}{U}" />);
     expect(screen.getByText("{2}{W}{U}")).toHaveClass("sr-only");
     expect(container.querySelector(".pips")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
+    for (const pip of container.querySelectorAll(".pip"))
+      expect(pip).toHaveAttribute("alt", "");
     expect(container.firstElementChild).toHaveClass(
       "mana-cost",
       "mana-cost-sm",
     );
   });
 
-  it("draws one pip per symbol, colored by mana type", () => {
+  it("draws one official symbol per mana symbol", () => {
     const { container } = render(<ManaCost cost="{X}{2}{W}{U}{B}{R}{G}{C}" />);
-    expect(pips(container)).toEqual([
-      { className: "pip pip-generic", text: "X" },
-      { className: "pip pip-generic", text: "2" },
-      { className: "pip pip-w", text: "W" },
-      { className: "pip pip-u", text: "U" },
-      { className: "pip pip-b", text: "B" },
-      { className: "pip pip-r", text: "R" },
-      { className: "pip pip-g", text: "G" },
-      { className: "pip pip-c", text: "C" },
-    ]);
+    expect(pips(container)).toEqual(
+      ["X", "2", "W", "U", "B", "R", "G", "C"].map((s) => `${s}.svg`),
+    );
   });
 
   it("reads symbols case-insensitively", () => {
     const { container } = render(<ManaCost cost="{1}{r}" />);
-    expect(pips(container)).toEqual([
-      { className: "pip pip-generic", text: "1" },
-      { className: "pip pip-r", text: "R" },
-    ]);
+    expect(pips(container)).toEqual(["1.svg", "R.svg"]);
   });
 
-  it("splits hybrid pips between both halves", () => {
-    const { container } = render(<ManaCost cost="{W/U}{2/B}" />);
-    const [colored, generic] =
-      container.querySelectorAll<HTMLElement>(".pip-hybrid");
-    expect(colored.style.getPropertyValue("--pip-a")).toBe("var(--mana-w)");
-    expect(colored.style.getPropertyValue("--pip-b")).toBe("var(--mana-u)");
-    expect(colored).toBeEmptyDOMElement();
-    expect(generic.style.getPropertyValue("--pip-a")).toBe("transparent");
-    expect(generic.style.getPropertyValue("--pip-b")).toBe("var(--mana-b)");
+  it("draws hybrid and Phyrexian symbols", () => {
+    const { container } = render(<ManaCost cost="{W/U}{2/B}{G/P}{R/W/P}" />);
+    expect(pips(container)).toEqual(["WU.svg", "2B.svg", "GP.svg", "RWP.svg"]);
   });
 
-  it("marks Phyrexian mana with a P in its color", () => {
-    const { container } = render(<ManaCost cost="{G/P}{2}" />);
-    expect(pips(container)).toEqual([
-      { className: "pip pip-g", text: "P" },
-      { className: "pip pip-generic", text: "2" },
-    ]);
+  it("keeps a symbol Scryfall does not draw as text", () => {
+    const { container } = render(<ManaCost cost="{25}{W}" />);
+    expect(pips(container)).toEqual(["25", "W.svg"]);
+    expect(container.querySelector(".pip-text")).toHaveTextContent("25");
   });
 
   it("separates the halves of split cards", () => {
     const { container } = render(<ManaCost cost="{1}{U} // {3}{R}" />);
-    expect(pips(container).map(({ text }) => text)).toEqual([
-      "1",
-      "U",
-      "//",
-      "3",
-      "R",
-    ]);
+    expect(pips(container)).toEqual(["1.svg", "U.svg", "//", "3.svg", "R.svg"]);
     expect(screen.getByText("{1}{U} // {3}{R}")).toHaveClass("sr-only");
   });
 
   it("keeps a half without symbols as an empty side of the split", () => {
     const { container } = render(<ManaCost cost=" // {R}" />);
-    expect(pips(container).map(({ text }) => text)).toEqual(["//", "R"]);
+    expect(pips(container)).toEqual(["//", "R.svg"]);
   });
 
   it("uses the large size when asked", () => {
@@ -102,25 +118,61 @@ describe("ManaCost", () => {
   });
 });
 
-describe("ColorDots", () => {
+describe("SymbolText", () => {
+  it("draws symbols inline and keeps their text for assistive tech", () => {
+    const { container } = render(
+      <p>
+        <SymbolText text={"{T}: Add {G}.\n{2/G}, {Q}: Draw a card."} />
+      </p>,
+    );
+    expect(container).toHaveTextContent(
+      "{T}: Add {G}. {2/G}, {Q}: Draw a card.",
+    );
+    expect(
+      [...container.querySelectorAll(".inline-symbol img")].map((img) =>
+        img.getAttribute("src")!.replace(base, ""),
+      ),
+    ).toEqual(["T.svg", "G.svg", "2G.svg", "Q.svg"]);
+    for (const symbol of container.querySelectorAll(".inline-symbol")) {
+      expect(symbol.querySelector(".sr-only")?.textContent).toMatch(/^\{.+\}$/);
+      expect(symbol.querySelector("img")).toHaveAttribute("alt", "");
+    }
+  });
+
+  it("keeps text without symbols and unknown symbols as they are", () => {
+    const { container } = render(
+      <p>
+        <SymbolText text="Flying. {FOO} stays {}" />
+      </p>,
+    );
+    expect(container.innerHTML).toBe("<p>Flying. {FOO} stays {}</p>");
+  });
+});
+
+describe("ColorPips", () => {
   it("renders nothing for an unknown identity", () => {
-    const { container } = render(<ColorDots values={null} />);
+    const { container } = render(<ColorPips values={null} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows a colorless dot for an empty identity", () => {
-    const { container } = render(<ColorDots values={[]} />);
-    const dots = container.querySelectorAll(".color-dot");
-    expect(dots).toHaveLength(1);
-    expect(dots[0]).toHaveClass("pip-c");
+  it("shows the colorless symbol for an empty identity", () => {
+    const { container } = render(<ColorPips values={[]} />);
+    const shown = container.querySelectorAll(".pip");
+    expect(shown).toHaveLength(1);
+    expect(shown[0]).toHaveAttribute("src", `${base}C.svg`);
   });
 
-  it("shows one hidden dot per color, generic for unknown symbols", () => {
-    const { container } = render(<ColorDots values={["W", "G", "P"]} />);
+  it("shows one hidden symbol per color, text for other values", () => {
+    const { container } = render(<ColorPips values={["W", "G", "P"]} />);
     expect(container.firstElementChild).toHaveAttribute("aria-hidden", "true");
-    expect(
-      [...container.querySelectorAll(".color-dot")].map((dot) => dot.className),
-    ).toEqual(["color-dot pip-w", "color-dot pip-g", "color-dot pip-generic"]);
+    const shown = [...container.querySelectorAll(".pip")];
+    expect(shown.map((pip) => pip.getAttribute("src"))).toEqual([
+      `${base}W.svg`,
+      `${base}G.svg`,
+      null,
+    ]);
+    expect(shown[2]).toHaveClass("pip-text");
+    expect(shown[2]).toHaveTextContent("P");
   });
 });
 
@@ -146,6 +198,12 @@ describe("ColorFilter", () => {
     expect(screen.getByRole("checkbox", { name: "White" })).not.toBeChecked();
   });
 
+  it("can keep its label for assistive tech only", () => {
+    render(<ColorFilter label="Colors" name="color" selected={[]} hideLabel />);
+    expect(screen.getByRole("group", { name: "Colors" })).toBeInTheDocument();
+    expect(screen.getByText("Colors")).toHaveClass("sr-only");
+  });
+
   it("joins an outside form through the form attribute", () => {
     render(
       <ColorFilter label="Colors" name="color" selected={[]} form="filters" />,
@@ -163,13 +221,15 @@ describe("ColorFilter", () => {
     expect(screen.getByRole("checkbox", { name: "White" })).toBeChecked();
   });
 
-  it("tints each dot with its mana color and titles the label", () => {
+  it("draws each color's symbol, glowing in its color, and titles the label", () => {
     const { container } = render(
       <ColorFilter label="Colors" name="color" selected={[]} />,
     );
-    const dot = container.querySelector<HTMLElement>('[data-color="R"]');
-    expect(dot?.style.getPropertyValue("--dot")).toBe("var(--mana-r)");
-    expect(dot?.closest("label")).toHaveAttribute("title", "Red");
+    const symbol = container.querySelector<HTMLElement>('[data-color="R"]');
+    expect(symbol).toHaveAttribute("src", `${base}R.svg`);
+    expect(symbol).toHaveAttribute("alt", "");
+    expect(symbol?.style.getPropertyValue("--glow")).toBe("var(--mana-r)");
+    expect(symbol?.closest("label")).toHaveAttribute("title", "Red");
   });
 });
 
@@ -186,6 +246,11 @@ describe("Rarity", () => {
       );
     },
   );
+
+  it("names a rarity it has no word for as the source does", () => {
+    const { container } = render(<Rarity rarity="timeshifted" />);
+    expect(container.firstElementChild).toHaveTextContent("timeshifted");
+  });
 
   it("falls back to the common gem for other rarities", () => {
     const { container } = render(<Rarity rarity="special" />);

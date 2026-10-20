@@ -226,6 +226,8 @@ def grant_runtime_roles(admin: str) -> None:
         connection.execute("GRANT catalog_publisher TO catalog_publisher_local")
         connection.execute("GRANT score_reader TO catalog_api_local")
         connection.execute("GRANT score_publisher TO catalog_publisher_local")
+        connection.execute("GRANT price_reader TO catalog_api_local")
+        connection.execute("GRANT price_publisher TO catalog_publisher_local")
 
 
 @contextmanager
@@ -290,14 +292,45 @@ def seed(env: dict[str, str], output_root: Path) -> Path:
     return artifact
 
 
-# Score and publish the SYNTHETIC verify run so ranking checks have data. Only verify's
-# disposable database gets it; the preview never shows synthetic statistics.
+# Score and publish the SYNTHETIC verify run so ranking checks have data, then the overall
+# run that combines it. Only verify's disposable database gets them; the preview never
+# shows synthetic statistics.
 def seed_scores(env: dict[str, str], output_root: Path) -> None:
+    from mtg_scorer.publish.overall_run import score_overall
     from mtg_scorer.publish.score_postgres import publish_score_run
     from mtg_scorer.publish.score_run import score_topdeck
 
     run_file = score_topdeck(SYNTHETIC_SCORES, SYNTHETIC_COHORT, output_root)
     print(json.dumps(publish_score_run(run_file, env["CATALOG_TEST_PUBLISH_DSN"])), flush=True)
+    overall = score_overall([run_file], output_root / "overall")
+    print(json.dumps(publish_score_run(overall, env["CATALOG_TEST_PUBLISH_DSN"])), flush=True)
+
+
+# Publish prices from the bundled seed's own Scryfall responses, so ranking checks show
+# a real price. Like the synthetic scores, only verify's disposable database gets them.
+def seed_prices(env: dict[str, str], output_root: Path) -> None:
+    from mtg_scorer.publish.prices import publish_prices
+
+    records = json.loads((SEED / "manifest.json").read_bytes())["records"]
+    raw = "".join(
+        json.dumps(json.loads((SEED / record["raw_file"]).read_bytes())) + "\n"
+        for record in records
+    ).encode()
+    retrieved = max(record["retrieved_at"] for record in records)
+    output_root.mkdir(parents=True, exist_ok=True)
+    (output_root / "default-cards.bulk").write_bytes(raw)
+    (output_root / "manifest.json").write_text(
+        json.dumps(
+            {
+                "raw_file": "default-cards.bulk",
+                "content_sha256": hashlib.sha256(raw).hexdigest(),
+                "snapshot_id": "scryfall-layouts-v1",
+                "retrieved_at": retrieved,
+                "source_updated_at": retrieved,
+            }
+        )
+    )
+    print(json.dumps(publish_prices(output_root, env["CATALOG_TEST_PUBLISH_DSN"])), flush=True)
 
 
 # Prepare the database and run the API and web app with the retained catalog.
@@ -376,10 +409,15 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 [PYTHON, "-m", "pytest", "analytics/tests/test_score_publication.py", "-q"],
                 env=env,
             )
+            run(
+                [PYTHON, "-m", "pytest", "analytics/tests/test_price_publication.py", "-q"],
+                env=env,
+            )
         if verify or args.seed_sample:
             artifact = seed(env, run_dir / "catalog")
             if verify:
                 seed_scores(env, run_dir / "scores")
+                seed_prices(env, run_dir / "prices")
             wait_http(api_url + "/actuator/health/readiness", api_process)
         if verify:
             print(

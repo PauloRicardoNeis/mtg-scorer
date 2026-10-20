@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { colors, queryParams, type SearchParams } from "@/lib/urls";
-import { count } from "@/lib/format";
+import { queryParams, type SearchParams } from "@/lib/urls";
+import { getI18n } from "@/i18n/server";
 import { Filters } from "@/components/filters";
 import { CopySearch } from "@/components/actions";
 import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
-import { ColorDots, ManaCost } from "@/components/mana";
+import { ColorPips, ManaCost } from "@/components/mana";
 
 export default async function Cards({
   searchParams,
@@ -16,6 +16,7 @@ export default async function Cards({
   searchParams: Promise<SearchParams>;
 }) {
   const query = queryParams(await searchParams);
+  const { t, plural, colors, count } = await getI18n();
   try {
     const page = await api.cards(query);
     if (!query.has("catalog_snapshot_id")) {
@@ -32,34 +33,31 @@ export default async function Cards({
         <section className="intro band">
           <div className="intro-inner band-inner">
             <div className="intro-copy">
-              <p className="eyebrow">The card catalog</p>
+              <p className="eyebrow">{t.cards.eyebrow}</p>
               <h1>
-                Find something
+                {t.cards.title}
                 <br />
-                <em>worth building around.</em>
+                <em>{t.cards.titleEmphasis}</em>
               </h1>
-              <p className="lead">
-                Start with the cards in your pool. Explore names, faces and the
-                printings that fit.
-              </p>
+              <p className="lead">{t.cards.lead}</p>
             </div>
             <aside className="sample-note">
               <span className="tag">
                 {snapshot.selection.kind === "bulk"
-                  ? "Scryfall default-cards"
-                  : "Bounded real sample"}
+                  ? t.cards.sourceBulk
+                  : t.cards.sourceSample}
               </span>
               <dl className="stat-strip">
                 <div>
-                  <dt>Cards</dt>
+                  <dt>{t.cards.statCards}</dt>
                   <dd>{count(snapshot.card_count)}</dd>
                 </div>
                 <div>
-                  <dt>Printings</dt>
+                  <dt>{t.cards.statPrintings}</dt>
                   <dd>{count(snapshot.printing_count)}</dd>
                 </div>
                 <div>
-                  <dt>Source retrieved</dt>
+                  <dt>{t.cards.statRetrieved}</dt>
                   <dd>{snapshot.retrieved_to.slice(0, 10)}</dd>
                 </div>
               </dl>
@@ -67,7 +65,8 @@ export default async function Cards({
                 className="inline-link"
                 href={`/datasets/${page.catalog_snapshot_id}`}
               >
-                Inspect this dataset <Icon name="arrow-up-right" size={14} />
+                {t.cards.inspectDataset}{" "}
+                <Icon name="arrow-up-right" size={14} />
               </Link>
             </aside>
           </div>
@@ -79,23 +78,18 @@ export default async function Cards({
         />
         <section aria-labelledby="results-heading" className="results">
           <div className="results-heading">
-            <h2 id="results-heading">Your discovery</h2>
-            <p role="status">
-              {page.items.length} {page.items.length === 1 ? "card" : "cards"}{" "}
-              on this page · Name A–Z
-            </p>
+            <h2 id="results-heading">{t.cards.resultsHeading}</h2>
+            <p role="status">{plural(t.cards.onThisPage, page.items.length)}</p>
           </div>
           {page.items.length === 0 ? (
             <div className="state">
-              <h3>No cards match this pool.</h3>
-              <p>
-                Try another name or broaden your set, rarity and color filters.
-              </p>
+              <h3>{t.cards.emptyTitle}</h3>
+              <p>{t.cards.emptyBody}</p>
               <Link
                 className="button secondary sm"
                 href={`/cards?catalog_snapshot_id=${page.catalog_snapshot_id}`}
               >
-                Clear filters
+                {t.common.clearFilters}
               </Link>
             </div>
           ) : (
@@ -126,15 +120,15 @@ export default async function Cards({
                       </p>
                     )}
                     <p className="color-label">
-                      <ColorDots values={card.color_identity} />
+                      <ColorPips values={card.color_identity} />
                       {colors(card.color_identity)}
                     </p>
                     <div className="tile-bottom">
                       <span>
-                        {count(card.eligible_printing_count)} eligible{" "}
-                        {card.eligible_printing_count === 1
-                          ? "printing"
-                          : "printings"}
+                        {plural(
+                          t.cards.eligiblePrintings,
+                          card.eligible_printing_count,
+                        )}
                       </span>
                       <Icon name="arrow-up-right" size={14} />
                     </div>
@@ -146,24 +140,18 @@ export default async function Cards({
           <div className="pagination">
             {page.next_cursor ? (
               <Link className="button secondary" href={`/cards?${next}`}>
-                Next page <Icon name="arrow-right" size={14} />
+                {t.cards.nextPage} <Icon name="arrow-right" size={14} />
               </Link>
             ) : (
-              page.items.length > 0 && (
-                <p className="end-note">End of these results</p>
-              )
+              page.items.length > 0 && <p className="end-note">{t.cards.end}</p>
             )}
             <CopySearch />
           </div>
         </section>
         <aside className="method-note">
           <Icon name="info" size={18} />
-          <strong>Catalog facts, with their limits.</strong>
-          <p>
-            Tournament evidence is not available for this dataset. Pool
-            availability does not establish historical eligibility or
-            competitive strength.
-          </p>
+          <strong>{t.cards.noteTitle}</strong>
+          <p>{t.cards.noteBody}</p>
         </aside>
       </>
     );

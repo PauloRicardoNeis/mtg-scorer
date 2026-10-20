@@ -2,7 +2,7 @@ import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Problem } from "@/components/problem";
 import { Icon } from "@/components/icon";
-import { count } from "@/lib/format";
+import { getI18n } from "@/i18n/server";
 
 export default async function Dataset({
   params,
@@ -10,6 +10,7 @@ export default async function Dataset({
   params: Promise<{ catalog_snapshot_id: string }>;
 }) {
   const { catalog_snapshot_id } = await params;
+  const { t, count } = await getI18n();
   try {
     const snapshot = await api.snapshot(catalog_snapshot_id);
     return (
@@ -20,39 +21,39 @@ export default async function Dataset({
             href={`/cards?catalog_snapshot_id=${catalog_snapshot_id}`}
           >
             <Icon name="arrow-left" size={14} />
-            Discover this catalog
+            {t.dataset.back}
           </Link>
         </div>
         <section className="detail-intro">
-          <p className="eyebrow">Dataset &amp; methodology</p>
+          <p className="eyebrow">{t.dataset.eyebrow}</p>
           <h1>
-            Know what
+            {t.dataset.title}
             <br />
-            <em>you are looking at.</em>
+            <em>{t.dataset.titleEmphasis}</em>
           </h1>
           <p className="lead">{snapshot.selection.description}</p>
         </section>
         <div className="dataset-grid">
           <section className="dataset-panel">
-            <h2>A traceable catalog</h2>
+            <h2>{t.dataset.traceable}</h2>
             <dl className="facts">
               <div className="wide">
-                <dt>Catalog snapshot</dt>
+                <dt>{t.dataset.snapshot}</dt>
                 <dd className="identity">{snapshot.catalog_snapshot_id}</dd>
               </div>
               <div>
-                <dt>Scope</dt>
+                <dt>{t.dataset.scope}</dt>
                 <dd>{snapshot.selection.kind.replaceAll("_", " ")}</dd>
               </div>
               <div>
-                <dt>Cards / printings</dt>
+                <dt>{t.dataset.cardsPrintings}</dt>
                 <dd>
                   {count(snapshot.card_count)} /{" "}
                   {count(snapshot.printing_count)}
                 </dd>
               </div>
               <div>
-                <dt>Source retrieved from</dt>
+                <dt>{t.dataset.retrievedFrom}</dt>
                 <dd>
                   <time dateTime={snapshot.retrieved_from}>
                     {snapshot.retrieved_from}
@@ -60,7 +61,7 @@ export default async function Dataset({
                 </dd>
               </div>
               <div>
-                <dt>Source retrieved through</dt>
+                <dt>{t.dataset.retrievedThrough}</dt>
                 <dd>
                   <time dateTime={snapshot.retrieved_to}>
                     {snapshot.retrieved_to}
@@ -68,7 +69,7 @@ export default async function Dataset({
                 </dd>
               </div>
               <div>
-                <dt>Published</dt>
+                <dt>{t.dataset.published}</dt>
                 <dd>
                   <time dateTime={snapshot.published_at}>
                     {snapshot.published_at}
@@ -76,7 +77,7 @@ export default async function Dataset({
                 </dd>
               </div>
               <div>
-                <dt>Parser / schema</dt>
+                <dt>{t.dataset.parserSchema}</dt>
                 <dd>
                   {snapshot.parser_version}
                   <br />
@@ -86,31 +87,17 @@ export default async function Dataset({
             </dl>
           </section>
           <section className="dataset-panel">
-            <h2>What this can tell you</h2>
-            <p>
-              Card and face text, color identity, and printings present in this
-              snapshot. Set, rarity and game filters apply to the same printing.
-            </p>
-            <h3>What remains unknown</h3>
-            <p>
-              Tournament evidence is not available: no tournament dataset.
-              Missing evidence is not zero usage. Research scores are not
-              tournament evidence.
-            </p>
-            <p>
-              A current card pool differs from a historical opportunity pool.
-              These printings do not prove historical legality or availability
-              in your installed Forge version.
-            </p>
-            <h3>Stable links</h3>
-            <p>
-              Your search is pinned to this dataset. A later publication does
-              not change the cards behind this link.
-            </p>
+            <h2>{t.dataset.canTellHeading}</h2>
+            <p>{t.dataset.canTell}</p>
+            <h3>{t.dataset.unknownHeading}</h3>
+            <p>{t.dataset.unknownEvidence}</p>
+            <p>{t.dataset.unknownPool}</p>
+            <h3>{t.dataset.stableHeading}</h3>
+            <p>{t.dataset.stable}</p>
           </section>
         </div>
         <section className="dataset-panel">
-          <h2>Sets in this snapshot</h2>
+          <h2>{t.dataset.setsHeading}</h2>
           <ul className="set-list">
             {snapshot.sets.map((set) => (
               <li key={set.set_code}>
@@ -118,12 +105,9 @@ export default async function Dataset({
               </li>
             ))}
           </ul>
-          <h3>Excluded records</h3>
+          <h3>{t.dataset.excludedHeading}</h3>
           {Object.keys(snapshot.excluded_record_counts).length === 0 ? (
-            <p>
-              No exclusions from these eight source records. This does not
-              establish full-catalog coverage.
-            </p>
+            <p>{t.dataset.noExclusions}</p>
           ) : (
             <ul className="plain-list">
               {Object.entries(snapshot.excluded_record_counts).map(
@@ -135,7 +119,7 @@ export default async function Dataset({
               )}
             </ul>
           )}
-          <h3>Source attribution</h3>
+          <h3>{t.dataset.attributionHeading}</h3>
           <ul className="plain-list">
             {snapshot.attribution.map((source) => (
               <li key={source.url}>

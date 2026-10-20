@@ -58,6 +58,20 @@ describe("request URLs", () => {
     );
   });
 
+  it("requests a comparison across the given formats", async () => {
+    vi.stubEnv("CATALOG_API_URL", "http://api");
+    await api.compare(
+      new URLSearchParams([
+        ["format", "Modern"],
+        ["format", "Legacy"],
+        ["every", "true"],
+      ]),
+    );
+    expect(requested().url).toBe(
+      "http://api/api/v1/rankings/compare?format=Modern&format=Legacy&every=true",
+    );
+  });
+
   it("omits the question mark for an empty query", async () => {
     vi.stubEnv("CATALOG_API_URL", "http://api");
     await api.cards(new URLSearchParams());

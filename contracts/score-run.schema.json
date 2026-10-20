@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Score-run file v1",
+  "title": "Score-run file v2",
   "description": "One cohort's card usage and every score method's results, as written by mtg-scorer score-topdeck.",
   "type": "object",
   "additionalProperties": false,
@@ -22,7 +22,7 @@
     "runs"
   ],
   "properties": {
-    "schema_version": { "const": "score-run-file-v1" },
+    "schema_version": { "const": "score-run-file-v2" },
     "score_run_id": { "type": "string", "pattern": "^scores-[0-9a-f]{64}$" },
     "dataset_snapshot_id": { "$ref": "#/$defs/text" },
     "parser_version": { "$ref": "#/$defs/text" },
@@ -64,7 +64,15 @@
     "cohort": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["rules", "events", "excluded_events", "totals"],
+      "required": [
+        "rules",
+        "events",
+        "excluded_events",
+        "totals",
+        "performance",
+        "series",
+        "archetypes"
+      ],
       "properties": {
         "rules": {
           "type": "object",
@@ -75,6 +83,7 @@
             "starts_on",
             "ends_before",
             "min_decklist_coverage",
+            "players_per_game",
             "excluded_events",
             "hash"
           ],
@@ -84,6 +93,7 @@
             "starts_on": { "type": "string", "format": "date" },
             "ends_before": { "type": "string", "format": "date" },
             "min_decklist_coverage": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "players_per_game": { "type": "integer", "minimum": 2 },
             "excluded_events": { "type": "array", "items": { "$ref": "#/$defs/excluded_event" } },
             "hash": { "$ref": "#/$defs/sha256" }
           }
@@ -108,7 +118,13 @@
               "decklists": { "type": ["integer", "null"], "minimum": 0 },
               "top_cut_size": { "type": ["integer", "null"], "minimum": 0 },
               "top_cut_basis": {
-                "enum": ["bracket_record", "standing_order", "inconsistent_order", "no_top_cut"]
+                "enum": [
+                  "bracket_record",
+                  "standing_order",
+                  "inconsistent_order",
+                  "no_top_cut",
+                  "unknown_top_cut"
+                ]
               }
             }
           }
@@ -124,7 +140,10 @@
             "incomplete_decks_excluded",
             "top_cut_players",
             "top_cut_decks",
-            "quarantined_card_lines_in_source"
+            "quarantined_card_lines_in_source",
+            "top_cut_known_decks",
+            "record_decks",
+            "matches"
           ],
           "properties": {
             "events": { "$ref": "#/$defs/count" },
@@ -133,7 +152,51 @@
             "incomplete_decks_excluded": { "$ref": "#/$defs/count" },
             "top_cut_players": { "$ref": "#/$defs/count" },
             "top_cut_decks": { "$ref": "#/$defs/count" },
-            "quarantined_card_lines_in_source": { "$ref": "#/$defs/count" }
+            "quarantined_card_lines_in_source": { "$ref": "#/$defs/count" },
+            "team_events_skipped_in_source": { "$ref": "#/$defs/count" },
+            "top_cut_known_decks": { "$ref": "#/$defs/count" },
+            "record_decks": { "$ref": "#/$defs/count" },
+            "matches": { "$ref": "#/$defs/count" }
+          }
+        },
+        "performance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["players_per_game", "record", "win_rate", "top_cut_rate"],
+          "properties": {
+            "players_per_game": { "type": "integer", "minimum": 2 },
+            "record": { "$ref": "#/$defs/record" },
+            "win_rate": { "$ref": "#/$defs/fraction" },
+            "top_cut_rate": { "$ref": "#/$defs/fraction" }
+          }
+        },
+        "series": {
+          "description": "Decks per trend period, oldest first; periods end where the cohort window ends.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["starts_on", "period_days", "decks"],
+          "properties": {
+            "starts_on": { "type": "string", "format": "date" },
+            "period_days": { "type": "integer", "minimum": 1 },
+            "decks": { "$ref": "#/$defs/series" }
+          }
+        },
+        "archetypes": {
+          "description": "Each archetype label with the cards at least half of its decks play.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "deck_count", "core_cards"],
+            "properties": {
+              "label": { "$ref": "#/$defs/text" },
+              "deck_count": { "type": "integer", "minimum": 1 },
+              "core_cards": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/oracle_id" }
+              }
+            }
           }
         }
       }
@@ -161,7 +224,12 @@
           "event_count",
           "top_cut_count",
           "top_cut_known_decks",
-          "archetype"
+          "archetype",
+          "archetypes",
+          "mainboard_copies",
+          "record",
+          "performance",
+          "series"
         ],
         "properties": {
           "oracle_id": { "$ref": "#/$defs/oracle_id" },
@@ -180,7 +248,49 @@
               "deck_count": { "$ref": "#/$defs/count" },
               "labelled_deck_count": { "$ref": "#/$defs/count" }
             }
-          }
+          },
+          "archetypes": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["distinct", "top"],
+            "properties": {
+              "distinct": { "$ref": "#/$defs/count" },
+              "top": {
+                "type": "array",
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "deck_count"],
+                  "properties": {
+                    "label": { "$ref": "#/$defs/text" },
+                    "deck_count": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "mainboard_copies": { "type": "integer", "minimum": 1 },
+          "record": { "$ref": "#/$defs/record" },
+          "performance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "win_rate",
+              "win_rate_delta",
+              "win_rate_ci95",
+              "top_cut_lift",
+              "share_delta"
+            ],
+            "properties": {
+              "win_rate": { "$ref": "#/$defs/fraction" },
+              "win_rate_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+              "win_rate_ci95": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "top_cut_lift": { "type": ["number", "null"], "minimum": 0 },
+              "share_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 }
+            }
+          },
+          "series": { "$ref": "#/$defs/series" }
         }
       }
     },
@@ -249,6 +359,24 @@
       "properties": {
         "source_event_id": { "$ref": "#/$defs/text" },
         "reason": { "$ref": "#/$defs/text" }
+      }
+    },
+    "fraction": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "series": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/count" }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decks", "wins", "losses", "draws"],
+      "properties": {
+        "decks": { "$ref": "#/$defs/count" },
+        "wins": { "$ref": "#/$defs/count" },
+        "losses": { "$ref": "#/$defs/count" },
+        "draws": { "$ref": "#/$defs/count" }
       }
     }
   }

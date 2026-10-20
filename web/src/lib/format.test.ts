@@ -1,17 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  ago,
   count,
+  dateTime,
   dateWindow,
+  dateWithYear,
+  daysBetween,
+  decimal,
   deltaTone,
   grade,
   gradeTone,
   lift,
   liftTone,
   movement,
+  perDollar,
   percent,
   share,
   signed,
+  usd,
 } from "./format";
+import { spaced } from "@/test/i18n";
 
 const MINUS = "−";
 
@@ -81,6 +89,31 @@ describe("lift", () => {
 
   it("uses the true minus sign for negative ratios", () => {
     expect(lift(-0.5)).toBe(`${MINUS}0.50×`);
+  });
+});
+
+describe("usd", () => {
+  it("shows dollars and cents with thousands separators", () => {
+    expect(usd(0.6)).toBe("$0.60");
+    expect(usd(0.05)).toBe("$0.05");
+    expect(usd(1125.91)).toBe("$1,125.91");
+  });
+});
+
+describe("perDollar", () => {
+  it("shows whole numbers from 100 and three figures below", () => {
+    expect(perDollar(1666.67)).toBe("1,667");
+    expect(perDollar(166.67)).toBe("167");
+    expect(perDollar(41.234)).toBe("41.2");
+    expect(perDollar(2.2711)).toBe("2.27");
+    expect(perDollar(0.0621)).toBe("0.0621");
+  });
+});
+
+describe("dateWithYear", () => {
+  it("names an instant's UTC day", () => {
+    expect(dateWithYear("2026-09-27T21:05:46.301Z")).toBe("Sep 27, 2026");
+    expect(dateWithYear("2026-09-27T23:59:59-03:00")).toBe("Sep 28, 2026");
   });
 });
 
@@ -197,16 +230,91 @@ describe("share", () => {
 
 describe("dateWindow", () => {
   it("shows the exclusive end as the last included day", () => {
-    expect(dateWindow("2026-03-01", "2026-09-01")).toBe("Mar 1 – Aug 31, 2026");
+    expect(spaced(dateWindow("2026-03-01", "2026-09-01"))).toBe(
+      "Mar 1 – Aug 31, 2026",
+    );
   });
 
   it("names both years when the window crosses one", () => {
-    expect(dateWindow("2025-12-01", "2026-03-01")).toBe(
+    expect(spaced(dateWindow("2025-12-01", "2026-03-01"))).toBe(
       "Dec 1, 2025 – Feb 28, 2026",
     );
   });
 
   it("is independent of the local time zone", () => {
-    expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1 – Jan 1, 2026");
+    expect(dateWindow("2026-01-01", "2026-01-02")).toBe("Jan 1, 2026");
+  });
+
+  it("follows the locale's date order and names", () => {
+    expect(spaced(dateWindow("2026-03-01", "2026-09-01", "de"))).toBe(
+      "1. März – 31. Aug. 2026",
+    );
+  });
+});
+
+describe("ago", () => {
+  const now = new Date("2026-10-19T12:00:00Z");
+
+  it("names the largest whole unit that has passed", () => {
+    expect(ago("2026-10-19T09:59:00Z", now)).toBe("2 hours ago");
+    expect(ago("2026-10-19T11:15:00Z", now)).toBe("45 minutes ago");
+    expect(ago("2026-10-16T12:00:00Z", now)).toBe("3 days ago");
+    expect(ago("2026-09-28T12:00:00Z", now)).toBe("3 weeks ago");
+    expect(ago("2026-06-01T12:00:00Z", now)).toBe("4 months ago");
+    expect(ago("2024-01-01T00:00:00Z", now)).toBe("2 years ago");
+  });
+
+  it("says yesterday, last week and last month for a single unit", () => {
+    expect(ago("2026-10-18T06:00:00Z", now)).toBe("yesterday");
+    expect(ago("2026-10-12T12:00:00Z", now)).toBe("last week");
+    expect(ago("2026-09-15T12:00:00Z", now)).toBe("last month");
+  });
+
+  it("leaves under a minute, or a clock behind the publisher, to the caller", () => {
+    expect(ago("2026-10-19T11:59:30Z", now)).toBeNull();
+    expect(ago("2026-10-19T12:05:00Z", now)).toBeNull();
+  });
+
+  it("speaks the locale", () => {
+    expect(ago("2026-10-18T06:00:00Z", now, "de")).toBe("gestern");
+  });
+
+  it("measures from the current time by default", () => {
+    expect(ago(new Date(Date.now() - 3 * 3_600_000).toISOString())).toBe(
+      "3 hours ago",
+    );
+  });
+});
+
+describe("daysBetween", () => {
+  it("counts whole days from start to exclusive end", () => {
+    expect(daysBetween("2026-07-03", "2026-10-01")).toBe(90);
+    expect(daysBetween("2026-03-28", "2026-03-30")).toBe(2);
+  });
+});
+
+describe("dateTime", () => {
+  it("reads an instant to the minute in UTC", () => {
+    expect(spaced(dateTime("2026-10-19T23:30:00Z"))).toBe(
+      "October 19, 2026 at 11:30 PM UTC",
+    );
+  });
+});
+
+describe("in another locale", () => {
+  const NBSP = "\u00a0";
+
+  it("uses its separators and percent spacing", () => {
+    expect(count(33512, "de")).toBe("33.512");
+    expect(count(-1234, "fr")).toBe(`${MINUS}1\u202f234`);
+    expect(signed(2.45, "pt-BR")).toBe("+2,5");
+    expect(signed(-0.8, "de")).toBe(`${MINUS}0,8`);
+    expect(percent(54.12, "de")).toBe(`54,1${NBSP}%`);
+    expect(percent(54.12, "ja")).toBe("54.1%");
+    expect(lift(1.123, "it")).toBe("1,12×");
+    expect(decimal(87.25, 1, "es")).toBe("87,3");
+    expect(share(37, 231, "ru")).toBe(`16,0${NBSP}%`);
+    expect(usd(1125.9, "pt-BR")).toBe(`US$${NBSP}1.125,90`);
+    expect(perDollar(41.23, "de")).toBe("41,2");
   });
 });

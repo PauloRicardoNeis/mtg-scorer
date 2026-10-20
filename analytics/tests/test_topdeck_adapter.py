@@ -8,6 +8,7 @@ from synthetic_topdeck import (
     BOLT,
     COUNTERSPELL,
     ISLAND,
+    commander_deck,
     deck,
     event,
     open_event,
@@ -23,6 +24,7 @@ from mtg_scorer.ingest.topdeck import (
     NO_TOP_CUT,
     PARSER_VERSION,
     STANDING_ORDER,
+    UNKNOWN_TOP_CUT,
     read_saved_responses,
 )
 
@@ -106,6 +108,57 @@ def test_unreadable_lines_are_quarantined_and_mark_the_mainboard_incomplete(tmp_
     assert [card.oracle_id for card in snapshot.decks[0].cards] == [BOLT]
 
 
+def test_a_commander_counts_as_a_played_card(tmp_path) -> None:
+    listed = {
+        "Commanders": {"Counterspell": {"id": COUNTERSPELL, "count": 1}},
+        "Mainboard": {"Bolt": {"id": BOLT, "count": 1}},
+        "metadata": {"game": "Magic: The Gathering", "format": "EDH"},
+    }
+    snapshot = read(tmp_path, event("synthetic-edh", [row(1, deck_obj=listed)], fmt="EDH"))
+    cards = {card.oracle_id: card for card in snapshot.decks[0].cards}
+
+    assert (cards[COUNTERSPELL].mainboard_count, cards[BOLT].mainboard_count) == (1, 1)
+    assert snapshot.decks[0].commanders == (COUNTERSPELL,)
+    assert not snapshot.decks[0].sideboard_observed
+
+
+def test_partner_commanders_are_kept_sorted_whatever_the_zone_is_called(tmp_path) -> None:
+    first, second = sorted((BOLT, COUNTERSPELL))
+    rows = [
+        row(1, deck_obj=commander_deck({"B": (second, 1), "A": (first, 1)}, {"I": (ISLAND, 30)})),
+        row(0, deck_obj=commander_deck({"A": (first, 1)}, {"I": (ISLAND, 30)}, zone="COMMANDER")),
+        row(0, deck_obj=commander_deck({"A": (first, 1)}, {"I": (ISLAND, 30)}, zone="Commander")),
+        row(0, deck_obj=deck({"I": (ISLAND, 30)})),
+    ]
+    snapshot = read(tmp_path, event("synthetic-partners", rows, fmt="EDH"))
+
+    assert [d.commanders for d in snapshot.decks] == [(first, second), (first,), (first,), ()]
+    # The commander is played whatever its zone is called.
+    assert all({c.oracle_id for c in d.cards} == {first, ISLAND} for d in snapshot.decks[1:3])
+
+
+def test_a_commander_zone_holding_a_whole_list_names_no_commander(tmp_path) -> None:
+    misplaced = {"A": (BOLT, 1), "B": (COUNTERSPELL, 1), "I": (ISLAND, 30)}
+    listed = commander_deck(misplaced, {"A": (BOLT, 1)})
+    snapshot = read(tmp_path, event("synthetic-misplaced", [row(1, deck_obj=listed)], fmt="EDH"))
+    cards = {card.oracle_id: card.mainboard_count for card in snapshot.decks[0].cards}
+
+    assert snapshot.decks[0].commanders == ()
+    assert cards == {BOLT: 2, COUNTERSPELL: 1, ISLAND: 30}
+
+
+def test_team_events_are_skipped_and_counted(tmp_path) -> None:
+    team = {
+        **event("synthetic-trios", [row(1, deck_obj=deck({"Bolt": (BOLT, 4)}))]),
+        "isTeamEvent": True,
+    }
+    snapshot = read(tmp_path, team, open_event())
+
+    assert snapshot.team_events_skipped == 1
+    assert [t.source_event_id for t in snapshot.tournaments] == ["synthetic-open"]
+    assert all(deck.source_event_id == "synthetic-open" for deck in snapshot.decks)
+
+
 def test_card_ids_that_are_not_oracle_uuids_are_quarantined(tmp_path) -> None:
     listed = deck({"Bolt": (BOLT, 4), "Typo": ("not-a-uuid", 1), "Number": (7, 1)})
     snapshot = read(tmp_path, event("synthetic-ids", [row(1, deck_obj=listed)]))
@@ -173,6 +226,51 @@ def test_a_cut_as_large_as_the_field_puts_everyone_in_it(tmp_path) -> None:
     snapshot = read(tmp_path, event("synthetic-bracket-only", [row(1), row(0)], top_cut=8))
 
     assert [s.made_top_cut for s in snapshot.standings] == [True, True]
+
+
+def test_invalid_record_counts_become_unknown_and_lower_standings_coverage(tmp_path) -> None:
+    rows = [row(3), row(2, -1), {**row(1), "draws": "x"}, {**row(0), "wins": True}]
+    snapshot = read(tmp_path, event("synthetic-quirks", rows))
+
+    assert [(s.wins, s.losses, s.draws) for s in snapshot.standings] == [
+        (3, 0, 0),
+        (2, None, 0),
+        (1, 0, None),
+        (None, 0, 0),
+    ]
+    standings = snapshot.tournaments[0].coverage.standings
+    assert (standings.observed_count, standings.expected_count) == (1, 4)
+
+
+@pytest.mark.parametrize(
+    ("top_cut", "size", "basis"),
+    [("8", 8, STANDING_ORDER), ("8-0", None, UNKNOWN_TOP_CUT), (-1, None, UNKNOWN_TOP_CUT)],
+)
+def test_top_cut_sizes_sent_as_text_are_read_or_left_unknown(tmp_path, top_cut, size, basis):
+    rows = [row(3), row(1)]
+    snapshot = read(tmp_path, {**event("synthetic-cut", rows), "topCut": top_cut})
+
+    assert snapshot.tournaments[0].top_cut_size == size
+    assert snapshot.top_cut_basis["synthetic-cut"] == basis
+
+
+def test_a_missing_top_cut_means_no_cut(tmp_path) -> None:
+    missing = {
+        key: value for key, value in event("synthetic-plain", [row(1)]).items() if key != "topCut"
+    }
+    snapshot = read(tmp_path, missing)
+
+    assert (snapshot.tournaments[0].top_cut_size, snapshot.top_cut_basis["synthetic-plain"]) == (
+        0,
+        NO_TOP_CUT,
+    )
+
+
+def test_unreadable_bracket_records_fall_back_to_standing_order(tmp_path) -> None:
+    rows = [row(3, winsBracket=1, lossesBracket=0), row(1, winsBracket=-1, lossesBracket=0)]
+    snapshot = read(tmp_path, event("synthetic-bracket-quirk", rows, top_cut=1))
+
+    assert snapshot.top_cut_basis["synthetic-bracket-quirk"] == STANDING_ORDER
 
 
 def test_events_without_a_top_cut_record_no_cut_result(tmp_path) -> None:

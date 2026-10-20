@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { useI18n } from "#i18n";
 import type { Printing } from "@/lib/api";
 import { edition } from "@/lib/urls";
 
@@ -19,6 +20,7 @@ function Scan({
   alt: string;
   eager?: boolean;
 }) {
+  const { t, fill } = useI18n();
   const [failed, setFailed] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   // A server-rendered scan can fail before hydration attaches onError.
@@ -32,9 +34,9 @@ function Scan({
     <div
       className="card-image-fallback"
       role="img"
-      aria-label={`${alt}: image unavailable`}
+      aria-label={fill(t.images.unavailableAlt, { alt })}
     >
-      Image unavailable
+      {t.images.unavailable}
     </div>
   ) : (
     <img
@@ -81,6 +83,7 @@ export function CardImage({
   count?: number;
   action?: ReactNode;
 }) {
+  const { t, fill, plural } = useI18n();
   const variants = { featured, interactive, selected, foil };
   return (
     <div
@@ -96,17 +99,15 @@ export function CardImage({
         <div
           className="card-image-fallback"
           role="img"
-          aria-label={`${alt}: image unavailable`}
+          aria-label={fill(t.images.unavailableAlt, { alt })}
         >
-          Image unavailable
+          {t.images.unavailable}
         </div>
       )}
       {count !== undefined && (
         <span className="card-count">
           <span aria-hidden="true">{count}×</span>
-          <span className="sr-only">
-            {count} {count === 1 ? "copy" : "copies"}
-          </span>
+          <span className="sr-only">{plural(t.images.copies, count)}</span>
         </span>
       )}
       {action && <div className="card-action">{action}</div>}
@@ -123,6 +124,7 @@ export function CardImages({
   printing: Printing;
   preview?: boolean;
 }) {
+  const { t, fill } = useI18n();
   const images = preview ? printing.images.slice(0, 1) : printing.images;
   const label = edition(printing);
   return (
@@ -131,9 +133,11 @@ export function CardImages({
         <div
           className="card-image-fallback"
           role="img"
-          aria-label={`${name} — ${label}: image unavailable`}
+          aria-label={fill(t.images.unavailableAlt, {
+            alt: fill(t.images.alt, { name, edition: label }),
+          })}
         >
-          Image unavailable
+          {t.images.unavailable}
         </div>
       ) : (
         images.map((image) => (
@@ -141,14 +145,23 @@ export function CardImages({
             <Scan
               key={image.source_uri}
               src={image.source_uri}
-              alt={`${name}${image.face_index === null ? "" : `, face ${image.face_index + 1}`} — ${label}`}
+              alt={
+                image.face_index === null
+                  ? fill(t.images.alt, { name, edition: label })
+                  : fill(t.images.faceAlt, {
+                      name,
+                      number: image.face_index + 1,
+                      edition: label,
+                    })
+              }
             />
             {!preview && (
               <figcaption>
                 {image.face_index === null
-                  ? "Whole card"
-                  : `Face ${image.face_index + 1}`}
-                {image.artist && ` · Art by ${image.artist}`}
+                  ? t.images.wholeCard
+                  : fill(t.images.face, { number: image.face_index + 1 })}
+                {image.artist &&
+                  ` · ${fill(t.images.artBy, { artist: image.artist })}`}
               </figcaption>
             )}
           </figure>

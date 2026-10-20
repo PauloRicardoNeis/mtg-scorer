@@ -109,6 +109,23 @@ class ScoreMethod(Protocol):
     def score(self, cards: Sequence[ScoringInput], context: ScoreContext) -> ScoreRun: ...
 
 
+def percentiles(values: Mapping[str, float]) -> dict[str, float]:
+    """Mid-rank percentiles in (0, 1); ties share their average rank."""
+
+    ordered = sorted(values.items(), key=lambda item: (item[1], item[0]))
+    result: dict[str, float] = {}
+    start = 0
+    while start < len(ordered):
+        end = start
+        while end + 1 < len(ordered) and ordered[end + 1][1] == ordered[start][1]:
+            end += 1
+        rank = (start + end) / 2 + 0.5
+        for card_id, _ in ordered[start : end + 1]:
+            result[card_id] = rank / len(ordered)
+        start = end + 1
+    return result
+
+
 def build_run(
     method: ScoreMethod,
     context: ScoreContext,

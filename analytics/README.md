@@ -125,6 +125,44 @@ row counts and that every method scored every scored card. See the
 [runbook](../docs/local-catalog.md#full-catalog-import-worker-and-administration)
 for roles and commands.
 
+`score-overall` (`publish/overall_run.py`) combines one run file per format into the
+overall run: each card's constructed score in every format, weighted by that
+format's decklists and shrunk toward the median (`scoring/overall.py`; see the
+[measurement contract](../docs/measurement-contract.md#overall-grade)). Its file
+satisfies [`contracts/overall-run.schema.json`](../contracts/overall-run.schema.json),
+and `publish-scores` publishes it under the format name "Overall" like any other run.
+
+## Scoring saved Wizards Pro Tour coverage
+
+`score-wizards` does the same for Pro Tours saved by
+`scripts/probe_wizards_coverage.py` (constructed Pro Tours of about 2004–2010, read
+from the Internet Archive). Each probe directory holds one event; repeat
+`--source-dir` to score a format season. Card names are resolved against the active
+catalog in `CATALOG_READ_DSN`, which is only read:
+
+```powershell
+$env:CATALOG_READ_DSN = 'postgresql://catalog_publisher_local:local-catalog-only@127.0.0.1:55432/mtg_catalog_demo'
+analytics/.venv/Scripts/python.exe -m mtg_scorer.cli score-wizards --source-dir analytics/data/local/<ptcol05-dir> --source-dir analytics/data/local/<ptla05-dir> --cohort analytics/cohorts/wizards-extended-2004-10-to-2005-10.json --output-root analytics/data/local/score-runs
+```
+
+`ingest/wizards.py` verifies each page against the manifest, which also names the
+event's format, first day and constructed rounds (for the mixed-format 2009–10 Pro
+Tours, rounds 1–5 and 12–16; the probe checks them against the coverage's standings by
+format). It reads the 2005 table and the 2009–10 `div.deck` decklist layouts, takes
+the field from the alphabetical pages plus the pages that list the best records and
+the top 8 apart, and corrects known typos in the coverage (`CARD_ALIASES`); names
+that differ only in punctuation or accents resolve without an entry. Decklists name
+players "First Last" and the standings "Last, First [CTRY]", so decks join their
+standing in passes: same name, truncated name, surname and initial, then similar
+spellings ("Odan" and "Oodan", "Billy" and "William", surname first). Results pages
+that spell a player differently from the standings are merged onto the standings
+name unless both spellings played the same round. Records count only the
+constructed rounds and stay unknown when any of them was not archived. The final
+standings give each deck its rank and the top 8. The dataset id hashes the pages,
+the event, the alias table, the ignored card layouts and the catalog snapshot. Run
+files carry the source `wizards-coverage` and credit Wizards and the archive in
+`attribution`.
+
 See the repository [README](../README.md),
 [measurement contract](../docs/measurement-contract.md), and
 [application boundary](../docs/adr/0001-polyglot-application-boundary.md) before

@@ -9,6 +9,7 @@ import pytest
 
 import mtg_scorer.ingest.scryfall as scryfall
 import mtg_scorer.publish.postgres as postgres
+import mtg_scorer.publish.prices as prices
 import mtg_scorer.publish.score_postgres as score_postgres
 from mtg_scorer import cli
 from mtg_scorer.publish.artifact import verify_artifact
@@ -45,6 +46,7 @@ def test_help_lists_every_batch_command(monkeypatch, capsys):
         "score-topdeck",
         "publish-scores",
         "rollback-scores",
+        "publish-prices",
     ):
         assert command in usage
 
@@ -167,9 +169,34 @@ def test_rollback_scores_passes_the_expected_active_run(monkeypatch, capsys):
     assert "rolled back" in capsys.readouterr().out
 
 
+def test_publish_prices_uses_the_price_dsn_and_prints_json(monkeypatch, capsys, tmp_path):
+    calls = []
+
+    def publish(source_dir, dsn):
+        calls.append((source_dir, dsn))
+        return {"price_snapshot_id": "prices-1", "cards": 2, "state": "published"}
+
+    monkeypatch.setattr(prices, "publish_prices", publish)
+    monkeypatch.setenv("PRICE_PUBLISH_DSN", DSN)
+
+    run(monkeypatch, "publish-prices", "--source-dir", tmp_path)
+
+    assert calls == [(tmp_path, DSN)]
+    assert json.loads(capsys.readouterr().out)["state"] == "published"
+
+
+def test_publish_prices_without_a_dsn_fails_before_publishing(monkeypatch, tmp_path):
+    monkeypatch.delenv("PRICE_PUBLISH_DSN", raising=False)
+    monkeypatch.setattr(prices, "publish_prices", lambda *a: pytest.fail("published"))
+
+    with pytest.raises(KeyError, match="PRICE_PUBLISH_DSN"):
+        run(monkeypatch, "publish-prices", "--source-dir", tmp_path)
+
+
 @pytest.mark.parametrize(
     "arguments",
     [
+        pytest.param(("publish-prices",), id="publish-prices-without-source"),
         pytest.param(("rollback-scores", "--target", "scores-old"), id="unguarded-score-rollback"),
         pytest.param(("publish-scores",), id="publish-scores-without-file"),
         pytest.param(("rollback-catalog", "--target", "catalog-old"), id="unguarded-rollback"),

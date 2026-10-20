@@ -307,10 +307,31 @@ def month_windows(first: str, last: str) -> list[tuple[str, int, int]]:
     return windows
 
 
-def survey(client: Client, fmt: str, first: str, last: str, dsn: str | None) -> dict:
-    """One search per month with decklists: how many decks each month publishes."""
+def day_windows(first: str, last: str, days: int) -> list[tuple[str, int, int]]:
+    """Consecutive spans of `days` days covering the months first..last, as [start, end)."""
+    _, start, _ = month_windows(first, first)[0]
+    _, _, stop = month_windows(last, last)[0]
+    windows = []
+    while start < stop:
+        end = min(start + days * 86_400, stop)
+        windows.append((datetime.fromtimestamp(start, UTC).strftime("%Y-%m-%d"), start, end))
+        start = end
+    return windows
+
+
+def survey(
+    client: Client,
+    fmt: str,
+    first: str,
+    last: str,
+    dsn: str | None,
+    window_days: int | None = None,
+) -> dict:
+    """One search per month (or per window of days) with decklists: how many decks each
+    window publishes. Busy formats such as EDH need day windows to stay under the cap."""
     months, events, lines = [], [], []
-    for label, start, end in month_windows(first, last):
+    windows = day_windows(first, last, window_days) if window_days else month_windows(first, last)
+    for label, start, end in windows:
         found = client.call(
             "POST",
             "/v2/tournaments",
@@ -319,7 +340,16 @@ def survey(client: Client, fmt: str, first: str, last: str, dsn: str | None) -> 
                 "format": fmt,
                 "start": start,
                 "end": end - 1,
-                "columns": ["decklist", "wins", "losses", "draws"],
+                # Bracket results let the scorer read top cuts directly.
+                "columns": [
+                    "decklist",
+                    "wins",
+                    "losses",
+                    "draws",
+                    "winsBracket",
+                    "lossesBracket",
+                    "byes",
+                ],
             },
             f"search-{label}.json",
             50_000_000,
@@ -380,6 +410,11 @@ def main() -> None:
         help="Instead of the capped probe, count decklists per month, e.g. 2026-03 2026-08",
     )
     parser.add_argument(
+        "--window-days",
+        type=int,
+        help="With --survey, search windows of this many days instead of calendar months",
+    )
+    parser.add_argument(
         "--resume",
         type=Path,
         help="An interrupted run's directory; responses already saved there are reused",
@@ -402,7 +437,7 @@ def main() -> None:
         summary = {
             "probe_version": "tournament-volume-v1",
             "format": args.format,
-            **survey(client, args.format, *args.survey, args.catalog_dsn),
+            **survey(client, args.format, *args.survey, args.catalog_dsn, args.window_days),
         }
         manifest = {"probe_version": summary["probe_version"], "requests": client.records}
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")

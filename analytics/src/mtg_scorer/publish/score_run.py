@@ -11,26 +11,30 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
+from ..ingest import wizards
 from ..ingest.topdeck import PARSER_VERSION, SOURCE, TopDeckSnapshot, read_saved_responses
 from ..scoring import SCORE_METHODS, ScoreContext, ScoreMethod, ScoringInput
 from ..tournament_features import (
     FEATURE_PIPELINE_VERSION,
     Cohort,
+    CohortPerformance,
     CohortRules,
     ExcludedEvent,
     card_features,
+    card_performance,
     card_usage,
+    cohort_performance,
     select_cohort,
 )
 from .artifact import canonical_bytes
 from .score_validation import validate_score_run
 
-SCHEMA_VERSION = "score-run-file-v1"
+SCHEMA_VERSION = "score-run-file-v2"
 ATTRIBUTION = "Data provided by TopDeck.gg (https://topdeck.gg)"
 # Basic lands would otherwise lead every volume ranking.
 POPULATION_RULE = "mainboard-cards-without-basic-lands-v1"
@@ -53,15 +57,21 @@ def load_cohort_rules(path: Path) -> CohortRules:
             ExcludedEvent(event["source_event_id"], event["reason"])
             for event in raw.get("excluded_events", ())
         ),
+        players_per_game=raw.get("players_per_game", 2),
     )
 
 
 def build_score_run(
-    snapshot: TopDeckSnapshot,
+    snapshot: TopDeckSnapshot | wizards.WizardsSnapshot,
     rules: CohortRules,
     methods: Iterable[ScoreMethod] = SCORE_METHODS,
+    *,
+    source: str = SOURCE,
+    parser_version: str = PARSER_VERSION,
+    attribution: str = ATTRIBUTION,
 ) -> dict[str, Any]:
-    """Select the cohort, compute card usage and run every method over it."""
+    """Select the cohort, compute card usage and run every method over it. The source,
+    parser and attribution default to TopDeck's."""
 
     methods = tuple(methods)
     cohort = select_cohort(
@@ -72,12 +82,15 @@ def build_score_run(
         incomplete_decks=snapshot.incomplete_mainboards,
     )
     usage = card_usage(cohort)
+    field = cohort_performance(cohort)
     population = [card for card in usage if card.name not in BASIC_LANDS]
-    inputs = [ScoringInput(card.oracle_id, card_features(card, cohort)) for card in population]
+    inputs = [
+        ScoringInput(card.oracle_id, card_features(card, cohort, field)) for card in population
+    ]
     context = ScoreContext(snapshot.dataset_snapshot_id, FEATURE_PIPELINE_VERSION)
     identity = {
         "dataset_snapshot_id": snapshot.dataset_snapshot_id,
-        "parser_version": PARSER_VERSION,
+        "parser_version": parser_version,
         "feature_pipeline_version": FEATURE_PIPELINE_VERSION,
         "cohort_rules_hash": rules.fingerprint,
         "population_rule": POPULATION_RULE,
@@ -87,8 +100,8 @@ def build_score_run(
         "schema_version": SCHEMA_VERSION,
         "score_run_id": "scores-" + sha256(canonical_bytes(identity)).hexdigest(),
         **identity,
-        "source": SOURCE,
-        "attribution": ATTRIBUTION,
+        "source": source,
+        "attribution": attribution,
         "raw_files": [
             {
                 "name": raw.name,
@@ -99,7 +112,7 @@ def build_score_run(
             }
             for raw in snapshot.raw_files
         ],
-        "cohort": _cohort_summary(cohort, snapshot),
+        "cohort": _cohort_summary(cohort, snapshot, field),
         "population": {
             "rule": POPULATION_RULE,
             "scored_cards": len(population),
@@ -119,6 +132,16 @@ def build_score_run(
                     "deck_count": card.archetype_deck_count,
                     "labelled_deck_count": card.labelled_deck_count,
                 },
+                "archetypes": {
+                    "distinct": card.archetype_count,
+                    "top": [
+                        {"label": label, "deck_count": decks} for label, decks in card.archetypes
+                    ],
+                },
+                "mainboard_copies": card.mainboard_copies,
+                "record": _record_dict(card.record),
+                "performance": _performance_dict(card_performance(card, field)),
+                "series": list(card.series),
             }
             for card in usage
         ],
@@ -126,7 +149,34 @@ def build_score_run(
     }
 
 
-def _cohort_summary(cohort: Cohort, snapshot: TopDeckSnapshot) -> dict[str, Any]:
+def _record_dict(record: Any) -> dict[str, int]:
+    return {
+        "decks": record.decks,
+        "wins": record.wins,
+        "losses": record.losses,
+        "draws": record.draws,
+    }
+
+
+def _performance_dict(performance: Any) -> dict[str, float | None]:
+    return {
+        "win_rate": performance.win_rate,
+        "win_rate_delta": performance.win_rate_delta,
+        "win_rate_ci95": performance.win_rate_ci95,
+        "top_cut_lift": performance.top_cut_lift,
+        "share_delta": performance.share_delta,
+    }
+
+
+def _rate(value: float | None) -> float | None:
+    return None if value is None else round(value, 4)
+
+
+def _cohort_summary(
+    cohort: Cohort,
+    snapshot: TopDeckSnapshot | wizards.WizardsSnapshot,
+    field: CohortPerformance,
+) -> dict[str, Any]:
     made_cut = {s.source_deck_id: s.made_top_cut for s in cohort.standings}
     return {
         "rules": {**_rules_dict(cohort.rules), "hash": cohort.rules.fingerprint},
@@ -155,7 +205,30 @@ def _cohort_summary(cohort: Cohort, snapshot: TopDeckSnapshot) -> dict[str, Any]
                 made_cut.get(deck.source_deck_id) is True for deck in cohort.decks
             ),
             "quarantined_card_lines_in_source": snapshot.quarantined_card_lines,
+            "team_events_skipped_in_source": snapshot.team_events_skipped,
+            "top_cut_known_decks": field.top_cut_known_decks,
+            "record_decks": field.record.decks,
+            "matches": field.matches,
         },
+        "performance": {
+            "players_per_game": field.players_per_game,
+            "record": _record_dict(field.record),
+            "win_rate": _rate(field.win_rate),
+            "top_cut_rate": _rate(field.top_cut_rate),
+        },
+        "series": {
+            "starts_on": field.series_starts_on.isoformat(),
+            "period_days": field.series_period_days,
+            "decks": list(field.series),
+        },
+        "archetypes": [
+            {
+                "label": archetype.label,
+                "deck_count": archetype.deck_count,
+                "core_cards": list(archetype.core_cards),
+            }
+            for archetype in field.archetypes
+        ],
     }
 
 
@@ -166,6 +239,7 @@ def _rules_dict(rules: CohortRules) -> dict[str, Any]:
         "starts_on": rules.starts_on,
         "ends_before": rules.ends_before,
         "min_decklist_coverage": rules.min_decklist_coverage,
+        "players_per_game": rules.players_per_game,
         "excluded_events": [
             {"source_event_id": event.source_event_id, "reason": event.reason}
             for event in rules.excluded_events
@@ -189,10 +263,14 @@ def _run(method: ScoreMethod, inputs: list[ScoringInput], context: ScoreContext)
     }
 
 
-def write_score_run(document: dict[str, Any], output_root: Path) -> Path:
+def write_score_run(
+    document: dict[str, Any],
+    output_root: Path,
+    validate: Callable[[dict[str, Any]], None] = validate_score_run,
+) -> Path:
     """Write ``<score_run_id>.json`` atomically; an identical rerun returns the same file."""
 
-    validate_score_run(document)
+    validate(document)
     output_root.mkdir(parents=True, exist_ok=True)
     destination = output_root / f"{document['score_run_id']}.json"
     if destination.exists():
@@ -225,4 +303,20 @@ def score_topdeck(source_dir: Path, cohort_file: Path, output_root: Path) -> Pat
     """Read saved TopDeck responses, score the cohort and write the run file."""
 
     document = build_score_run(read_saved_responses(source_dir), load_cohort_rules(cohort_file))
+    return write_score_run(document, output_root)
+
+
+def score_wizards(
+    source_dirs: Iterable[Path], cohort_file: Path, output_root: Path, resolver: wizards.Resolver
+) -> Path:
+    """Read the saved Wizards coverage of one or more events, score the cohort and write
+    the run file."""
+
+    document = build_score_run(
+        wizards.read_saved_events(source_dirs, resolver),
+        load_cohort_rules(cohort_file),
+        source=wizards.SOURCE,
+        parser_version=wizards.PARSER_VERSION,
+        attribution=wizards.ATTRIBUTION,
+    )
     return write_score_run(document, output_root)

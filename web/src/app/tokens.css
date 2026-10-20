@@ -112,16 +112,16 @@
   --sigil-edge: oklch(0.86 0.1 195 / 0.55);
   --sigil-edge-strong: oklch(0.86 0.1 195 / 0.7);
 
-  /* MTG color identity (pips, filters). Letter codes W U B R G C. */
+  /* MTG colors: the glow behind a selected color filter. Letter codes W U B R G C. */
   --mana-w: oklch(0.93 0.05 95);
   --mana-u: oklch(0.74 0.13 250);
-  --mana-b: oklch(0.32 0.04 300);
-  --mana-b-ring: oklch(0.6 0.05 300);
+  --mana-b: oklch(0.6 0.05 300);
   --mana-r: oklch(0.72 0.15 35);
   --mana-g: oklch(0.74 0.13 150);
   --mana-c: oklch(0.7 0.012 255);
   --mana-generic-ring: oklch(0.62 0.02 255);
-  --mana-ink: oklch(0.165 0.014 255);
+  /* The drop shadow printed under mana symbols on cards. */
+  --mana-shadow: oklch(0 0 0 / 0.85);
 
   /* Rarity */
   --rarity-common: oklch(0.72 0.016 255);
@@ -153,6 +153,12 @@
   /* Translucent layers */
   --header-bg: oklch(0.165 0.014 255 / 0.84);
   --toolbar-bg: oklch(0.165 0.014 255 / 0.9);
+  --format-active-bg: oklch(0.21 0.016 255 / 0.7);
+  /* Heat-map channels: a cell sets --tint, the alpha, on one of these hues. */
+  --heat-up-channels: 0.86 0.1 195;
+  --heat-down-channels: 0.7 0.16 25;
+  --heat-share-channels: 1 0 0;
+  --legend-swatch: oklch(0.86 0.1 195 / 0.2);
   --strip-bg: oklch(0.165 0.014 255 / 0.7);
   --table-bg: oklch(0.185 0.015 255 / 0.5);
   --chart-bg: oklch(0.185 0.015 255 / 0.6);
@@ -297,6 +303,11 @@
   --glow-thumb: 0 0 12px -2px oklch(0.86 0.1 195 / 0.7);
   --glow-dot: 0 0 8px var(--sigil-glow);
   --glow-text: 0 0 18px oklch(0.86 0.1 195 / 0.7);
+  /* Grade rings: only A grades glow; podium and preview rings glow wider. */
+  --glow-grade: 0 0 16px -4px oklch(0.86 0.1 195 / 0.65);
+  --glow-grade-lg: 0 0 26px -4px oklch(0.86 0.1 195 / 0.65);
+  --shadow-ring: 0 8px 16px -6px oklch(0 0 0 / 0.8);
+  --shadow-podium: 0 22px 36px -14px oklch(0 0 0 / 0.85);
   --glow-check: 0 0 10px -2px var(--sigil-glow);
   --glow-featured: 0 0 0 1px var(--sigil-edge), var(--shadow-featured);
   --focus-ring: 0 0 0 2px var(--bg-page), 0 0 0 3.5px var(--accent);

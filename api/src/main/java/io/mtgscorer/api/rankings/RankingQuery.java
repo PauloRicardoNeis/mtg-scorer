@@ -18,24 +18,61 @@ public record RankingQuery(
     String type,
     List<String> colors,
     String sort,
+    String order,
+    String view,
     int limit,
     int offset,
     String scoreRun) {
   public static final String DEFAULT_FORMAT = "Modern";
-  public static final String DEFAULT_METHOD = "max-ratio";
-  public static final int DEFAULT_LIMIT = 24;
+  public static final String DEFAULT_METHOD = "constructed-score";
+
+  /** Without an explicit method, the first of these the run has; else the run's first. */
+  public static final List<String> PREFERRED_METHODS = List.of(DEFAULT_METHOD, "max-ratio");
+
+  public static final int DEFAULT_LIMIT = 25;
   public static final int MAX_OFFSET = 10_000;
 
-  /** Orderings over stored values; "score" is the selected method's first output. */
-  public static final List<String> SORTS = List.of("score", "decks", "top_cuts", "name");
+  /**
+   * Orderings over stored values; "score" is the selected method's first output, "movement" the
+   * places gained since the previous run, "price" the USD price and "value" score per dollar.
+   */
+  public static final List<String> SORTS =
+      List.of(
+          "score",
+          "decks",
+          "top_cuts",
+          "name",
+          "win_rate",
+          "top_cut_lift",
+          "trend",
+          "movement",
+          "price",
+          "value");
+
+  /** Every ordering defaults to descending except name, which reads A to Z. */
+  public static final List<String> ORDERS = List.of("asc", "desc");
+
+  /** Risers gained places since the previous run, fallers lost them. */
+  public static final List<String> VIEWS = List.of("all", "risers", "fallers");
 
   public static final Set<String> PARAMETERS =
-      Set.of("format", "method", "q", "type", "color", "sort", "limit", "offset", "score_run_id");
+      Set.of(
+          "format",
+          "method",
+          "q",
+          "type",
+          "color",
+          "sort",
+          "order",
+          "view",
+          "limit",
+          "offset",
+          "score_run_id");
 
   public static RankingQuery parse(Map<String, List<String>> input) {
     CatalogQuery.validateKeys(input, PARAMETERS);
     String format = scalar(input, "format");
-    if (format != null && !format.matches("[A-Za-z0-9][A-Za-z0-9 ]{0,39}"))
+    if (format != null && !format.matches("[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}"))
       throw CatalogProblem.query("Invalid format.");
     String method = scalar(input, "method");
     if (method != null && !method.matches("[a-z0-9][a-z0-9-]{0,63}"))
@@ -57,12 +94,19 @@ public record RankingQuery(
     String sort = scalar(input, "sort");
     if (sort == null) sort = "score";
     else if (!SORTS.contains(sort)) throw CatalogProblem.query("Invalid sort.");
+    String order = scalar(input, "order");
+    if (order == null) order = sort.equals("name") ? "asc" : "desc";
+    else if (!ORDERS.contains(order)) throw CatalogProblem.query("Invalid order.");
+    String view = scalar(input, "view");
+    if (view == null) view = "all";
+    else if (!VIEWS.contains(view)) throw CatalogProblem.query("Invalid view.");
     int limit = bounded(input, "limit", DEFAULT_LIMIT, 1, 100, "Limit must be between 1 and 100.");
     int offset = bounded(input, "offset", 0, 0, MAX_OFFSET, "Offset must be between 0 and 10000.");
     String scoreRun = scalar(input, "score_run_id");
     if (scoreRun != null && !scoreRun.matches("scores-[0-9a-f]{64}"))
       throw CatalogProblem.query("Invalid score run ID.");
-    return new RankingQuery(format, method, q, type, colors, sort, limit, offset, scoreRun);
+    return new RankingQuery(
+        format, method, q, type, colors, sort, order, view, limit, offset, scoreRun);
   }
 
   private static String scalar(Map<String, List<String>> input, String key) {

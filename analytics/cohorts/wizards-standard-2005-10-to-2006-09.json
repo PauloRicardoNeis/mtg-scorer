@@ -1,0 +1,8 @@
+{
+  "version": "wizards-standard-2005-10-to-2006-09-v1",
+  "format_name": "Standard",
+  "starts_on": "2005-10-01",
+  "ends_before": "2006-10-01",
+  "min_decklist_coverage": 0.8,
+  "excluded_events": []
+}

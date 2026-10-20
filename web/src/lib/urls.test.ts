@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Printing } from "./api";
-import { colors, edition, printingParams, queryParams } from "./urls";
+import { edition, printingParams, queryParams, rankedCardHref } from "./urls";
 
 describe("queryParams", () => {
   it("returns empty params for empty input", () => {
@@ -63,28 +63,6 @@ describe("printingParams", () => {
   });
 });
 
-describe("colors", () => {
-  it("names unknown identity", () => {
-    expect(colors(null)).toBe("Unknown color identity");
-  });
-
-  it("names an empty identity colorless", () => {
-    expect(colors([])).toBe("Colorless");
-  });
-
-  it("names each color in the given order", () => {
-    expect(colors(["W"])).toBe("White");
-    expect(colors(["W", "U", "B", "R", "G"])).toBe(
-      "White · Blue · Black · Red · Green",
-    );
-    expect(colors(["G", "W"])).toBe("Green · White");
-  });
-
-  it("falls back to the raw symbol for unknown colors", () => {
-    expect(colors(["W", "P"])).toBe("White · P");
-  });
-});
-
 describe("edition", () => {
   const printing = {
     set_name: "Magic 2011",
@@ -105,5 +83,25 @@ describe("edition", () => {
         language: "fr",
       }),
     ).toBe("Commander Légendes #★12a (FR)");
+  });
+});
+
+describe("rankedCardHref", () => {
+  const card = {
+    oracle_id: "4457ed35-7c10-48c8-9776-456485fdf070",
+    preview_printing: {} as Printing,
+  };
+
+  it("opens the card in the catalog the ranking joined", () => {
+    expect(rankedCardHref(card, "snap 1")).toBe(
+      "/cards/4457ed35-7c10-48c8-9776-456485fdf070?catalog_snapshot_id=snap+1",
+    );
+  });
+
+  it("has no page for a card outside the catalog or without one", () => {
+    expect(rankedCardHref({ ...card, preview_printing: null }, "snap-1")).toBe(
+      null,
+    );
+    expect(rankedCardHref(card, null)).toBe(null);
   });
 });

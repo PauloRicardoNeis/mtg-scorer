@@ -8,6 +8,7 @@ vi.mock("next/navigation", async () => {
   return {
     useRouter: navigation.useRouter,
     usePathname: navigation.usePathname,
+    useSearchParams: navigation.useSearchParams,
   };
 });
 

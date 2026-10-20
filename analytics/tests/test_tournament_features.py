@@ -1,10 +1,13 @@
 """Cohort selection and per-card usage keep their denominators (SYNTHETIC data)."""
 
+from uuid import NAMESPACE_URL, uuid5
+
 import pytest
 from synthetic_topdeck import (
     BOLT,
     COUNTERSPELL,
     ISLAND,
+    commander_deck,
     deck,
     event,
     open_event,
@@ -165,6 +168,138 @@ def test_card_features_express_incidence_against_all_cohort_decks(tmp_path) -> N
     assert not features.specificity.is_known
 
 
+def test_archetype_concentration_is_the_chance_two_decks_share_a_label(tmp_path) -> None:
+    from mtg_scorer.tournament_features import cohort_performance
+
+    cohort = cohort_of(tmp_path, open_event(), weekly_event())
+    usage = usage_by_id(cohort)
+
+    # Bolt: Burn twice and Control once, so one of its three pairs of decks matches.
+    assert usage[BOLT].archetype_concentration == pytest.approx(1 / 3)
+    assert usage[COUNTERSPELL].archetype_concentration == 1.0
+    # The field: two Burn and three Control decks, so 1 + 3 of its 10 pairs match.
+    assert cohort_performance(cohort).archetype_concentration == pytest.approx(0.4)
+
+
+def test_archetype_concentration_is_unknown_below_two_labelled_decks(tmp_path) -> None:
+    rows = [
+        row(1, deck_obj=deck({"Bolt": (BOLT, 4)}), archetype="Burn"),
+        row(0, deck_obj=deck({"Bolt": (BOLT, 4), "Island": (ISLAND, 10)})),
+    ]
+    usage = usage_by_id(cohort_of(tmp_path, event("synthetic-sparse", rows)))
+
+    assert usage[BOLT].labelled_deck_count == 1
+    assert usage[BOLT].archetype_concentration is None
+    assert usage[ISLAND].archetype_concentration is None
+
+
+def test_card_features_carry_archetype_focus_and_home_adoption(tmp_path) -> None:
+    cohort = cohort_of(tmp_path, open_event(), weekly_event())
+    usage = usage_by_id(cohort)
+    bolt = card_features(usage[BOLT], cohort)
+    island = card_features(usage[ISLAND], cohort)
+
+    assert bolt.archetype_concentration.value == pytest.approx(1 / 3)
+    assert bolt.archetype_concentration.support == 3
+    # Both Burn decks play Bolt.
+    assert bolt.archetype_adoption.value == 1.0
+    assert (bolt.archetype_adoption.support, bolt.archetype_adoption.opportunity_count) == (2, 2)
+    # Island's home is alphabetically Burn: one of its two decks.
+    assert island.archetype_adoption.value == pytest.approx(1 / 2)
+    assert bolt.field_archetype_concentration == pytest.approx(0.4)
+
+
+EDH_RULES = CohortRules(
+    version="synthetic-cohort-v1",
+    format_name="EDH",
+    starts_on="2026-03-01",
+    ends_before="2026-09-01",
+    players_per_game=4,
+)
+KEFKA = str(uuid5(NAMESPACE_URL, "synthetic-oracle-kefka"))
+KINNAN = str(uuid5(NAMESPACE_URL, "synthetic-oracle-kinnan"))
+KRAUM = str(uuid5(NAMESPACE_URL, "synthetic-oracle-kraum"))
+TYMNA = str(uuid5(NAMESPACE_URL, "synthetic-oracle-tymna"))
+
+
+def edh_row(commanders, main, **extra):
+    return row(1, deck_obj=commander_deck(commanders, main), **extra)
+
+
+def test_unlabelled_commander_decks_belong_to_their_commanders(tmp_path) -> None:
+    from mtg_scorer.tournament_features import cohort_performance
+
+    rows = [
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1), "Island": (ISLAND, 30)}),
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}),
+        # A partner pair is one archetype, named in order whatever order it is listed in.
+        edh_row({"Tymna": (TYMNA, 1), "Kraum": (KRAUM, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Kraum": (KRAUM, 1), "Tymna": (TYMNA, 1)}, {"Counterspell": (COUNTERSPELL, 1)}),
+    ]
+    cohort = cohort_of(tmp_path, event("synthetic-edh", rows, fmt="EDH"), rules=EDH_RULES)
+    usage = usage_by_id(cohort)
+    field = cohort_performance(cohort)
+
+    assert usage[BOLT].archetypes == (("Kinnan", 2), ("Kraum + Tymna", 1))
+    assert usage[BOLT].labelled_deck_count == 3
+    assert (usage[TYMNA].archetype_label, usage[TYMNA].archetype_deck_count) == ("Kraum + Tymna", 2)
+    assert [(a.label, a.deck_count) for a in field.archetypes] == [
+        ("Kinnan", 2),
+        ("Kraum + Tymna", 2),
+    ]
+    assert field.archetype_concentration == pytest.approx(1 / 3)
+
+
+def test_a_source_label_wins_over_the_commanders(tmp_path) -> None:
+    rows = [
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}, archetype="Kinnan Turbo"),
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}),
+    ]
+    cohort = cohort_of(tmp_path, event("synthetic-edh", rows, fmt="EDH"), rules=EDH_RULES)
+
+    assert usage_by_id(cohort)[BOLT].archetypes == (("Kinnan", 1), ("Kinnan Turbo", 1))
+
+
+def test_a_commander_listed_under_two_names_stays_one_archetype(tmp_path) -> None:
+    rows = [
+        edh_row({"Kefka, Court Mage // Kefka, Ruler of Ruin": (KEFKA, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Kefka, Court Mage // Kefka, Ruler of Ruin": (KEFKA, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Kefka, Court Mage": (KEFKA, 1)}, {"Bolt": (BOLT, 1)}),
+    ]
+    usage = usage_by_id(
+        cohort_of(tmp_path, event("synthetic-edh", rows, fmt="EDH"), rules=EDH_RULES)
+    )
+
+    # The archetype carries the name the commander's own row is shown under.
+    assert usage[BOLT].archetypes == ((usage[KEFKA].name, 3),)
+    assert usage[KEFKA].name == "Kefka, Court Mage // Kefka, Ruler of Ruin"
+
+
+def test_a_commander_is_fully_focused_on_its_own_archetype(tmp_path) -> None:
+    rows = [
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Tymna": (TYMNA, 1), "Kraum": (KRAUM, 1)}, {"Bolt": (BOLT, 1)}),
+    ]
+    cohort = cohort_of(tmp_path, event("synthetic-edh", rows, fmt="EDH"), rules=EDH_RULES)
+    kinnan = card_features(usage_by_id(cohort)[KINNAN], cohort)
+
+    # It names its archetype, so it is scored like a card that defines a labelled one.
+    assert kinnan.archetype_concentration.value == 1.0
+    assert kinnan.archetype_adoption.value == 1.0
+
+
+def test_unlabelled_cards_have_unknown_archetype_features(tmp_path) -> None:
+    cohort = cohort_of(
+        tmp_path, event("synthetic-plain", [row(1, deck_obj=deck({"Bolt": (BOLT, 4)}))])
+    )
+    features = card_features(usage_by_id(cohort)[BOLT], cohort)
+
+    assert not features.archetype_concentration.is_known
+    assert not features.archetype_adoption.is_known
+    assert features.field_archetype_concentration is None
+
+
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
@@ -206,3 +341,86 @@ def test_the_rules_hash_changes_with_any_setting() -> None:
     )
 
     assert RULES.fingerprint != stricter.fingerprint
+
+
+def test_a_draw_shares_the_win_among_the_players_at_the_table() -> None:
+    from mtg_scorer.tournament_features import Record
+
+    record = Record(decks=2, wins=2, losses=1, draws=1)
+
+    assert record.win_rate(2) == pytest.approx(2.5 / 4)
+    assert record.win_rate(4) == pytest.approx(2.25 / 4)
+    assert Record().win_rate(2) is None
+
+
+def test_cards_carry_their_copies_record_and_leading_archetypes(tmp_path) -> None:
+    usage = usage_by_id(cohort_of(tmp_path, open_event(), weekly_event()))
+
+    bolt = usage[BOLT]
+    assert bolt.mainboard_copies == 10
+    assert (bolt.record.decks, bolt.record.wins, bolt.record.losses) == (3, 6, 1)
+    assert bolt.archetypes == (("Burn", 2), ("Control", 1))
+    assert bolt.archetype_count == 2
+
+
+def test_only_three_archetypes_are_named_and_the_rest_counted(tmp_path) -> None:
+    rows = [
+        row(1, deck_obj=deck({"Bolt": (BOLT, 4)}), archetype=label)
+        for label in ("Burn", "Prowess", "Jund", "Zoo")
+    ]
+    usage = usage_by_id(cohort_of(tmp_path, event("synthetic-many", rows)))
+
+    assert [label for label, _ in usage[BOLT].archetypes] == ["Burn", "Jund", "Prowess"]
+    assert usage[BOLT].archetype_count == 4
+
+
+def test_the_trend_series_counts_decks_per_period_up_to_the_window_end(tmp_path) -> None:
+    from mtg_scorer.tournament_features import card_performance, cohort_performance
+
+    listed = deck({"Bolt": (BOLT, 4)})
+    other = deck({"Counterspell": (COUNTERSPELL, 4)})
+    wide = CohortRules(
+        version="synthetic-cohort-v1",
+        format_name="Modern",
+        starts_on="2025-01-01",
+        ends_before="2026-09-01",
+    )
+    cohort = cohort_of(
+        tmp_path,
+        event(
+            "synthetic-early", [row(1, deck_obj=listed), row(0, deck_obj=other)], day="2025-09-10"
+        ),
+        event(
+            "synthetic-late", [row(1, deck_obj=listed), row(0, deck_obj=listed)], day="2026-08-31"
+        ),
+        event("synthetic-old", [row(1, deck_obj=listed)], day="2025-08-01"),
+        rules=wide,
+    )
+    field = cohort_performance(cohort)
+    bolt = usage_by_id(cohort)[BOLT]
+
+    assert field.series == (2,) + (0,) * 10 + (2,)
+    assert bolt.series == (1,) + (0,) * 10 + (2,)
+    # Bolt went from half the decks to all of them.
+    assert card_performance(bolt, field).share_delta == pytest.approx(0.5)
+
+
+def test_top_cut_lift_compares_with_the_field_rate(tmp_path) -> None:
+    from mtg_scorer.tournament_features import card_performance, cohort_performance
+
+    cohort = cohort_of(tmp_path, open_event(), weekly_event())
+    field = cohort_performance(cohort)
+
+    assert field.top_cut_rate == pytest.approx(2 / 3)
+    assert card_performance(usage_by_id(cohort)[BOLT], field).top_cut_lift == pytest.approx(1.5)
+
+
+def test_multiplayer_rules_need_at_least_two_players() -> None:
+    with pytest.raises(ValueError, match="players_per_game"):
+        CohortRules(
+            version="v1",
+            format_name="EDH",
+            starts_on="2026-03-01",
+            ends_before="2026-09-01",
+            players_per_game=1,
+        )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useState } from "react";
+import { useI18n } from "#i18n";
 import { IconButton } from "./primitives";
 
 export type ToastMessage = {
@@ -17,6 +18,7 @@ function ToastCard({
   toast: ToastMessage;
   onDismiss: () => void;
 }) {
+  const { t } = useI18n();
   // Pointer or keyboard focus on the toast holds it open.
   const [held, setHeld] = useState(false);
   const dismiss = useEffectEvent(onDismiss);
@@ -47,7 +49,12 @@ function ToastCard({
           {toast.action.label}
         </button>
       )}
-      <IconButton icon="x" label="Dismiss" size="sm" onClick={onDismiss} />
+      <IconButton
+        icon="x"
+        label={t.common.dismiss}
+        size="sm"
+        onClick={onDismiss}
+      />
     </div>
   );
 }

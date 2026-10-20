@@ -47,6 +47,33 @@ def main() -> None:
     )
     score_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
     score_parser.add_argument("--output-root", type=Path, required=True)
+    wizards_parser = subparsers.add_parser(
+        "score-wizards",
+        help="score one cohort of saved Wizards Pro Tour coverage pages into a run file; "
+        "card names resolve against the catalog in CATALOG_READ_DSN",
+    )
+    wizards_parser.add_argument(
+        "--source-dir",
+        type=Path,
+        action="append",
+        required=True,
+        help="one event's probe output with manifest.json; repeat for a season",
+    )
+    wizards_parser.add_argument("--cohort", type=Path, required=True, help="cohort rules JSON")
+    wizards_parser.add_argument("--output-root", type=Path, required=True)
+    overall_parser = subparsers.add_parser(
+        "score-overall", help="combine one score-run file per format into the overall run file"
+    )
+    overall_sources = overall_parser.add_mutually_exclusive_group(required=True)
+    overall_sources.add_argument(
+        "--run-file", type=Path, action="append", help="a format's score-run file; repeat"
+    )
+    overall_sources.add_argument(
+        "--active-runs-dir",
+        type=Path,
+        help="combine the runs active in SCORE_PUBLISH_DSN, read from this directory",
+    )
+    overall_parser.add_argument("--output-root", type=Path, required=True)
     publish_scores_parser = subparsers.add_parser(
         "publish-scores", help="atomically publish a score-run file and make it active"
     )
@@ -56,6 +83,12 @@ def main() -> None:
     )
     rollback_scores_parser.add_argument("--target", required=True)
     rollback_scores_parser.add_argument("--expected", required=True)
+    publish_prices_parser = subparsers.add_parser(
+        "publish-prices", help="publish card prices from a retained Scryfall bulk file"
+    )
+    publish_prices_parser.add_argument(
+        "--source-dir", type=Path, required=True, help="retained raw directory with manifest.json"
+    )
     arguments = parser.parse_args()
 
     if arguments.command == "ingest-scryfall":
@@ -92,6 +125,25 @@ def main() -> None:
         from .publish.score_run import score_topdeck
 
         print(score_topdeck(arguments.source_dir, arguments.cohort, arguments.output_root))
+    elif arguments.command == "score-wizards":
+        from .ingest.wizards import catalog_resolver
+        from .publish.score_run import score_wizards
+
+        print(
+            score_wizards(
+                arguments.source_dir,
+                arguments.cohort,
+                arguments.output_root,
+                catalog_resolver(os.environ["CATALOG_READ_DSN"]),
+            )
+        )
+    elif arguments.command == "score-overall":
+        from .publish.overall_run import active_run_files, score_overall
+
+        files = arguments.run_file or active_run_files(
+            os.environ["SCORE_PUBLISH_DSN"], arguments.active_runs_dir
+        )
+        print(score_overall(files, arguments.output_root))
     elif arguments.command == "publish-scores":
         from .publish.score_postgres import publish_score_run
 
@@ -101,6 +153,10 @@ def main() -> None:
 
         rollback_score_run(os.environ["SCORE_PUBLISH_DSN"], arguments.target, arguments.expected)
         print("Active score run rolled back; published runs retained.")
+    elif arguments.command == "publish-prices":
+        from .publish.prices import publish_prices
+
+        print(json.dumps(publish_prices(arguments.source_dir, os.environ["PRICE_PUBLISH_DSN"])))
 
 
 if __name__ == "__main__":
