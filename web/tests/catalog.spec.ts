@@ -12,7 +12,16 @@ test.beforeEach(async ({ page }) => {
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="488" height="680"><rect width="488" height="680" fill="#e7e3d8"/></svg>',
     }),
   );
+  await page.route("https://svgs.scryfall.io/card-symbols/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#cac5c0"/></svg>',
+    }),
+  );
 });
+
+// Card scans and mana symbols are the only images the site loads from Scryfall.
+const imageOrigins = ["https://cards.scryfall.io", "https://svgs.scryfall.io"];
 
 function control(action: string, ...args: string[]) {
   const python =
@@ -37,10 +46,7 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
     const url = new URL(request.url());
     if (
       !url.hostname.match(/^(127\.0\.0\.1|localhost)$/) &&
-      !(
-        request.resourceType() === "image" &&
-        url.origin === "https://cards.scryfall.io"
-      )
+      !(request.resourceType() === "image" && imageOrigins.includes(url.origin))
     )
       outbound.push(request.url());
   });
@@ -324,7 +330,7 @@ test("printing scans follow the pool and show both Delver sides", async ({
     ),
   );
   await page.goto("/cards?q=Lightning+Bolt&set=m11");
-  const scan = page.locator(".card-tile img");
+  const scan = page.locator(".card-tile img.card-image");
   await expect(scan).toHaveAttribute("src", bolt.image_uris.normal);
   await expect(scan).toHaveAttribute("alt", /Magic 2011 #149/);
   await expect(scan).toBeVisible();
