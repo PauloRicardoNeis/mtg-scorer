@@ -31,7 +31,9 @@ queries, and three guest Next.js pages. A small retained seed supports demos/tes
 below.** The preview runs on your computer and is not deployed publicly.
 
 Read the [measurement contract](docs/measurement-contract.md) before changing
-feature semantics or scoring. The [implementation plan](docs/implementation-plan.md)
+feature semantics or scoring, and the [scoring documentation](docs/scoring/README.md)
+for the mathematics and statistics behind every ranking, from cohort selection to
+the letter grades. The [implementation plan](docs/implementation-plan.md)
 records what was changed after the foundation release and what remains deliberately
 deferred. The
 [polyglot application boundary](docs/adr/0001-polyglot-application-boundary.md)

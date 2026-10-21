@@ -62,8 +62,14 @@ the inputs that explain them.
 
 | Method | Outputs | Notes |
 | --- | --- | --- |
+| `constructed-score` | `score` | 0-100 percentile blending shrunk win rate against the field (60%), shrunk top-cut conversion (25%) and meta share (15%); the default grading and the component of the overall grade |
+| `signature-score` | `score` | 0-100 percentile blending shrunk archetype focus (50%), home-archetype reliance (30%) and shrunk win rate (20%); unknown without archetype labels |
 | `foundation` | Staple, Build-around, Evidence, coverage | The original weighted model; `ScoreConfig` sets its weights |
 | `max-ratio` | `max_ratio` | Count ÷ the largest count in the stratum × 100; measures volume, not quality |
+
+Every formula, prior strength and edge case is written out in the
+[scoring documentation](../docs/scoring/README.md), with a worked example run
+through the real pipeline.
 
 To add a method:
 
