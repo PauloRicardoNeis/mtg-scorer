@@ -130,27 +130,23 @@ export function ColorFilter({
   selected,
   form,
   hideLabel = false,
+  id = `${name}-label`,
 }: {
   label: string;
   name: string;
   selected: string[];
   form?: string;
   hideLabel?: boolean;
+  /** The label's id, for a page that shows the same filter twice. */
+  id?: string;
 }) {
   const { t } = useI18n();
   return (
     <div>
-      <span
-        className={hideLabel ? "sr-only" : "group-label"}
-        id={`${name}-label`}
-      >
+      <span className={hideLabel ? "sr-only" : "group-label"} id={id}>
         {label}
       </span>
-      <div
-        role="group"
-        aria-labelledby={`${name}-label`}
-        className="segmented color-filter"
-      >
+      <div role="group" aria-labelledby={id} className="segmented color-filter">
         {filterColors.map((color) => (
           <label key={color} title={t.colors[color]}>
             <input

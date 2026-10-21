@@ -148,6 +148,21 @@ class CursorCodecTests {
   }
 
   @Test
+  void whereTextIsSearchedBindsTheCursorOnlyWithTextAndOffTheDefault() {
+    List<String> key = List.of("bolt", CARD);
+    String all = codec.encode("cards", "catalog-abc", cards("q", "elf"), key);
+    String types = codec.encode("cards", "catalog-abc", cards("q", "elf", "in", "type"), key);
+    String noText = codec.encode("cards", "catalog-abc", cards("in", "type"), key);
+
+    assertThat(codec.decode("cards", cardsAfter(all, "q", "elf", "in", "all"))).isNotNull();
+    assertThat(codec.decode("cards", cardsAfter(types, "q", "elf", "in", "type"))).isNotNull();
+    assertInvalidCursor(() -> codec.decode("cards", cardsAfter(types, "q", "elf")));
+    assertInvalidCursor(() -> codec.decode("cards", cardsAfter(all, "q", "elf", "in", "text")));
+    // Without text there is nothing to look for, wherever it would be.
+    assertThat(codec.decode("cards", cardsAfter(noText))).isNotNull();
+  }
+
+  @Test
   void anExplicitSnapshotMustBeTheCursorSnapshot() {
     String encoded =
         codec.encode("cards", "catalog-abc", cards("limit", "2"), List.of("bolt", CARD));
@@ -169,7 +184,7 @@ class CursorCodecTests {
     String encoded = codec.encode(resource, "catalog-abc", printings(filters), List.of(PRINTING));
 
     var cursor = codec.decode(resource, printingsAfter(encoded, filters));
-    assertThat(cursor.sort()).isEqualTo("scryfall_id_asc");
+    assertThat(cursor.sort()).isEqualTo("original_first");
     assertThat(cursor.last_key()).containsExactly(PRINTING);
     assertInvalidCursor(
         () -> codec.decode("printings:" + OTHER_CARD, printingsAfter(encoded, filters)));
@@ -249,7 +264,7 @@ class CursorCodecTests {
         tamper("fractional limit", node -> node.put("limit", 2.0)),
         tamper("other resource", node -> node.put("resource", "printings:" + CARD)),
         tamper("null resource", node -> node.putNull("resource")),
-        tamper("other sort", node -> node.put("sort", "scryfall_id_asc")),
+        tamper("other sort", node -> node.put("sort", "original_first")),
         tamper("numeric sort", node -> node.put("sort", 1)),
         tamper("other filters", node -> node.put("filter_hash", "0".repeat(64))),
         tamper("uppercase snapshot", node -> node.put("catalog_snapshot_id", "Catalog-ABC")),

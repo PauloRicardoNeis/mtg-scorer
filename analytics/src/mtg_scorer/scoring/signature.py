@@ -118,10 +118,10 @@ class SignatureMethod:
                 (home.opportunity_count or 0) + config.adoption_prior_decks
             )
             reliance[card.card_id] = adoption[card.card_id] - played
-            field_win = features.field_win_rate
-            if features.win_rate.is_known and field_win is not None:
+            field_win, win_rate = features.field_win_rate, features.win_rate.value
+            if win_rate is not None and field_win is not None:
                 games = features.win_rate.support
-                points = features.win_rate.value * games
+                points = win_rate * games
                 shrunk = (points + config.win_rate_prior_games * field_win) / (
                     games + config.win_rate_prior_games
                 )

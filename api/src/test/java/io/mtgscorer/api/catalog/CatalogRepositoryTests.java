@@ -73,6 +73,7 @@ class CatalogRepositoryTests {
 
   @Mock private NamedParameterJdbcTemplate jdbc;
   @Mock private ResultSet row;
+  @Captor private ArgumentCaptor<String> sql;
   @Captor private ArgumentCaptor<Map<String, Object>> args;
   @Captor private ArgumentCaptor<RowMapper<CatalogRepository.CardRow>> cardRows;
   @Captor private ArgumentCaptor<RowMapper<Printing>> printingRows;
@@ -163,6 +164,27 @@ class CatalogRepositoryTests {
 
     verify(jdbc).query(anyString(), args.capture(), cardRows.capture());
     assertThat(args.getValue()).containsEntry("anyColors", "U,R").doesNotContainKey("colors");
+  }
+
+  @Test
+  void aSearchLooksInTheNamedPartOfTheCardOnEveryFace() {
+    for (String in : CatalogQuery.SEARCH_IN)
+      repository.search("catalog-a", cards("q", "Human", "in", in), null);
+
+    verify(jdbc, atLeastOnce()).query(sql.capture(), args.capture(), cardRows.capture());
+    String names = "strpos(a.alias_key,:q)>0";
+    String types = "strpos(lower(c.type_line),lower(:q))>0";
+    String texts = "strpos(lower(f.oracle_text),lower(:q))>0";
+    List<String> searched = sql.getAllValues();
+    assertThat(searched.get(0)).contains(names, types, texts);
+    assertThat(searched.get(1)).contains(names).doesNotContain(types, texts);
+    assertThat(searched.get(2))
+        .contains(types, "strpos(lower(f.type_line),lower(:q))>0")
+        .doesNotContain(names, texts);
+    assertThat(searched.get(3))
+        .contains(texts, "strpos(lower(c.oracle_text),lower(:q))>0")
+        .doesNotContain(names, types);
+    assertThat(args.getValue()).containsEntry("q", "human");
   }
 
   @Test
@@ -284,7 +306,7 @@ class CatalogRepositoryTests {
     var query = printings("set", "m11", "rarity", "rare", "game", "arena", "limit", "5");
     var cursor =
         new CursorCodec.Cursor(
-            1, "printings:" + CARD, "catalog-a", "hash", "scryfall_id_asc", 5, List.of(PRINTING));
+            1, "printings:" + CARD, "catalog-a", "hash", "original_first", 5, List.of(PRINTING));
 
     repository.printings("catalog-a", CARD_ID, query, cursor);
 

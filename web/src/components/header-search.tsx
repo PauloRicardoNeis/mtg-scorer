@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, type RefObject } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "#i18n";
 import { Icon } from "./icon";
+import { SearchIn, searchField } from "./search-in";
 
 // The dataset a page shows: in the query on card pages, in the path on dataset pages.
 function currentSnapshot(): string | null {
@@ -24,49 +25,71 @@ function datasetInPath(): string | null {
   }
 }
 
-// Rankings' name filter lives in the header, so the box shows the current one.
-// Search params need a Suspense boundary on statically rendered pages.
+// Rankings' search lives in the header, so the box shows the current one and
+// where it looks. Search params need a Suspense boundary on statically rendered
+// pages.
 function RankingQuery({
   input,
+  scope,
 }: {
   input: RefObject<HTMLInputElement | null>;
+  scope: RefObject<HTMLSelectElement | null>;
 }) {
-  const q = useSearchParams().get("q") ?? "";
+  const params = useSearchParams();
+  const q = params.get("q") ?? "";
+  const field = searchField(params.get("in"));
+  /* eslint-disable react-hooks/immutability -- the effect writes the address into
+     the inputs the parent owns through refs; nothing of React's is mutated. */
   useEffect(() => {
-    // Refs attach before effects run, so the box exists here.
+    // Refs attach before effects run, so the box exists here; the commanders
+    // page searches names only and has no select.
     const box = input.current!;
+    const select = scope.current;
     box.value = q;
-    // Leaving rankings leaves no name filter behind in the box.
+    if (select) select.value = field;
+    // Leaving rankings leaves no search behind in the box.
     return () => {
       box.value = "";
+      if (select) select.value = "";
     };
-  }, [input, q]);
+  }, [input, scope, q, field]);
+  /* eslint-enable react-hooks/immutability */
   return null;
 }
 
-/** The query a rankings search navigates to: the same filters with a new name. */
-function rankingSearch(name: string | undefined): string {
+/** The query a rankings search navigates to: the same filters with new text. */
+function rankingSearch(text: string | undefined, field: string): string {
   const query = new URLSearchParams(location.search);
-  query.delete("q");
-  query.delete("offset");
-  if (name) query.set("q", name);
-  // The compare page searches its own table; every other rankings page the run.
-  const path = location.pathname.startsWith("/rankings/compare")
-    ? "/rankings/compare"
-    : "/rankings";
+  for (const key of ["q", "in", "offset"]) query.delete(key);
+  if (text) query.set("q", text);
+  if (text && field) query.set("in", field);
+  // The compare and commanders pages search their own tables; every other
+  // rankings page the run's cards.
+  const path =
+    ["/rankings/compare", "/rankings/commanders"].find((page) =>
+      location.pathname.startsWith(page),
+    ) ?? "/rankings";
   return query.size ? `${path}?${query}` : path;
 }
 
 /**
- * Name search: within the shown run's rankings on /rankings, catalog-wide
- * elsewhere. "/" focuses it from anywhere outside a field.
+ * Card search: within the shown run's rankings on /rankings, catalog-wide
+ * elsewhere, in the whole card or the part its select names. Commanders are
+ * searched by name. "/" focuses it from anywhere outside a field.
  */
 export function HeaderSearch() {
   const router = useRouter();
-  const rankings = /^\/rankings(\/|$)/.test(usePathname());
+  const pathname = usePathname();
+  const rankings = /^\/rankings(\/|$)/.test(pathname);
+  const commanders = pathname.startsWith("/rankings/commanders");
   const input = useRef<HTMLInputElement>(null);
+  const scope = useRef<HTMLSelectElement>(null);
   const { t } = useI18n();
-  const label = rankings ? t.search.rankedCards : t.search.cards;
+  const label = commanders
+    ? t.search.commanders
+    : rankings
+      ? t.search.rankedCards
+      : t.search.cards;
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
       if (
@@ -94,15 +117,17 @@ export function HeaderSearch() {
       action={rankings ? "/rankings" : "/cards"}
       onSubmit={(event) => {
         event.preventDefault();
+        const text = input.current?.value.trim();
+        const field = scope.current?.value ?? "";
         if (rankings) {
-          router.push(rankingSearch(input.current?.value.trim()));
+          router.push(rankingSearch(text, field));
           return;
         }
         const query = new URLSearchParams();
         const snapshot = currentSnapshot();
         if (snapshot) query.set("catalog_snapshot_id", snapshot);
-        const name = input.current?.value.trim();
-        if (name) query.set("q", name);
+        if (text) query.set("q", text);
+        if (text && field) query.set("in", field);
         router.push(query.size ? `/cards?${query}` : "/cards");
       }}
     >
@@ -110,6 +135,7 @@ export function HeaderSearch() {
         {label}
       </label>
       <div className="field">
+        {!commanders && <SearchIn ref={scope} />}
         <Icon name="search" size={15} />
         <input
           ref={input}
@@ -127,7 +153,7 @@ export function HeaderSearch() {
       </div>
       {rankings && (
         <Suspense fallback={null}>
-          <RankingQuery input={input} />
+          <RankingQuery input={input} scope={scope} />
         </Suspense>
       )}
     </form>

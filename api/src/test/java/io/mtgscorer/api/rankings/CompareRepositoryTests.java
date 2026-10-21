@@ -117,6 +117,18 @@ class CompareRepositoryTests {
   }
 
   @Test
+  void aSearchOfRulesTextLeavesNamesOut() {
+    when(jdbc.queryForObject(sql.capture(), args.capture(), eq(Long.class))).thenReturn(0L);
+
+    repository.count(RUNS, query("q", "Flying", "in", "text"));
+
+    assertThat(sql.getValue())
+        .contains("strpos(lower(c.oracle_text),lower(:q))>0")
+        .doesNotContain("strpos(lower(x.name),:q)>0");
+    assertThat(args.getValue()).containsEntry("q", "flying");
+  }
+
+  @Test
   void eachSortOrdersByItsValueThenName() {
     Map<String, Object> bound = new HashMap<>();
     assertThat(CompareRepository.orderBy(query(), bound))

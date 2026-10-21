@@ -46,8 +46,8 @@ class RankingServiceTests {
           "foundation", "foundation-v2", "Staple", "Weighted.", List.of("staple", "evidence"), 608);
   private static final List<RankedFormat> FORMATS =
       List.of(
-          new RankedFormat("Modern", "topdeck", MODERN, 231, 2),
-          new RankedFormat("Pioneer", "topdeck", PIONEER, 120, 2));
+          new RankedFormat("Modern", "topdeck", MODERN, 231, 2, 0),
+          new RankedFormat("Pioneer", "topdeck", PIONEER, 120, 2, 0));
 
   @Mock private RankingRepository repository;
 
@@ -121,7 +121,29 @@ class RankingServiceTests {
   }
 
   @Test
-  void withoutAFormatTheActiveModernRunIsRankedByTheConstructedScore() {
+  void withoutAFormatThePublishedOverallRunLeads() {
+    String overall = "scores-" + "e".repeat(64);
+    var grade =
+        new ScoreMethod(
+            "overall-grade",
+            "overall-grade-v1",
+            "Overall grade",
+            "Combined.",
+            List.of("grade"),
+            608);
+    var formats = new java.util.ArrayList<>(FORMATS);
+    formats.add(new RankedFormat("Overall", "topdeck", overall, 351, 2, 0));
+    when(repository.activeFormats()).thenReturn(formats);
+    when(repository.run(overall)).thenReturn(Optional.of(run(overall, "Overall", grade)));
+
+    var page = service().rankings(query());
+
+    assertThat(page.score_run().score_run_id()).isEqualTo(overall);
+    assertThat(page.method_id()).isEqualTo("overall-grade");
+  }
+
+  @Test
+  void withoutAFormatOrAnOverallRunTheActiveModernRunIsRankedByTheConstructedScore() {
     String previous = "scores-" + "d".repeat(64);
     var query = query("limit", "10");
     var run = run(MODERN, "Modern", CONSTRUCTED, FOUNDATION, VOLUME);
@@ -136,7 +158,13 @@ class RankingServiceTests {
     var windows =
         List.of(
             new RunWindow(
-                MODERN, "topdeck", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 9, 1), 231, true));
+                MODERN,
+                "topdeck",
+                LocalDate.of(2026, 3, 1),
+                LocalDate.of(2026, 9, 1),
+                231,
+                true,
+                0));
     when(repository.windows("Modern")).thenReturn(windows);
     when(repository.page(MODERN, previous, "constructed-score", "score", query))
         .thenReturn(List.of(card()));

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from test_bulk_catalog import bulk_fixture
 
-import mtg_scorer.publish.postgres as postgres
+from mtg_scorer.publish import postgres
 from mtg_scorer.publish.artifact import canonical_bytes, export_catalog, verify_artifact
 from mtg_scorer.publish.bulk import export_bulk_catalog
 from mtg_scorer.publish.stream import verify_publication

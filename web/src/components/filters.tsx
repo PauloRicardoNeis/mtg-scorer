@@ -6,6 +6,7 @@ import { useI18n } from "#i18n";
 import type { Snapshot } from "@/lib/api";
 import { Icon } from "./icon";
 import { ColorFilter } from "./mana";
+import { SearchIn } from "./search-in";
 
 // A card matches a type on any face, as Scryfall's t: search does.
 export const cardTypes = [
@@ -78,6 +79,7 @@ export function Filters({
           <div className="search-field">
             <label htmlFor="q">{t.filters.name}</label>
             <div className="field">
+              <SearchIn form={form} defaultValue={current.get("in")} />
               <Icon name="search" size={15} />
               <input
                 id="q"
@@ -141,6 +143,8 @@ export function Filters({
           for (const [key, value] of new FormData(event.currentTarget))
             if (typeof value === "string" && value !== "")
               values.append(key, value);
+          // Where to look means nothing without text to look for.
+          if (!values.has("q")) values.delete("in");
           startTransition(() => router.push(`/cards?${values}`));
         }}
       >

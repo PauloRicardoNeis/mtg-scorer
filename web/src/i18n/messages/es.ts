@@ -8,6 +8,7 @@ export const es: Messages = {
       "Explora un catálogo versionado de cartas de Magic y su conjunto de datos de origen. Acceso de invitado; sin puntuaciones de torneo.",
     rankings: "MTG Scorer · Ranking de cartas",
     compare: "MTG Scorer · Comparar formatos",
+    commanders: "MTG Scorer · Ranking de comandantes",
   },
   layout: {
     skip: "Saltar al contenido",
@@ -28,6 +29,14 @@ export const es: Messages = {
   search: {
     cards: "Buscar cartas",
     rankedCards: "Buscar cartas clasificadas",
+    commanders: "Buscar comandantes",
+    in: "Buscar en",
+    fields: {
+      all: "Toda la carta",
+      name: "Nombre",
+      type: "Línea de tipo",
+      text: "Texto de reglas",
+    },
   },
   common: {
     apply: "Aplicar",
@@ -133,7 +142,7 @@ export const es: Messages = {
   },
   filters: {
     label: "Filtros del pool",
-    name: "Nombre de carta o cara",
+    name: "Nombre, tipo o texto",
     namePlaceholder: "Prueba con Insectile Aberration…",
     find: "Buscar cartas",
     searching: "Buscando…",
@@ -203,10 +212,77 @@ export const es: Messages = {
     source: "Fuente en Scryfall",
     sourceFor: "para {set} (se abre en una pestaña nueva)",
     morePrintings: "Más impresiones",
+    decksHeading: "Mazos de torneo",
+    decksLead:
+      "Mazos de torneo publicados que jugaron esta carta, del evento más reciente al más antiguo. Cada formato muestra su ventana actual.",
+    decksFormats: "Formatos de los mazos",
+    decksRange: {
+      one: "{first}–{last} de {count} mazo",
+      many: "{first}–{last} de {count} de mazos",
+      other: "{first}–{last} de {count} mazos",
+    },
+    decksWindow: "Eventos: {window}",
+    decksNone: "Ningún mazo de torneo publicado jugó esta carta.",
+    decksNoneHere: "No hay mazos con esta carta en esta página.",
+    decksNoneBody:
+      "Solo cuentan los eventos de los datos de torneo publicados, así que una carta que no aparece aquí puede jugarse en otros sitios.",
+    decksPages: "Páginas de mazos",
+    previousDecks: "Mazos anteriores",
+    moreDecks: "Más mazos",
+    deckEventOpens: "(se abre en una pestaña nueva)",
+    deckPlayers: {
+      one: "{count} jugador",
+      many: "{count} de jugadores",
+      other: "{count} jugadores",
+    },
+    deckCopies: "{count}×",
+    deckCopiesLabel: {
+      one: "{count} copia en el mazo principal",
+      many: "{count} de copias en el mazo principal",
+      other: "{count} copias en el mazo principal",
+    },
+    deckRecord: "Resultado: victorias, derrotas, empates",
+    deckRecordValue: "{wins}–{losses}–{draws}",
+    deckNoRecord: "Sin resultado",
+    deckFinish: "{rank}.º",
+    deckOpen: "Abrir el mazo {archetype} de {event}",
     noteTitle: "Sin datos de torneos",
     noteBody:
       "No hay ningún conjunto de datos de torneos asociado. Estas impresiones no permiten deducir ningún recuento de uso ni puntuación competitiva.",
     inspectMethodology: "Examinar la fuente y la metodología",
+  },
+  deckPage: {
+    back: "Volver a {card}",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "Resultados del evento",
+    commanders: {
+      one: "Comandante",
+      many: "Comandantes",
+      other: "Comandantes",
+    },
+    mainDeck: "Mazo principal",
+    sideboard: "Banquillo",
+    cardCount: {
+      one: "{count} carta",
+      many: "{count} de cartas",
+      other: "{count} cartas",
+    },
+    groups: {
+      creature: "Criaturas",
+      planeswalker: "Planeswalkers",
+      battle: "Batallas",
+      instant: "Instantáneos",
+      sorcery: "Conjuros",
+      artifact: "Artefactos",
+      enchantment: "Encantamientos",
+      land: "Tierras",
+      misc: "Otras cartas",
+    },
+    noSideboard:
+      "La fuente no informó el banquillo de este mazo, o no lo informó completo.",
+    noList:
+      "Este mazo se publicó antes de que se guardaran las listas de los mazos.",
+    fromCard: "la carta desde la que llegaste",
   },
   dataset: {
     back: "Explora este catálogo",
@@ -278,6 +354,11 @@ export const es: Messages = {
       description:
         "0–100. Premia las cartas que se concentran en pocos arquetipos (50 %), que su propio arquetipo juega mucho más que otros mazos (30 %) y cuyos mazos ganan (20 %), así que las cartas que se juegan en todas partes quedan abajo. Las muestras pequeñas se acercan a la media del meta, y 50 es la mediana de las cartas clasificadas.",
     },
+    "hidden-gem-score": {
+      label: "Puntuación de joya oculta",
+      description:
+        "0–100. Encuentra cartas que juegan pocos mazos, pero que esos mazos usan como pieza central y con las que ganan. Multiplica la frecuencia con que una carta se juega como playset, cuánto superan sus mazos el porcentaje de victorias (70 %) y la conversión a top cut (30 %) del meta, y en cuántos eventos aparece, y luego descuenta según la cuota de meta: una carta en el 2 % de los mazos conserva la mitad de su puntuación, y los staples, casi nada. Las muestras pequeñas se acercan al meta. Las cartas cuyos mazos no superan al meta puntúan 0, y 50 es la mediana del resto; los formatos singleton no tienen puntuación.",
+    },
     foundation: {
       label: "Staple, Pieza central y Evidencia",
       description:
@@ -344,17 +425,34 @@ export const es: Messages = {
     eyebrowOverall: "Ranking general de cartas",
     leadSignature:
       "Cada carta se puntúa según cuánto pertenece a una sola estrategia: en cuán pocos arquetipos se juega, cuánto más la juega su arquetipo principal que los demás mazos y cómo rinden esos mazos. Los staples que se juegan en todas partes quedan abajo.",
+    leadHiddenGem:
+      "Cartas que juegan pocos mazos, puntuadas según cuánto apuestan por ellas los mazos que las juegan y cómo rinden: con qué frecuencia llevan un playset completo, cuánto superan al meta y en cuántos eventos, con un descuento por cuota de meta para que los staples queden abajo.",
     leadOverall:
       "Una nota por carta a partir de su nota de Construido en cada formato que la clasifica. Cada formato cuenta según cuántas listas lo respaldan, y una carta probada en muchos formatos supera a una que destaca en uno solo.",
     unscoredTitle: "Sin {method} para {format}.",
     unscoredSignature:
       "Necesita etiquetas de arquetipo, y las listas de {source} de este formato no las tienen.",
+    unscoredHiddenGem:
+      "Busca cartas que los mazos juegan como playset, y en este formato casi ningún mazo lleva cuatro copias de una carta.",
     unscoredBody: "Este método no pudo puntuar ninguna carta en este periodo.",
     rankBy: "Ordenar por {method}",
     overallNote:
       "La nota general combina la nota de Construido de cada formato. Los porcentajes de victorias no se agrupan entre formatos, porque las partidas uno contra uno y a cuatro jugadores difieren: vs. meta es la diferencia de cada formato con su propio meta, ponderada por partidas.",
     needsArchetypeLabels: "necesita etiquetas de arquetipo",
+    needsPlaysets: "necesita playsets",
     noScores: "sin puntuaciones",
+    menu: "Filtros",
+    menuActive: {
+      one: "{count} filtro activo",
+      many: "{count} de filtros activos",
+      other: "{count} filtros activos",
+    },
+    menuShow: "Ver resultados",
+    sortBy: "Ordenar por",
+    order: "Orden",
+    descending: "Descendente",
+    ascending: "Ascendente",
+    sortMovement: "Cambio de puesto",
   },
   rankingTable: {
     grade: "Nota",
@@ -497,5 +595,42 @@ export const es: Messages = {
       other: "La {method} califica {graded} de {count} formatos.",
     },
     unlabelledFormats: "Los demás no tienen etiquetas de arquetipo.",
+  },
+  commanders: {
+    eyebrow: "Ranking de comandantes",
+    lead: "Cada comandante y cada pareja de comandantes, clasificados según cuántos mazos lideran, junto con el rendimiento de esos mazos en torneos: porcentaje de victorias frente al meta, conversión a top cut y tendencia.",
+    count: "Comandantes",
+    podium: "Comandantes más jugados",
+    kinds: "Ranking",
+    cards: "Cartas",
+    commanders: "Comandantes",
+    filters: "Filtros de comandantes",
+    updating: "Actualizando los comandantes…",
+    minDecks: "Mínimo de mazos",
+    anyDecks: "Cualquier número de mazos",
+    atLeast: "{count}+ mazos",
+    perPage: "Comandantes por página",
+    commander: "Comandante",
+    events: "Eventos",
+    decks: "Mazos",
+    range: {
+      one: "{first}–{last} de {count} comandante",
+      many: "{first}–{last} de {count} de comandantes",
+      other: "{first}–{last} de {count} comandantes",
+    },
+    noneMatch: "Ningún comandante coincide",
+    emptyTitle: "Ningún comandante coincide.",
+    emptyBody: "Relaja el filtro de color o de mazos, o busca otro nombre.",
+    noneTitle: "No hay comandantes clasificados en {format}.",
+    noneBody:
+      "Los comandantes se clasifican en los formatos cuyos mazos indican uno, en los cálculos de puntuaciones publicados desde que existe el ranking de comandantes. Elige otro periodo u otro formato.",
+    rankCards: "Ranking de cartas de {format}",
+    selected: "Comandante seleccionado",
+    coreCards: {
+      one: "{count} carta en la mayoría de sus mazos",
+      many: "{count} de cartas en la mayoría de sus mazos",
+      other: "{count} cartas en la mayoría de sus mazos",
+    },
+    note: "Una pareja de comandantes cuenta como un solo comandante. Los recuentos salen de listas publicadas en eventos competitivos que publicaron al menos la mitad de sus listas. Un top cut solo cuenta si se conoce el resultado, y los porcentajes de victorias salen de los resultados de encuentros registrados. Los puestos se mantienen al filtrar.",
   },
 };

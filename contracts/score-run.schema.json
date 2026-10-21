@@ -113,6 +113,14 @@
             ],
             "properties": {
               "source_event_id": { "$ref": "#/$defs/text" },
+              "name": {
+                "description": "The event as its source names it; from parser topdeck-bulk-v4 on.",
+                "anyOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }]
+              },
+              "url": {
+                "description": "The source's page for the event.",
+                "anyOf": [{ "type": "string", "pattern": "^https://\\S+$" }, { "type": "null" }]
+              },
               "occurred_on": { "type": "string", "format": "date" },
               "players": { "type": ["integer", "null"], "minimum": 1 },
               "decklists": { "type": ["integer", "null"], "minimum": 0 },
@@ -182,12 +190,22 @@
           }
         },
         "archetypes": {
-          "description": "Each archetype label with the cards at least half of its decks play.",
+          "description": "Each archetype label with the cards at least half of its decks play. From feature pipeline card-usage-v5 on, it also carries its commanders and its decks' events, top cuts, record, performance and trend, as a card does.",
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": ["label", "deck_count", "core_cards"],
+            "dependentRequired": {
+              "record": [
+                "commanders",
+                "event_count",
+                "top_cut_count",
+                "top_cut_known_decks",
+                "performance",
+                "series"
+              ]
+            },
             "properties": {
               "label": { "$ref": "#/$defs/text" },
               "deck_count": { "type": "integer", "minimum": 1 },
@@ -195,7 +213,19 @@
                 "type": "array",
                 "uniqueItems": true,
                 "items": { "$ref": "#/$defs/oracle_id" }
-              }
+              },
+              "commanders": {
+                "description": "The commanders that name the archetype, in label order; empty for a source's label.",
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/oracle_id" }
+              },
+              "event_count": { "type": "integer", "minimum": 1 },
+              "top_cut_count": { "type": ["integer", "null"], "minimum": 0 },
+              "top_cut_known_decks": { "$ref": "#/$defs/count" },
+              "record": { "$ref": "#/$defs/record" },
+              "performance": { "$ref": "#/$defs/performance" },
+              "series": { "$ref": "#/$defs/series" }
             }
           }
         }
@@ -272,25 +302,83 @@
           },
           "mainboard_copies": { "type": "integer", "minimum": 1 },
           "record": { "$ref": "#/$defs/record" },
-          "performance": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "win_rate",
-              "win_rate_delta",
-              "win_rate_ci95",
-              "top_cut_lift",
-              "share_delta"
-            ],
-            "properties": {
-              "win_rate": { "$ref": "#/$defs/fraction" },
-              "win_rate_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
-              "win_rate_ci95": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-              "top_cut_lift": { "type": ["number", "null"], "minimum": 0 },
-              "share_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 }
-            }
+          "performance": { "$ref": "#/$defs/performance" },
+          "series": { "$ref": "#/$defs/series" },
+          "decks": {
+            "description": "The card's decks by their position in the run's decks, ascending; from feature pipeline card-usage-v7 on.",
+            "type": "array",
+            "items": { "$ref": "#/$defs/count" }
           },
-          "series": { "$ref": "#/$defs/series" }
+          "deck_copies": {
+            "description": "The mainboard copies each of the card's decks plays, in the order of decks.",
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "dependentRequired": { "decks": ["deck_copies"], "deck_copies": ["decks"] }
+      }
+    },
+    "decks": {
+      "description": "The cohort's decks, newest event first; from feature pipeline card-usage-v7 on. A deck's result is what its standing reported, null when unknown.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_deck_id",
+          "source_event_id",
+          "archetype",
+          "final_rank",
+          "made_top_cut",
+          "record"
+        ],
+        "dependentRequired": { "commanders": ["sideboard"], "sideboard": ["commanders"] },
+        "properties": {
+          "source_deck_id": { "$ref": "#/$defs/text" },
+          "source_event_id": { "$ref": "#/$defs/text" },
+          "archetype": { "anyOf": [{ "$ref": "#/$defs/text" }, { "type": "null" }] },
+          "final_rank": { "type": ["integer", "null"], "minimum": 1 },
+          "made_top_cut": { "type": ["boolean", "null"] },
+          "commanders": {
+            "description": "The cards the source listed as the deck's commanders, by oracle id; from feature pipeline card-usage-v8 on.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/oracle_id" }
+          },
+          "sideboard": {
+            "description": "The sideboard the source reported, by oracle id; null when it reported none or not all of it. From feature pipeline card-usage-v8 on.",
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["oracle_id", "name", "copies"],
+                  "properties": {
+                    "oracle_id": { "$ref": "#/$defs/oracle_id" },
+                    "name": { "$ref": "#/$defs/text" },
+                    "copies": { "type": "integer", "minimum": 1 }
+                  }
+                }
+              },
+              { "type": "null" }
+            ]
+          },
+          "record": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["wins", "losses", "draws"],
+                "properties": {
+                  "wins": { "$ref": "#/$defs/count" },
+                  "losses": { "$ref": "#/$defs/count" },
+                  "draws": { "$ref": "#/$defs/count" }
+                }
+              },
+              { "type": "null" }
+            ]
+          }
         }
       }
     },
@@ -377,6 +465,18 @@
         "wins": { "$ref": "#/$defs/count" },
         "losses": { "$ref": "#/$defs/count" },
         "draws": { "$ref": "#/$defs/count" }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["win_rate", "win_rate_delta", "win_rate_ci95", "top_cut_lift", "share_delta"],
+      "properties": {
+        "win_rate": { "$ref": "#/$defs/fraction" },
+        "win_rate_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "win_rate_ci95": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "top_cut_lift": { "type": ["number", "null"], "minimum": 0 },
+        "share_delta": { "type": ["number", "null"], "minimum": -1, "maximum": 1 }
       }
     }
   }

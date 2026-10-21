@@ -49,7 +49,7 @@ class CompareServiceTests {
     when(repository.count(List.of(LEGACY, MODERN), query)).thenReturn(1200L);
     when(repository.page(List.of(LEGACY, MODERN), query)).thenReturn(List.of());
     when(rankings.activeCatalog()).thenReturn("catalog-a");
-    var overall = List.of(new RankedFormat("Overall", "topdeck", MODERN, 92506, null));
+    var overall = List.of(new RankedFormat("Overall", "topdeck", MODERN, 92506, null, 0));
     when(rankings.activeFormats()).thenReturn(overall);
 
     var page = service().compare(query);

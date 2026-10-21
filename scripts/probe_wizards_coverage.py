@@ -81,6 +81,7 @@ class Archive:
                 }
             )
             return payload
+        payload, status = b"", 0
         for attempt in range(attempts):
             time.sleep(2)
             try:

@@ -45,6 +45,7 @@ describe("isGraded and defaultMethod", () => {
   it("grades the percentile scores and not relative volume", () => {
     expect(isGraded("constructed-score")).toBe(true);
     expect(isGraded("signature-score")).toBe(true);
+    expect(isGraded("hidden-gem-score")).toBe(true);
     expect(isGraded("max-ratio")).toBe(false);
   });
 

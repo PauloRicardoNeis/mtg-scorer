@@ -97,7 +97,13 @@ public final class RankingModels {
       String source,
       String score_run_id,
       @Schema(minimum = "0") int decks,
-      @Schema(types = {"integer", "null"}) Integer players_per_game) {}
+      @Schema(types = {"integer", "null"}) Integer players_per_game,
+      @Schema(
+              minimum = "0",
+              description =
+                  "Commanders the run ranks; 0 in formats without commanders and in runs from"
+                      + " before commanders were ranked.")
+          int commanders) {}
 
   public record RunWindow(
       String score_run_id,
@@ -106,8 +112,8 @@ public final class RankingModels {
       @Schema(format = "date", description = "Exclusive end of the cohort window.")
           LocalDate window_ends_before,
       @Schema(minimum = "0") int decks,
-      @Schema(description = "Whether this is the run shown without a pinned run.")
-          boolean active) {}
+      @Schema(description = "Whether this is the run shown without a pinned run.") boolean active,
+      @Schema(minimum = "0", description = "Commanders the run ranks.") int commanders) {}
 
   public record ArchetypeShare(
       String label,
@@ -236,6 +242,97 @@ public final class RankingModels {
                   "When the source last refreshed the published prices; null without any.")
           OffsetDateTime prices_updated_at,
       List<RankedCard> items) {}
+
+  /** A card that names a commander archetype, with its details from the active catalog. */
+  public record CommanderCard(
+      UUID oracle_id,
+      @Schema(description = "As the run's decks most often spell it.") String name,
+      @Schema(types = {"string", "null"}) String mana_cost,
+      @Schema(types = {"string", "null"}) String type_line,
+      @Schema(types = {"array", "null"}) List<String> color_identity,
+      // Documented as nullable by CatalogOpenApi: null when the card is not in the active catalog.
+      Printing preview_printing) {}
+
+  /**
+   * A commander, or a partner pair, as the archetype of the decks it leads. Its numbers describe
+   * those decks the way a ranked card's describe the decks that play the card.
+   */
+  public record RankedCommander(
+      @Schema(minimum = "1", description = "Position by decks among the run's commanders.")
+          long rank,
+      @Schema(
+              types = {"integer", "null"},
+              description =
+                  "Places gained since the previous run of this format; null without one or when"
+                      + " the commander was not ranked there.")
+          Integer rank_change,
+      @Schema(description = "The commander's name, or a partner pair's joined by \" + \".")
+          String label,
+      @Schema(description = "One card, or two for a partner pair, in label order.")
+          List<CommanderCard> commanders,
+      @Schema(
+              types = {"array", "null"},
+              description =
+                  "The commanders' combined color identity in WUBRG order, empty when colorless;"
+                      + " null when no commander is in the active catalog.")
+          List<String> colors,
+      @Schema(minimum = "1") int deck_count,
+      @Schema(minimum = "1") int event_count,
+      @Schema(
+              types = {"integer", "null"},
+              description = "Unknown when none of its decks has a known top-cut result.")
+          Integer top_cut_count,
+      @Schema(minimum = "0") int top_cut_known_decks,
+      @Schema(
+              types = {"number", "null"},
+              description = "Match points per game of its decks, 0-1.")
+          Double win_rate,
+      @Schema(
+              types = {"number", "null"},
+              description = "Win rate minus the field's, as a fraction.")
+          Double win_rate_delta,
+      @Schema(
+              types = {"number", "null"},
+              description = "Half-width of the 95% interval.")
+          Double win_rate_ci95,
+      @Schema(
+              types = {"integer", "null"},
+              description = "Games behind the win rate.")
+          Integer games,
+      @Schema(
+              types = {"number", "null"},
+              description = "Top-cut conversion divided by the field's.")
+          Double top_cut_lift,
+      @Schema(
+              types = {"number", "null"},
+              description = "Meta share in the newer half of the trend series minus the older.")
+          Double share_delta,
+      @Schema(description = "Its decks in each trend period, oldest first.")
+          List<Integer> series_decks,
+      @Schema(minimum = "0", description = "Cards at least half of its decks play.")
+          int core_card_count) {}
+
+  public record CommanderPage(
+      ScoreRunSummary score_run,
+      List<RankedFormat> formats,
+      @Schema(types = {"string", "null"}) String catalog_snapshot_id,
+      @Schema(minimum = "0") long total,
+      @Schema(minimum = "0") int offset,
+      @Schema(minimum = "1") int limit,
+      String sort,
+      @Schema(allowableValues = {"asc", "desc"}) String order,
+      @Schema(
+              types = {"string", "null"},
+              description = "The run rank changes are measured against.")
+          String previous_score_run_id,
+      @Schema(minimum = "0", description = "The most decks any commander has in this run.")
+          int max_deck_count,
+      @Schema(
+              description =
+                  "Every published window of this format, latest end first, one run per source"
+                      + " and window.")
+          List<RunWindow> windows,
+      List<RankedCommander> items) {}
 
   public record CompareFormat(
       String format_name,

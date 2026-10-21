@@ -79,6 +79,20 @@ export function usd(value: number, locale = "en"): string {
   return dollars(locale).format(value);
 }
 
+const wholeDollars = perLocale(
+  (locale) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }),
+);
+
+/** A deck or card price: cents below $100 ("$4.20"), whole dollars from it ("$1,284"). */
+export function price(value: number, locale = "en"): string {
+  return value >= 100 ? wholeDollars(locale).format(value) : usd(value, locale);
+}
+
 const wholes = perLocale(
   (locale) => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
 );
@@ -165,6 +179,22 @@ export function dateWindow(
 /** An instant's UTC day with its year: "Sep 27, 2026". */
 export function dateWithYear(instant: string, locale = "en"): string {
   return days(locale).format(new Date(instant));
+}
+
+const monthDays = perLocale(
+  (locale) =>
+    new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }),
+);
+
+/** An ISO date as a short day without its year: "2026-10-13" → "Oct 13". */
+export function day(isoDate: string, locale = "en"): string {
+  return monthDays(locale).format(
+    new Date(`${isoDate.slice(0, 10)}T00:00:00Z`),
+  );
 }
 
 const instants = perLocale(

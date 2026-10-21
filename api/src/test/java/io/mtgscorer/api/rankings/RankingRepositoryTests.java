@@ -66,9 +66,10 @@ class RankingRepositoryTests {
     when(row.getString("score_run_id")).thenReturn(RUN);
     when(row.getInt("decks")).thenReturn(231);
     when(row.getObject("players_per_game", Integer.class)).thenReturn(2);
+    when(row.getInt("commanders")).thenReturn(0);
 
     assertThat(formatRows.getValue().mapRow(row, 0))
-        .isEqualTo(new RankedFormat("Modern", "topdeck", RUN, 231, 2));
+        .isEqualTo(new RankedFormat("Modern", "topdeck", RUN, 231, 2, 0));
   }
 
   @Test
@@ -170,11 +171,12 @@ class RankingRepositoryTests {
     when(row.getObject("window_ends_before", LocalDate.class)).thenReturn(LocalDate.of(2026, 9, 1));
     when(row.getInt("decks")).thenReturn(231);
     when(row.getBoolean("active")).thenReturn(true);
+    when(row.getInt("commanders")).thenReturn(0);
 
     assertThat(windowRows.getValue().mapRow(row, 0))
         .isEqualTo(
             new RunWindow(
-                RUN, "topdeck", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 9, 1), 231, true));
+                RUN, "topdeck", LocalDate.of(2026, 3, 1), LocalDate.of(2026, 9, 1), 231, true, 0));
   }
 
   @Test
@@ -259,6 +261,22 @@ class RankingRepositoryTests {
         .contains("strpos(lower(r.name),:q)>0")
         .contains("shown.type_line ~ :typePattern")
         .contains("(c.colors && string_to_array(:anyColors,',') OR c.colors='{}')");
+  }
+
+  @Test
+  void aSearchOfNamesAlsoMatchesTheRunsNameAndOtherPartsDoNot() {
+    when(jdbc.queryForObject(sql.capture(), args.capture(), eq(Long.class))).thenReturn(0L);
+
+    repository.count(RUN, null, "max-ratio", "max_ratio", query("q", "Elf", "in", "name"));
+    repository.count(RUN, null, "max-ratio", "max_ratio", query("q", "Elf", "in", "type"));
+
+    assertThat(sql.getAllValues().get(0))
+        .contains(
+            "(strpos(lower(r.name),:q)>0 OR EXISTS(SELECT FROM catalog.published_catalog_alias")
+        .doesNotContain("lower(c.type_line)");
+    assertThat(sql.getAllValues().get(1))
+        .contains("strpos(lower(c.type_line),lower(:q))>0")
+        .doesNotContain("strpos(lower(r.name),:q)>0");
   }
 
   @Test

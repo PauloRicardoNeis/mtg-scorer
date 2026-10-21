@@ -76,15 +76,15 @@ def test_a_changed_setting_changes_the_method_identity() -> None:
 
 
 @pytest.mark.parametrize(
-    "changes",
+    ("changes", "message"),
     [
-        {"version": " "},
-        {"component_method": ""},
-        {"half_weight_decks": 0},
-        {"prior_formats": -1},
-        {"prior_score": 101},
+        ({"version": " "}, "version cannot be blank"),
+        ({"component_method": ""}, "component_method cannot be blank"),
+        ({"half_weight_decks": 0}, "half_weight_decks must be positive"),
+        ({"prior_formats": -1}, "prior_formats cannot be negative"),
+        ({"prior_score": 101}, "prior_score must be within 0-100"),
     ],
 )
-def test_invalid_settings_are_rejected(changes) -> None:
-    with pytest.raises(ValueError):
+def test_invalid_settings_are_rejected(changes, message) -> None:
+    with pytest.raises(ValueError, match=message):
         OverallConfig(**changes)

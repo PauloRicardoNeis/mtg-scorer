@@ -16,6 +16,7 @@ class CompareQueryTests {
     assertThat(query.formats()).isEmpty();
     assertThat(query.method()).isEqualTo("constructed-score");
     assertThat(query.q()).isNull();
+    assertThat(query.in()).isEqualTo("all");
     assertThat(query.colors()).isEmpty();
     assertThat(query.every()).isFalse();
     assertThat((query.sort() + " " + query.order())).isEqualTo("best desc");
@@ -32,6 +33,7 @@ class CompareQueryTests {
                 "format", List.of("Modern", "Old School 93/94", "Modern"),
                 "method", List.of("signature-score"),
                 "q", List.of(" ＢＯＬＴ "),
+                "in", List.of("type"),
                 "color", List.of("C", "R"),
                 "every", List.of("true"),
                 "sort", List.of("Old School 93/94:win_rate"),
@@ -45,6 +47,7 @@ class CompareQueryTests {
                 List.of("Modern", "Old School 93/94"),
                 "signature-score",
                 "bolt",
+                "type",
                 List.of("R", "C"),
                 true,
                 "Old School 93/94:win_rate",
@@ -79,6 +82,8 @@ class CompareQueryTests {
                 List.of(
                     "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "B1", "B2", "B3", "B4")),
             Map.of("q", List.of("x".repeat(101))),
+            Map.of("in", List.of("name", "text")),
+            Map.of("in", List.of("oracle")),
             // Only graded percentiles compare across formats.
             Map.of("method", List.of("max-ratio")),
             Map.of("method", List.of("Signature-Score")),

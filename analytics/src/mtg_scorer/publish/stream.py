@@ -22,11 +22,13 @@ def rows(path: Path, table: str) -> Iterator[dict[str, Any]]:
 
 
 def verify_publication(directory: Path, source_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    with tempfile.TemporaryDirectory(prefix="catalog-validation-") as temporary:
-        with closing(sqlite3.connect(Path(temporary) / "validation.sqlite")) as db:
-            db.execute("PRAGMA cache_size=-8192")
-            db.execute("PRAGMA temp_store=FILE")
-            return _verify(directory, source_dir, db)
+    with (
+        tempfile.TemporaryDirectory(prefix="catalog-validation-") as temporary,
+        closing(sqlite3.connect(Path(temporary) / "validation.sqlite")) as db,
+    ):
+        db.execute("PRAGMA cache_size=-8192")
+        db.execute("PRAGMA temp_store=FILE")
+        return _verify(directory, source_dir, db)
 
 
 def _verify(directory: Path, source_dir: Path, db) -> tuple[dict[str, Any], dict[str, Any]]:

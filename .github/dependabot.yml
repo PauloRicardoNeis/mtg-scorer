@@ -1,0 +1,46 @@
+# Weekly, grouped dependency updates for every package manager in the repository.
+# Each pull request runs the full CI job, so an update is verified like any change.
+# Toolchain versions (.python-version, .node-version, the Java version in api/pom.xml
+# and the README) are bumped by hand, together.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /analytics
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      python:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      web:
+        patterns: ["*"]
+    ignore:
+      # Major Next.js and React releases change behaviour; they are reviewed by hand.
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: maven
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      java:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]

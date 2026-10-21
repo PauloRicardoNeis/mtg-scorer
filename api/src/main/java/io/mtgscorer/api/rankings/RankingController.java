@@ -12,10 +12,13 @@ import org.springframework.web.bind.annotation.*;
 public class RankingController {
   private final RankingService rankings;
   private final CompareService compare;
+  private final CommanderService commanders;
 
-  public RankingController(RankingService rankings, CompareService compare) {
+  public RankingController(
+      RankingService rankings, CompareService compare, CommanderService commanders) {
     this.rankings = rankings;
     this.compare = compare;
+    this.commanders = commanders;
   }
 
   @GetMapping
@@ -34,5 +37,14 @@ public class RankingController {
   public ComparePage compare(
       @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> query) {
     return compare.compare(CompareQuery.parse(query));
+  }
+
+  @GetMapping("/commanders")
+  @Operation(
+      operationId = "listCommanders",
+      summary = "Rank one format's commanders and partner pairs by the decks they lead")
+  public CommanderPage commanders(
+      @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> query) {
+    return commanders.commanders(CommanderQuery.parse(query));
   }
 }

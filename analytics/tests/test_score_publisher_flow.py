@@ -5,8 +5,8 @@ from contextlib import contextmanager
 import pytest
 from synthetic_topdeck import open_event, save, weekly_event
 
-import mtg_scorer.publish.score_postgres as score_postgres
 from mtg_scorer.ingest.topdeck import read_saved_responses
+from mtg_scorer.publish import score_postgres
 from mtg_scorer.publish.score_postgres import publish_score_run, rollback_score_run
 from mtg_scorer.publish.score_run import build_score_run, write_score_run
 from mtg_scorer.tournament_features import CohortRules
@@ -92,7 +92,8 @@ def test_a_new_run_is_loaded_promoted_and_unlocked(run_file) -> None:
     result = publish_score_run(run_file, "unused", connection=connection)
 
     assert result["state"] == "published"
-    assert [len(rows) for rows in connection.copies] == [3, 5, 2, 4, 18, 24]
+    # Cards, their archetypes, archetypes, decks, methods, scores and inputs.
+    assert [len(rows) for rows in connection.copies] == [3, 5, 2, 5, 5, 20, 38]
     assert connection.called("promote_score_publication")
     assert not connection.called("fail_score_publication")
     assert connection.statements[-1] == "SELECT pg_advisory_unlock(%s)"

@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from json import dumps
 from types import MappingProxyType
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
 
 from ..features import CardFeatures
 
@@ -86,19 +86,13 @@ class ScoreMethod(Protocol):
 
     ``version`` and ``config_hash`` come from the method's configuration, so a changed
     formula setting always produces a new identity. Scoring must be deterministic.
+    The identity and outputs are fixed per class; only the configuration varies.
     """
 
-    @property
-    def method_id(self) -> str: ...
-
-    @property
-    def label(self) -> str: ...
-
-    @property
-    def description(self) -> str: ...
-
-    @property
-    def outputs(self) -> tuple[str, ...]: ...
+    method_id: ClassVar[str]
+    label: ClassVar[str]
+    description: ClassVar[str]
+    outputs: ClassVar[tuple[str, ...]]
 
     @property
     def version(self) -> str: ...

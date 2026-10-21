@@ -6,3 +6,5 @@ src/lib/api.generated.ts
 package-lock.json
 next-env.d.ts
 coverage
+reports
+.stryker-tmp

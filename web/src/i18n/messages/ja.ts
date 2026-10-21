@@ -8,6 +8,7 @@ export const ja: Messages = {
       "バージョン管理されたマジックのカードカタログと、その元データセットを探索できます。ゲストとして利用でき、大会スコアは含みません。",
     rankings: "MTG Scorer · カードランキング",
     compare: "MTG Scorer · フォーマット比較",
+    commanders: "MTG Scorer · 統率者ランキング",
   },
   layout: {
     skip: "コンテンツへスキップ",
@@ -27,6 +28,14 @@ export const ja: Messages = {
   search: {
     cards: "カードを検索",
     rankedCards: "ランキング内のカードを検索",
+    commanders: "統率者を検索",
+    in: "検索対象",
+    fields: {
+      all: "カード全体",
+      name: "カード名",
+      type: "タイプ行",
+      text: "ルール・テキスト",
+    },
   },
   common: {
     apply: "適用",
@@ -124,7 +133,7 @@ export const ja: Messages = {
   },
   filters: {
     label: "カードプールの絞り込み",
-    name: "カード名または面の名前",
+    name: "カード名・タイプ・テキスト",
     namePlaceholder: "例：Insectile Aberration…",
     find: "カードを探す",
     searching: "検索中…",
@@ -190,10 +199,60 @@ export const ja: Messages = {
     source: "Scryfallで見る",
     sourceFor: "（{set}、新しいタブで開きます）",
     morePrintings: "その他の版",
+    decksHeading: "大会デッキ",
+    decksLead:
+      "このカードを採用した公開済みの大会デッキです。新しい大会から順に並びます。各フォーマットは現在の集計期間を表示します。",
+    decksFormats: "デッキのフォーマット",
+    decksRange: { other: "{count}デッキ中 {first}–{last}" },
+    decksWindow: "大会期間：{window}",
+    decksNone: "このカードを採用した公開済みの大会デッキはありません。",
+    decksNoneHere: "このページにはこのカードを採用したデッキがありません。",
+    decksNoneBody:
+      "公開済みの大会データに含まれる大会だけを数えるため、ここにないカードも他の場所では使われている可能性があります。",
+    decksPages: "デッキのページ",
+    previousDecks: "前のデッキ",
+    moreDecks: "さらにデッキを表示",
+    deckEventOpens: "（新しいタブで開きます）",
+    deckPlayers: { other: "{count}人" },
+    deckCopies: "{count}枚",
+    deckCopiesLabel: { other: "メインデッキに{count}枚" },
+    deckRecord: "戦績：勝ち・負け・引き分け",
+    deckRecordValue: "{wins}勝{losses}敗{draws}分",
+    deckNoRecord: "戦績なし",
+    deckFinish: "{rank}位",
+    deckOpen: "{event}の{archetype}のデッキを開く",
     noteTitle: "大会実績は利用できません",
     noteBody:
       "大会のデータセットが紐づいていません。これらの版から使用数や競技スコアを推測することはできません。",
     inspectMethodology: "ソースと手法を確認",
+  },
+  deckPage: {
+    back: "{card}に戻る",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "大会結果",
+    commanders: {
+      other: "統率者",
+    },
+    mainDeck: "メインデッキ",
+    sideboard: "サイドボード",
+    cardCount: {
+      other: "{count}枚",
+    },
+    groups: {
+      creature: "クリーチャー",
+      planeswalker: "プレインズウォーカー",
+      battle: "バトル",
+      instant: "インスタント",
+      sorcery: "ソーサリー",
+      artifact: "アーティファクト",
+      enchantment: "エンチャント",
+      land: "土地",
+      misc: "その他のカード",
+    },
+    noSideboard:
+      "このデッキのサイドボードは提供元から報告されていないか、一部しか報告されていません。",
+    noList: "このデッキはデッキリストを保存する前に公開されました。",
+    fromCard: "移動元のカード",
   },
   dataset: {
     back: "このカタログを探索",
@@ -261,6 +320,11 @@ export const ja: Messages = {
       description:
         "0–100。採用されるアーキタイプが少ないこと（50%）、主なアーキタイプでの採用が他のデッキよりはるかに多いこと（30%）、採用デッキが勝っていること（20%）を評価するため、どのデッキにも入る定番カードは低い順位になります。サンプルが少ないカードは環境全体に寄せて補正され、50がランク付けされたカードの中央値です。",
     },
+    "hidden-gem-score": {
+      label: "隠れた名カードスコア",
+      description:
+        "0–100。採用するデッキは少ないものの、採用デッキがそのカードを軸に据えて勝っているカードを見つけます。4枚採用される頻度、採用デッキが環境全体の勝率（70%）とトップカット進出率（30%）をどれだけ上回るか、何回のイベントで繰り返し見られるかを掛け合わせ、メタシェアに応じて割り引きます。デッキの2%に入るカードはスコアが半分になり、定番カードはほとんど残りません。サンプルが少ないカードは環境全体に寄せて補正されます。採用デッキが環境全体を上回らないカードは0で、50はそれ以外のカードの中央値です。シングルトンのフォーマットにはスコアがありません。",
+    },
     foundation: {
       label: "定番度・軸適性・実績",
       description:
@@ -321,18 +385,31 @@ export const ja: Messages = {
     eyebrowOverall: "総合カードランキング",
     leadSignature:
       "すべてのカードを、ひとつの戦略にどれだけ属しているかでスコア化しています。採用するアーキタイプの少なさ、主なアーキタイプが他のデッキに比べてどれだけ多く採用しているか、そしてそれらのデッキの成績です。あらゆるデッキで使われる定番カードは下位になります。",
+    leadHiddenGem:
+      "採用デッキが少ないカードを、採用するデッキがどれだけそのカードに賭けて成果を出しているかでスコア化しています。4枚フル採用する頻度、環境全体をどれだけ上回るか、何回のイベントで見られるかです。メタシェアに応じて割り引くため、定番カードは下位になります。",
     leadOverall:
       "カードごとに、ランク入りしている各フォーマットの構築評価からひとつの評価を出します。各フォーマットはそれを支えるデッキリストの数に応じて重み付けされ、多くのフォーマットで実績のあるカードは、ひとつのフォーマットだけで強いカードより上位になります。",
     unscoredTitle: "{format}の{method}はありません。",
     unscoredSignature:
       "アーキタイプの分類が必要ですが、このフォーマットの{source}のデッキリストには分類がありません。",
+    unscoredHiddenGem:
+      "4枚採用されるカードを探す方式ですが、このフォーマットでは同じカードを4枚入れるデッキがほとんどありません。",
     unscoredBody:
       "この期間では、この方式でスコアを付けられたカードはありません。",
     rankBy: "{method}で並べる",
     overallNote:
       "総合評価は各フォーマットの構築評価を組み合わせたものです。1対1と4人対戦では勝率の意味が異なるため、勝率はフォーマットをまたいで合算しません。対環境は、各フォーマットにおける自身の環境との差を対戦数で重み付けしたものです。",
     needsArchetypeLabels: "アーキタイプの分類が必要",
+    needsPlaysets: "4枚採用が必要",
     noScores: "スコアなし",
+    menu: "絞り込み",
+    menuActive: { other: "{count}件の絞り込みを適用中" },
+    menuShow: "結果を表示",
+    sortBy: "並べ替え",
+    order: "順序",
+    descending: "降順",
+    ascending: "昇順",
+    sortMovement: "順位の変動",
   },
   rankingTable: {
     grade: "評価",
@@ -445,5 +522,38 @@ export const ja: Messages = {
         "{method}は{count}フォーマット中{graded}フォーマットを評価しています。",
     },
     unlabelledFormats: "残りにはアーキタイプの分類がありません。",
+  },
+  commanders: {
+    eyebrow: "統率者ランキング",
+    lead: "すべての統率者と統率者ペアを、率いるデッキの数でランク付けし、それらのデッキの大会成績（環境全体に対する勝率、トップカット進出率、トレンド）を併せて示します。",
+    count: "統率者",
+    podium: "最も使われている統率者",
+    kinds: "ランキング対象",
+    cards: "カード",
+    commanders: "統率者",
+    filters: "統率者の絞り込み",
+    updating: "統率者を更新中…",
+    minDecks: "最低デッキ数",
+    anyDecks: "デッキ数を問わない",
+    atLeast: "{count}デッキ以上",
+    perPage: "1ページあたりの統率者数",
+    commander: "統率者",
+    events: "イベント",
+    decks: "デッキ",
+    range: {
+      other: "統率者{count}件中{first}–{last}件目",
+    },
+    noneMatch: "該当する統率者はいません",
+    emptyTitle: "該当する統率者はいません。",
+    emptyBody: "色やデッキ数の絞り込みを緩めるか、別の名前で検索してください。",
+    noneTitle: "{format}でランク付けされた統率者はいません。",
+    noneBody:
+      "統率者は、デッキが統率者を指定するフォーマットで、統率者ランキングの開始以降に公開されたスコア算出結果に基づいてランク付けされます。別の期間またはフォーマットを選んでください。",
+    rankCards: "{format}のカードランキング",
+    selected: "選択中の統率者",
+    coreCards: {
+      other: "大半のデッキに入るカード{count}枚",
+    },
+    note: "統率者ペアは1つの統率者として数えます。集計対象は、デッキリストの半数以上が公開された競技イベントの公開デッキリストです。トップカットは結果が判明している場合のみ数え、勝率は報告された対戦成績に基づきます。絞り込んでも各統率者の順位は変わりません。",
   },
 };

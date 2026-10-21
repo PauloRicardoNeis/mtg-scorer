@@ -8,6 +8,11 @@ function searchBox(): HTMLInputElement {
   return screen.getByRole("searchbox", { name: "Search cards" });
 }
 
+/** Where on each card the search looks. */
+function searchIn(): HTMLSelectElement {
+  return screen.getByRole("combobox", { name: "Search in" });
+}
+
 /** The search the form navigated to, parsed. */
 function pushed(): URL {
   expect(router.push).toHaveBeenCalledTimes(1);
@@ -92,6 +97,7 @@ describe("HeaderSearch", () => {
       const user = userEvent.setup();
       render(
         <>
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- stands in for a rich-text widget */}
           <div contentEditable aria-label="Notes" tabIndex={0} />
           <HeaderSearch />
         </>,
@@ -125,12 +131,14 @@ describe("HeaderSearch", () => {
       const user = userEvent.setup();
       render(
         <>
+          {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex -- stands in for a widget that owns its keys */}
           <div
             role="application"
             aria-label="Board"
             tabIndex={0}
             onKeyDown={(event) => event.preventDefault()}
           />
+          {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
           <HeaderSearch />
         </>,
       );
@@ -221,6 +229,32 @@ describe("HeaderSearch", () => {
         ["catalog_snapshot_id", "snap-1"],
       ]);
     });
+
+    it("looks in the whole card unless a part of it is chosen", async () => {
+      const user = userEvent.setup();
+      window.history.pushState(null, "", "/cards?catalog_snapshot_id=snap-1");
+      render(<HeaderSearch />);
+      expect(
+        [...searchIn().options].map((option) => option.textContent),
+      ).toEqual(["Whole card", "Name", "Type line", "Rules text"]);
+      expect(searchIn()).toHaveValue("");
+      await user.selectOptions(searchIn(), "text");
+      await user.type(searchBox(), "flying{Enter}");
+      expect([...pushed().searchParams]).toEqual([
+        ["catalog_snapshot_id", "snap-1"],
+        ["q", "flying"],
+        ["in", "text"],
+      ]);
+    });
+
+    it("leaves where to look out of a blank search", async () => {
+      const user = userEvent.setup();
+      window.history.pushState(null, "", "/datasets");
+      render(<HeaderSearch />);
+      await user.selectOptions(searchIn(), "type");
+      await user.type(searchBox(), "{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith("/cards");
+    });
   });
 
   describe("on rankings", () => {
@@ -300,17 +334,56 @@ describe("HeaderSearch", () => {
       );
     });
 
-    it("follows the name filter as the address changes, and clears it on leaving", () => {
+    it("follows the search as the address changes, and clears it on leaving", () => {
       onRankings("?q=bolt");
       const { rerender } = render(<HeaderSearch />);
-      window.history.pushState(null, "", "/rankings?q=ice");
+      window.history.pushState(null, "", "/rankings?q=ice&in=text");
       rerender(<HeaderSearch />);
       expect(rankedBox()).toHaveValue("ice");
+      expect(searchIn()).toHaveValue("text");
+      // A part of the card the select does not offer is the whole card.
+      window.history.pushState(null, "", "/rankings?q=ice&in=flavor");
+      rerender(<HeaderSearch />);
+      expect(searchIn()).toHaveValue("");
+      window.history.pushState(null, "", "/rankings?q=ice&in=type");
+      rerender(<HeaderSearch />);
 
       window.history.pushState(null, "", "/cards");
       setPathname("/cards");
       rerender(<HeaderSearch />);
       expect(searchBox()).toHaveValue("");
+      expect(searchIn()).toHaveValue("");
+    });
+
+    it("replaces where the search looks with the part chosen", async () => {
+      const user = userEvent.setup();
+      onRankings("?format=Modern&q=old&in=text&offset=24");
+      render(<HeaderSearch />);
+      await user.selectOptions(searchIn(), "name");
+      await user.clear(rankedBox());
+      await user.type(rankedBox(), "elf{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith(
+        "/rankings?format=Modern&q=elf&in=name",
+      );
+    });
+
+    it("searches commanders by name alone", async () => {
+      const user = userEvent.setup();
+      window.history.pushState(
+        null,
+        "",
+        "/rankings/commanders?format=EDH&q=old&in=text",
+      );
+      setPathname("/rankings/commanders");
+      render(<HeaderSearch />);
+      expect(screen.queryByRole("combobox", { name: "Search in" })).toBeNull();
+      const box = screen.getByRole("searchbox", { name: "Search commanders" });
+      expect(box).toHaveValue("old");
+      await user.clear(box);
+      await user.type(box, "atraxa{Enter}");
+      expect(router.push).toHaveBeenCalledExactlyOnceWith(
+        "/rankings/commanders?format=EDH&q=atraxa",
+      );
     });
   });
 });

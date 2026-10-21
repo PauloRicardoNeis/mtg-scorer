@@ -22,6 +22,7 @@ from mtg_scorer.tournament_features import (
     ExcludedEvent,
     card_features,
     card_usage,
+    published_decks,
     select_cohort,
 )
 
@@ -112,6 +113,33 @@ def test_card_usage_counts_decks_events_and_known_top_cuts(tmp_path) -> None:
     counterspell = usage[COUNTERSPELL]
     assert (counterspell.deck_count, counterspell.top_cut_count) == (3, 1)
     assert counterspell.top_cut_known_decks == 2
+
+
+def test_decks_are_published_newest_event_first_in_their_source_order(tmp_path) -> None:
+    same_day = event(
+        "synthetic-another",
+        [row(1, deck_obj=deck({"Bolt": (BOLT, 1)}))],
+        day="2026-04-02",
+    )
+    cohort = cohort_of(tmp_path, open_event(), weekly_event(), same_day)
+
+    # Events of one day go by their identifier; each keeps its standings' order.
+    assert [d.source_deck_id for d in published_decks(cohort)] == [
+        "synthetic-another#1",
+        "synthetic-weekly#1",
+        "synthetic-weekly#2",
+        "synthetic-open#1",
+        "synthetic-open#2",
+        "synthetic-open#3",
+    ]
+
+
+def test_each_card_lists_its_decks_by_position_with_their_copies(tmp_path) -> None:
+    usage = usage_by_id(cohort_of(tmp_path, open_event(), weekly_event()))
+
+    assert (usage[BOLT].decks, usage[BOLT].deck_copies) == ((0, 2, 3), (4, 4, 2))
+    assert (usage[ISLAND].decks, usage[ISLAND].deck_copies) == ((1, 2), (20, 10))
+    assert sum(usage[BOLT].deck_copies) == usage[BOLT].mainboard_copies
 
 
 def test_top_cut_count_is_unknown_when_no_deck_has_a_known_result(tmp_path) -> None:
@@ -250,6 +278,51 @@ def test_unlabelled_commander_decks_belong_to_their_commanders(tmp_path) -> None
     assert field.archetype_concentration == pytest.approx(1 / 3)
 
 
+def test_commander_archetypes_carry_their_commanders_record_and_top_cuts(tmp_path) -> None:
+    from mtg_scorer.tournament_features import archetype_performance, cohort_performance
+
+    cut = [
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}),
+        edh_row({"Tymna": (TYMNA, 1), "Kraum": (KRAUM, 1)}, {"Bolt": (BOLT, 1)}, losses=1),
+        edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}, losses=2),
+        row(0, 3),
+    ]
+    later = [edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)})]
+    cohort = cohort_of(
+        tmp_path,
+        event("synthetic-edh", cut, fmt="EDH", top_cut=2),
+        event("synthetic-edh-later", later, fmt="EDH", day="2026-08-20"),
+        rules=EDH_RULES,
+    )
+    field = cohort_performance(cohort)
+    kinnan, pair = field.archetypes
+
+    assert (kinnan.label, kinnan.commanders) == ("Kinnan", (KINNAN,))
+    # A pair names its commanders in label order.
+    assert (pair.label, pair.commanders) == ("Kraum + Tymna", (KRAUM, TYMNA))
+    assert (kinnan.deck_count, kinnan.event_count) == (3, 2)
+    # The later event had no top cut, so one of Kinnan's three results is unknown.
+    assert (kinnan.top_cut_count, kinnan.top_cut_known_decks) == (1, 2)
+    assert (kinnan.record.wins, kinnan.record.losses) == (3, 2)
+    assert (sum(kinnan.series), kinnan.series[-1]) == (3, 1)
+    performance = archetype_performance(kinnan, field)
+    # 3 wins in 5 games against a field that won 4 of 7; half the cut rate of 2 in 3.
+    assert performance.win_rate == pytest.approx(0.6)
+    assert performance.win_rate_delta == pytest.approx(round(0.6 - 4 / 7, 4))
+    assert performance.top_cut_lift == pytest.approx(0.75)
+
+
+def test_source_labelled_archetypes_name_no_commanders(tmp_path) -> None:
+    from mtg_scorer.tournament_features import cohort_performance
+
+    field = cohort_performance(cohort_of(tmp_path, open_event(), weekly_event()))
+
+    assert [(a.label, a.commanders, a.event_count) for a in field.archetypes] == [
+        ("Burn", (), 2),
+        ("Control", (), 2),
+    ]
+
+
 def test_a_source_label_wins_over_the_commanders(tmp_path) -> None:
     rows = [
         edh_row({"Kinnan": (KINNAN, 1)}, {"Bolt": (BOLT, 1)}, archetype="Kinnan Turbo"),
@@ -361,6 +434,17 @@ def test_cards_carry_their_copies_record_and_leading_archetypes(tmp_path) -> Non
     assert (bolt.record.decks, bolt.record.wins, bolt.record.losses) == (3, 6, 1)
     assert bolt.archetypes == (("Burn", 2), ("Control", 1))
     assert bolt.archetype_count == 2
+
+
+def test_card_features_carry_the_share_of_decks_playing_a_playset(tmp_path) -> None:
+    cohort = cohort_of(tmp_path, open_event(), weekly_event())
+    usage = usage_by_id(cohort)
+
+    # Bolt is a four-of in two of its decks and a two-of in the third.
+    assert (usage[BOLT].playset_deck_count, usage[COUNTERSPELL].playset_deck_count) == (2, 3)
+    playsets = card_features(usage[BOLT], cohort).playset_rate
+    assert playsets.value == pytest.approx(2 / 3)
+    assert (playsets.support, playsets.opportunity_count) == (2, 3)
 
 
 def test_only_three_archetypes_are_named_and_the_rest_counted(tmp_path) -> None:

@@ -8,6 +8,7 @@ export const zhHans: Messages = {
       "浏览带版本的万智牌卡牌目录及其源数据集。以访客身份访问；不含赛事评分。",
     rankings: "MTG Scorer · 卡牌排名",
     compare: "MTG Scorer · 赛制对比",
+    commanders: "MTG Scorer · 指挥官排名",
   },
   layout: {
     skip: "跳至内容",
@@ -26,6 +27,14 @@ export const zhHans: Messages = {
   search: {
     cards: "搜索卡牌",
     rankedCards: "搜索已排名卡牌",
+    commanders: "搜索指挥官",
+    in: "搜索范围",
+    fields: {
+      all: "整张卡牌",
+      name: "名称",
+      type: "类别栏",
+      text: "规则叙述",
+    },
   },
   common: {
     apply: "应用",
@@ -121,7 +130,7 @@ export const zhHans: Messages = {
   },
   filters: {
     label: "卡池筛选",
-    name: "卡牌或牌面名称",
+    name: "名称、类别或叙述",
     namePlaceholder: "试试Insectile Aberration…",
     find: "查找卡牌",
     searching: "正在搜索…",
@@ -184,9 +193,58 @@ export const zhHans: Messages = {
     source: "Scryfall来源",
     sourceFor: "（{set}，在新标签页中打开）",
     morePrintings: "更多印刷版本",
+    decksHeading: "比赛套牌",
+    decksLead:
+      "使用这张牌的已发布比赛套牌，按比赛从新到旧排列。每个赛制显示其当前统计区间。",
+    decksFormats: "套牌赛制",
+    decksRange: { other: "第 {first}–{last} 副，共 {count} 副套牌" },
+    decksWindow: "比赛区间：{window}",
+    decksNone: "没有已发布的比赛套牌使用这张牌。",
+    decksNoneHere: "本页没有使用这张牌的套牌。",
+    decksNoneBody:
+      "只统计已发布比赛数据中的比赛，因此这里没有的牌仍可能在其他地方被使用。",
+    decksPages: "套牌分页",
+    previousDecks: "上一页套牌",
+    moreDecks: "更多套牌",
+    deckEventOpens: "（在新标签页中打开）",
+    deckPlayers: { other: "{count} 名玩家" },
+    deckCopies: "{count} 张",
+    deckCopiesLabel: { other: "主牌中 {count} 张" },
+    deckRecord: "战绩：胜、负、平",
+    deckRecordValue: "{wins}胜{losses}负{draws}平",
+    deckNoRecord: "无战绩",
+    deckFinish: "第 {rank} 名",
+    deckOpen: "打开 {event} 的 {archetype} 套牌",
     noteTitle: "无赛事证据",
     noteBody: "未附带赛事数据集。无法从这些印刷版本推断使用次数或竞技评分。",
     inspectMethodology: "查看来源与方法论",
+  },
+  deckPage: {
+    back: "返回{card}",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "比赛结果",
+    commanders: {
+      other: "指挥官",
+    },
+    mainDeck: "主牌",
+    sideboard: "备牌",
+    cardCount: {
+      other: "{count} 张",
+    },
+    groups: {
+      creature: "生物",
+      planeswalker: "鹏洛客",
+      battle: "战役",
+      instant: "瞬间",
+      sorcery: "法术",
+      artifact: "神器",
+      enchantment: "结界",
+      land: "地",
+      misc: "其他牌",
+    },
+    noSideboard: "来源未提供这副套牌的备牌，或未完整提供。",
+    noList: "这副套牌在保存套牌列表之前发布。",
+    fromCard: "你来自的牌",
   },
   dataset: {
     back: "探索此目录",
@@ -252,6 +310,11 @@ export const zhHans: Messages = {
       description:
         "0–100。奖励只出现在少数套牌原型中的卡牌（50%）、其主套牌原型使用频率远高于其他套牌的卡牌（30%），以及所在套牌常获胜的卡牌（20%），因此处处可见的常用牌排名靠后。小样本会向全场水平收缩，50分为已排名卡牌的中位数。",
     },
+    "hidden-gem-score": {
+      label: "遗珠评分",
+      description:
+        "0–100。找出很少套牌使用、但使用它的套牌以它为核心并取得胜利的卡牌。将卡牌以4张满配使用的频率、其套牌超出全场胜率（70%）与晋级转化率（30%）的幅度，以及它在多少场赛事中反复出现相乘，再按环境占比打折：出现在2%套牌中的卡牌保留一半分数，常用牌几乎不剩。小样本会向全场水平收缩。所在套牌表现不优于全场的卡牌得0分，50分为其余卡牌的中位数；单张赛制没有评分。",
+    },
     foundation: {
       label: "常用牌、构筑核心与证据",
       description:
@@ -312,17 +375,30 @@ export const zhHans: Messages = {
     eyebrowOverall: "综合卡牌排名",
     leadSignature:
       "每张卡牌按其属于单一策略的程度评分：使用它的套牌原型有多少、其主要套牌原型比其他套牌多用多少，以及这些套牌的表现。各处都在用的常备牌排名靠后。",
+    leadHiddenGem:
+      "很少套牌使用的卡牌，按使用它的套牌对它的投入与表现评分：以4张满配使用的频率、超出全场的幅度，以及出现在多少场赛事中。按环境占比打折，因此常备牌排名靠后。",
     leadOverall:
       "每张卡牌的综合评级来自它在所有上榜赛制中的构筑评级。各赛制按支撑它的牌表数量计权，在多个赛制中得到验证的卡牌排在只在单一赛制中强势的卡牌之前。",
     unscoredTitle: "{format}没有{method}。",
     unscoredSignature:
       "它需要套牌原型标注，而该赛制的{source}牌表没有任何标注。",
+    unscoredHiddenGem:
+      "它寻找以4张满配使用的卡牌，而在这个赛制中几乎没有套牌会使用同一张卡牌4张。",
     unscoredBody: "此方法在该时间段内无法为任何卡牌评分。",
     rankBy: "按{method}排名",
     overallNote:
       "综合评级合并了各赛制的构筑评级。由于一对一与四人对局不同，胜率不会跨赛制合并：对全场是各赛制与其自身全场的差距，按对局数加权。",
     needsArchetypeLabels: "需要套牌原型标注",
+    needsPlaysets: "需要4张满配",
     noScores: "无评分",
+    menu: "筛选",
+    menuActive: { other: "已启用 {count} 个筛选" },
+    menuShow: "查看结果",
+    sortBy: "排序方式",
+    order: "顺序",
+    descending: "降序",
+    ascending: "升序",
+    sortMovement: "排名变化",
   },
   rankingTable: {
     grade: "评级",
@@ -428,5 +504,38 @@ export const zhHans: Messages = {
     tinted: "着色单元格表示在该赛制中表现突出",
     gradedFormats: { other: "{method}为{count}个赛制中的{graded}个评级。" },
     unlabelledFormats: "其余赛制没有套牌原型标注。",
+  },
+  commanders: {
+    eyebrow: "指挥官排名",
+    lead: "每位指挥官及指挥官组合均按其带领的套牌数量排名，并附上这些套牌在赛事中的表现：对阵全场胜率、晋级转化率和趋势。",
+    count: "指挥官",
+    podium: "使用最多的指挥官",
+    kinds: "排名对象",
+    cards: "卡牌",
+    commanders: "指挥官",
+    filters: "指挥官筛选",
+    updating: "正在更新指挥官…",
+    minDecks: "最少套牌数",
+    anyDecks: "不限套牌数",
+    atLeast: "{count}副套牌以上",
+    perPage: "每页指挥官数",
+    commander: "指挥官",
+    events: "赛事",
+    decks: "套牌",
+    range: {
+      other: "{first}–{last}，共{count}位指挥官",
+    },
+    noneMatch: "没有匹配的指挥官",
+    emptyTitle: "没有匹配的指挥官。",
+    emptyBody: "放宽颜色或套牌数筛选，或搜索其他名称。",
+    noneTitle: "{format}没有已排名的指挥官。",
+    noneBody:
+      "指挥官仅在套牌会指定指挥官的赛制中排名，依据的是指挥官排名推出以来发布的评分批次。请选择其他时间范围或赛制。",
+    rankCards: "{format}卡牌排名",
+    selected: "所选指挥官",
+    coreCards: {
+      other: "其大多数套牌中都有的{count}张卡牌",
+    },
+    note: "指挥官组合计为一位指挥官。计数来自至少公开了一半牌表的竞技赛事中已公开的牌表。晋级仅在结果已知时计入，胜率来自已报告的对局记录。筛选时排名保持不变。",
   },
 };

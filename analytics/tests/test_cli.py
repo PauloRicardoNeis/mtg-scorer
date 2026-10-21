@@ -7,11 +7,9 @@ from pathlib import Path
 
 import pytest
 
-import mtg_scorer.ingest.scryfall as scryfall
-import mtg_scorer.publish.postgres as postgres
-import mtg_scorer.publish.prices as prices
-import mtg_scorer.publish.score_postgres as score_postgres
 from mtg_scorer import cli
+from mtg_scorer.ingest import scryfall
+from mtg_scorer.publish import postgres, prices, score_postgres
 from mtg_scorer.publish.artifact import verify_artifact
 
 SEED = Path(__file__).resolve().parents[1] / "seeds/scryfall-layouts-v1"

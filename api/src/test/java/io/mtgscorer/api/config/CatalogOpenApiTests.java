@@ -54,6 +54,10 @@ class CatalogOpenApiTests {
   void parameterSchemasStateTheParserBounds() {
     Map<String, Parameter> cards = parameters("/api/v1/cards");
     assertThat(cards.get("q").getSchema().getMaxLength()).isEqualTo(100);
+    assertThat(cards.get("in").getSchema().getEnum())
+        .containsExactlyElementsOf(CatalogQuery.SEARCH_IN);
+    assertThat(cards.get("in").getSchema().getDefault()).isEqualTo("all");
+    assertThat(cards.get("in").getDescription()).isNotBlank();
     assertThat(cards.get("cursor").getSchema().getMaxLength()).isEqualTo(4096);
     Schema<?> limit = cards.get("limit").getSchema();
     assertThat(limit.getMinimum()).isEqualByComparingTo(BigDecimal.ONE);
@@ -125,6 +129,7 @@ class CatalogOpenApiTests {
             "invalid_cursor",
             "snapshot_not_found",
             "card_not_found",
+            "deck_not_found",
             "catalog_unavailable",
             "rankings_unavailable",
             "score_run_not_found",

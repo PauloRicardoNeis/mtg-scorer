@@ -3,6 +3,7 @@ package io.mtgscorer.api.rankings;
 import static io.mtgscorer.api.rankings.RankingModels.*;
 
 import io.mtgscorer.api.error.CatalogProblem;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,33 +16,12 @@ public class RankingService {
 
   public RankingPage rankings(RankingQuery query) {
     var formats = repository.activeFormats();
-    ScoreRunSummary run;
-    if (query.scoreRun() != null) {
-      // A pinned run keeps every page of a listing on the same published results.
-      run =
-          repository
-              .run(query.scoreRun())
-              .orElseThrow(
-                  () ->
-                      new CatalogProblem(
-                          404, "score_run_not_found", "Published score run not found."));
-      if (query.format() != null && !query.format().equals(run.format_name()))
-        throw CatalogProblem.query("The score run belongs to another format.");
-    } else {
-      String format = query.format() == null ? RankingQuery.DEFAULT_FORMAT : query.format();
-      String active =
-          formats.stream()
-              .filter(candidate -> candidate.format_name().equals(format))
-              .map(RankedFormat::score_run_id)
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new CatalogProblem(
-                          503,
-                          "rankings_unavailable",
-                          "No published rankings are available for this format yet."));
-      run = repository.run(active).orElseThrow();
-    }
+    String fallback =
+        formats.stream()
+                .anyMatch(format -> format.format_name().equals(RankingQuery.DEFAULT_FORMAT))
+            ? RankingQuery.DEFAULT_FORMAT
+            : RankingQuery.FALLBACK_FORMAT;
+    ScoreRunSummary run = run(repository, formats, query.format(), query.scoreRun(), fallback);
     ScoreMethod method = method(run, query.method());
     String output = method.outputs().getFirst();
     String id = run.score_run_id();
@@ -65,6 +45,44 @@ public class RankingService {
         repository.windows(run.format_name()),
         repository.pricesUpdatedAt(),
         repository.page(id, previous, method.method_id(), output, query));
+  }
+
+  /**
+   * The pinned run, which must belong to the format when both are given, else the format's active
+   * run; without either, the fallback format's.
+   */
+  static ScoreRunSummary run(
+      RankingRepository repository,
+      List<RankedFormat> formats,
+      String format,
+      String scoreRun,
+      String fallback) {
+    if (scoreRun != null) {
+      // A pinned run keeps every page of a listing on the same published results.
+      ScoreRunSummary run =
+          repository
+              .run(scoreRun)
+              .orElseThrow(
+                  () ->
+                      new CatalogProblem(
+                          404, "score_run_not_found", "Published score run not found."));
+      if (format != null && !format.equals(run.format_name()))
+        throw CatalogProblem.query("The score run belongs to another format.");
+      return run;
+    }
+    String shown = format == null ? fallback : format;
+    String active =
+        formats.stream()
+            .filter(candidate -> candidate.format_name().equals(shown))
+            .map(RankedFormat::score_run_id)
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new CatalogProblem(
+                        503,
+                        "rankings_unavailable",
+                        "No published rankings are available for this format yet."));
+    return repository.run(active).orElseThrow();
   }
 
   /**

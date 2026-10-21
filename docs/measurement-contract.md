@@ -88,6 +88,7 @@ Later features remain specified but unavailable until their prerequisites exist.
 | --- | --- | --- |
 | `incidence` | Decks containing the card divided by eligible observed decks, calculated within format-era-source strata | First tournament slice |
 | `commitment` | Robustly normalized mainboard copy count among decks containing the card; sideboard observations remain separate | First tournament slice |
+| `playset_rate` | Share of the decks containing the card that play at least four mainboard copies; support is those decks and the opportunity all the card's decks. The hidden gem score shrinks it toward the scored cards' pooled share and treats a cohort below 5% as singleton, where it says nothing | TopDeck, from `card-usage-v6` |
 | `competitive_proof` | Coverage-aware match and standing evidence relative to the same stratum | First tournament slice |
 | `format_era_breadth` | Breadth across independently observed format-era strata, not raw lifetime | After multiple strata |
 | `deck_family_breadth` | Breadth across empirical deck clusters or externally versioned labels | After clustering |
@@ -101,6 +102,17 @@ Later features remain specified but unavailable until their prerequisites exist.
 
 Raw numerators, denominators, stratum identifiers, and intermediate statistics
 must be persisted before normalization.
+
+From `card-usage-v7` on, a run also publishes its cohort's decks, newest event
+first, and each card lists its decks with the mainboard copies each plays. A card's
+deck, event, copy, top-cut and record counts can therefore be recounted from the
+decks behind them. Validation refuses a run where they disagree, and promotion one
+where a card's deck list is missing or names a deck the run does not have. A
+deck carries only the result its standing reported: TopDeck's response order is not
+read as a final rank, and a missing record or top cut stays unknown. From
+`card-usage-v8` on, a deck also states its commanders and the sideboard its source
+reported, so its whole list can be read back; a sideboard the source sent partly or
+not at all is unknown, never empty.
 
 ## Historical denominators
 

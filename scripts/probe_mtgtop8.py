@@ -24,8 +24,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from mtg_scorer.ingest.wizards import card_name
 from probe_tournaments import resolution
-from probe_wizards_coverage import card_name
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = "https://www.mtgtop8.com"
@@ -73,6 +73,7 @@ class Site:
             )
             return payload.decode("latin-1" if filename.endswith(".txt") else "utf-8", "replace")
         data = None if form is None else urlencode(form).encode()
+        payload, status = b"", 0
         for attempt in range(4):
             time.sleep(2)
             try:

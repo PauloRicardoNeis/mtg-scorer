@@ -53,6 +53,20 @@ def test_events_keep_independent_coverage_for_lists_standings_and_matches(tmp_pa
     assert by_id["synthetic-open"].top_cut_size == 2
 
 
+def test_events_keep_their_name_and_topdeck_page(tmp_path) -> None:
+    unnamed = {**event("synthetic local/2", [row(1)]), "tournamentName": "  "}
+    by_id = {t.source_event_id: t for t in read(tmp_path, open_event(), unnamed).tournaments}
+
+    assert by_id["synthetic-open"].name == "Synthetic synthetic-open"
+    assert by_id["synthetic-open"].source_url == "https://topdeck.gg/bracket/synthetic-open"
+    # A blank name is unknown; the identifier is escaped into one path segment.
+    assert by_id["synthetic local/2"].name is None
+    assert (
+        by_id["synthetic local/2"].source_url == "https://topdeck.gg/bracket/synthetic%20local%2F2"
+    )
+    assert PARSER_VERSION == "topdeck-bulk-v5"
+
+
 def test_an_event_without_lists_has_none_coverage_not_unknown(tmp_path) -> None:
     snapshot = read(tmp_path, event("synthetic-local", [row(1), row(0, 1)]))
 

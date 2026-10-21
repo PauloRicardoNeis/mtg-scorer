@@ -12,7 +12,18 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from mtg_scorer.normalize.names import name_key
 
-ROOT = Path(__file__).resolve().parents[4] / "contracts"
+
+def contracts_dir() -> Path:
+    """The repository's ``contracts/`` folder, found by walking up from this file so a
+    relocated copy of the package (mutation testing runs one) reads the same schemas."""
+
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "contracts" / "catalog-publication.schema.json").is_file():
+            return parent / "contracts"
+    raise FileNotFoundError(f"no contracts/ directory above {__file__}")
+
+
+ROOT = contracts_dir()
 SCHEMA = json.loads((ROOT / "catalog-publication.schema.json").read_text())
 MANIFEST_SCHEMA = json.loads((ROOT / "catalog-manifest.schema.json").read_text())
 

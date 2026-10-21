@@ -44,7 +44,8 @@ def test_authorization_duplicate_status_worker_reuse_and_recovery(tmp_path):
     assert {status for status, _ in results} == {202}
     assert len({body["job_id"] for _, body in results}) == 1
     job = results[0][1]
-    assert job["state"] == "queued" and job["started_at"] is None
+    assert job["state"] == "queued"
+    assert job["started_at"] is None
     source = bulk_fixture(tmp_path / "raw")
     entered, release = Event(), Event()
 
@@ -67,7 +68,8 @@ def test_authorization_duplicate_status_worker_reuse_and_recovery(tmp_path):
     assert completed["state"] == "succeeded", completed
     assert completed["row_counts"]["cards"] == 7
     assert completed["result"] == "published"
-    assert completed["finished_at"] and completed["source_snapshot_id"]
+    assert completed["finished_at"]
+    assert completed["source_snapshot_id"]
     next_job = request()[1]
     run_once(DSN, tmp_path, download=lambda _: source)
     reused = request(next_job["status_url"], "GET")[1]
@@ -80,7 +82,8 @@ def test_authorization_duplicate_status_worker_reuse_and_recovery(tmp_path):
 
     run_once(DSN, tmp_path, download=fail)
     failed = request(failed_job["status_url"], "GET")[1]
-    assert failed["state"] == "failed" and failed["error_code"] == "import_failed"
+    assert failed["state"] == "failed"
+    assert failed["error_code"] == "import_failed"
     assert "SECRET" not in json.dumps(failed)
     abandoned = request()[1]
     with psycopg.connect(DSN, autocommit=True) as worker:
@@ -91,7 +94,8 @@ def test_authorization_duplicate_status_worker_reuse_and_recovery(tmp_path):
         )
         assert request(abandoned["status_url"], "GET")[1]["state"] == "running"
     recovered = request(abandoned["status_url"], "GET")[1]
-    assert recovered["state"] == "failed" and recovered["error_code"] == "worker_interrupted"
+    assert recovered["state"] == "failed"
+    assert recovered["error_code"] == "worker_interrupted"
     retry = request()[1]
     run_once(DSN, tmp_path, download=lambda _: source)
     assert request(retry["status_url"], "GET")[1]["state"] == "succeeded"

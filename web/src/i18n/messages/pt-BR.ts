@@ -8,6 +8,7 @@ export const ptBR: Messages = {
       "Explore um catálogo versionado de cards de Magic e o conjunto de dados de origem. Acesso de visitante; sem pontuações de torneio.",
     rankings: "MTG Scorer · Ranking de cards",
     compare: "MTG Scorer · Comparar formatos",
+    commanders: "MTG Scorer · Ranking de comandantes",
   },
   layout: {
     skip: "Pular para o conteúdo",
@@ -28,6 +29,14 @@ export const ptBR: Messages = {
   search: {
     cards: "Buscar cards",
     rankedCards: "Buscar cards ranqueados",
+    commanders: "Buscar comandantes",
+    in: "Buscar em",
+    fields: {
+      all: "Card inteiro",
+      name: "Nome",
+      type: "Linha de tipo",
+      text: "Texto de regras",
+    },
   },
   common: {
     apply: "Aplicar",
@@ -133,7 +142,7 @@ export const ptBR: Messages = {
   },
   filters: {
     label: "Filtros do pool",
-    name: "Nome do card ou da face",
+    name: "Nome, tipo ou texto",
     namePlaceholder: "Tente Insectile Aberration…",
     find: "Buscar cards",
     searching: "Buscando…",
@@ -203,10 +212,77 @@ export const ptBR: Messages = {
     source: "Fonte no Scryfall",
     sourceFor: "de {set} (abre em nova aba)",
     morePrintings: "Mais impressões",
+    decksHeading: "Decks de torneio",
+    decksLead:
+      "Decks de torneio publicados que jogaram este card, do evento mais recente para o mais antigo. Cada formato mostra sua janela atual.",
+    decksFormats: "Formatos dos decks",
+    decksRange: {
+      one: "{first}–{last} de {count} deck",
+      many: "{first}–{last} de {count} de decks",
+      other: "{first}–{last} de {count} decks",
+    },
+    decksWindow: "Eventos de {window}",
+    decksNone: "Nenhum deck de torneio publicado jogou este card.",
+    decksNoneHere: "Nenhum deck com este card nesta página.",
+    decksNoneBody:
+      "Só contam os eventos dos dados de torneio publicados, então um card ausente aqui ainda pode ser jogado em outros lugares.",
+    decksPages: "Páginas de decks",
+    previousDecks: "Decks anteriores",
+    moreDecks: "Mais decks",
+    deckEventOpens: "(abre em nova aba)",
+    deckPlayers: {
+      one: "{count} jogador",
+      many: "{count} de jogadores",
+      other: "{count} jogadores",
+    },
+    deckCopies: "{count}×",
+    deckCopiesLabel: {
+      one: "{count} cópia no deck principal",
+      many: "{count} de cópias no deck principal",
+      other: "{count} cópias no deck principal",
+    },
+    deckRecord: "Campanha: vitórias, derrotas, empates",
+    deckRecordValue: "{wins}–{losses}–{draws}",
+    deckNoRecord: "Sem campanha",
+    deckFinish: "{rank}º",
+    deckOpen: "Abrir o deck {archetype} de {event}",
     noteTitle: "Evidências de torneio indisponíveis",
     noteBody:
       "Nenhum conjunto de dados de torneio está anexado. Não é possível inferir contagem de uso nem pontuação competitiva a partir destas impressões.",
     inspectMethodology: "Ver fonte e metodologia",
+  },
+  deckPage: {
+    back: "Voltar para {card}",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "Resultados do evento",
+    commanders: {
+      one: "Comandante",
+      many: "Comandantes",
+      other: "Comandantes",
+    },
+    mainDeck: "Deck principal",
+    sideboard: "Sideboard",
+    cardCount: {
+      one: "{count} card",
+      many: "{count} de cards",
+      other: "{count} cards",
+    },
+    groups: {
+      creature: "Criaturas",
+      planeswalker: "Planeswalkers",
+      battle: "Batalhas",
+      instant: "Mágicas instantâneas",
+      sorcery: "Feitiços",
+      artifact: "Artefatos",
+      enchantment: "Encantamentos",
+      land: "Terrenos",
+      misc: "Outros cards",
+    },
+    noSideboard:
+      "A fonte não informou o sideboard deste deck, ou não o informou inteiro.",
+    noList:
+      "Este deck foi publicado antes de as listas dos decks serem guardadas.",
+    fromCard: "o card de onde você veio",
   },
   dataset: {
     back: "Explorar este catálogo",
@@ -278,6 +354,11 @@ export const ptBR: Messages = {
       description:
         "0–100. Favorece cards que ficam em poucos arquétipos (50%), que seu arquétipo principal joga muito mais que os outros decks (30%) e cujos decks vencem (20%), então staples jogados em todo lugar ficam embaixo. Amostras pequenas são puxadas para o meta, e 50 é o card mediano do ranking.",
     },
+    "hidden-gem-score": {
+      label: "Pontuação de joia escondida",
+      description:
+        "0–100. Encontra cards que poucos decks jogam, mas em torno dos quais esses decks são montados e com os quais vencem. Multiplica com que frequência um card é jogado como playset, quanto seus decks superam a taxa de vitória (70%) e a conversão em top cut (30%) do meta e em quantos eventos ele reaparece, e então aplica um desconto pela presença no meta: um card em 2% dos decks mantém metade da pontuação, e staples quase nada. Amostras pequenas são puxadas para o meta. Cards cujos decks não se saem melhor que o meta ficam com 0, e 50 é a mediana dos demais; formatos singleton não têm pontuação.",
+    },
     foundation: {
       label: "Staple, Build-around e Evidência",
       description:
@@ -344,18 +425,35 @@ export const ptBR: Messages = {
     eyebrowOverall: "Ranking geral de cards",
     leadSignature:
       "Cada card pontuado por quanto pertence a uma única estratégia: em quão poucos arquétipos ele é jogado, quanto mais seu arquétipo principal o joga do que os outros decks e como esses decks se saem. Staples jogados em todo lugar ficam embaixo.",
+    leadHiddenGem:
+      "Cards que poucos decks jogam, pontuados pelo quanto os decks que os jogam apostam neles e como se saem: com que frequência levam um playset completo, quanto superam o meta e em quantos eventos, com um desconto pela presença no meta para que staples fiquem embaixo.",
     leadOverall:
       "Uma nota por card, a partir da sua nota de Construído em cada formato que o ranqueia. Cada formato pesa conforme quantas listas o sustentam, e um card comprovado em muitos formatos fica à frente de um que é forte em um só.",
     unscoredTitle: "Sem {method} para {format}.",
     unscoredSignature:
       "Ela precisa de rótulos de arquétipo, e as listas do {source} deste formato não têm nenhum.",
+    unscoredHiddenGem:
+      "Ela procura cards que os decks jogam como playset, e neste formato quase nenhum deck leva quatro cópias de um card.",
     unscoredBody:
       "Este método não conseguiu pontuar nenhum card neste período.",
     rankBy: "Ordenar por {method}",
     overallNote:
       "A nota geral combina a nota de Construído de cada formato. As taxas de vitória não são somadas entre formatos, pois partidas um contra um e de quatro jogadores são diferentes: vs. meta é a diferença de cada formato para o próprio meta, ponderada por partidas.",
     needsArchetypeLabels: "precisa de rótulos de arquétipo",
+    needsPlaysets: "precisa de playsets",
     noScores: "sem pontuações",
+    menu: "Filtros",
+    menuActive: {
+      one: "{count} filtro ativo",
+      many: "{count} de filtros ativos",
+      other: "{count} filtros ativos",
+    },
+    menuShow: "Ver resultados",
+    sortBy: "Ordenar por",
+    order: "Ordem",
+    descending: "Decrescente",
+    ascending: "Crescente",
+    sortMovement: "Variação de posição",
   },
   rankingTable: {
     grade: "Nota",
@@ -498,5 +596,42 @@ export const ptBR: Messages = {
       other: "A {method} avalia {graded} de {count} formatos.",
     },
     unlabelledFormats: "Os outros não têm rótulos de arquétipo.",
+  },
+  commanders: {
+    eyebrow: "Ranking de comandantes",
+    lead: "Cada comandante e cada dupla de comandantes, ranqueados pelo número de decks que lideram, com o desempenho desses decks em torneios: taxa de vitória contra o meta, conversão em top cut e tendência.",
+    count: "Comandantes",
+    podium: "Comandantes mais jogados",
+    kinds: "Ranquear",
+    cards: "Cards",
+    commanders: "Comandantes",
+    filters: "Filtros de comandantes",
+    updating: "Atualizando comandantes…",
+    minDecks: "Mínimo de decks",
+    anyDecks: "Qualquer número de decks",
+    atLeast: "{count}+ decks",
+    perPage: "Comandantes por página",
+    commander: "Comandante",
+    events: "Eventos",
+    decks: "Decks",
+    range: {
+      one: "{first}–{last} de {count} comandante",
+      many: "{first}–{last} de {count} de comandantes",
+      other: "{first}–{last} de {count} comandantes",
+    },
+    noneMatch: "Nenhum comandante corresponde",
+    emptyTitle: "Nenhum comandante corresponde.",
+    emptyBody: "Afrouxe o filtro de cor ou de decks, ou busque outro nome.",
+    noneTitle: "Nenhum comandante ranqueado em {format}.",
+    noneBody:
+      "Os comandantes são ranqueados nos formatos cujos decks indicam um, nos cálculos de pontuação publicados desde o início do ranking de comandantes. Escolha outro período ou formato.",
+    rankCards: "Ranquear cards de {format}",
+    selected: "Comandante selecionado",
+    coreCards: {
+      one: "{count} card na maioria dos seus decks",
+      many: "{count} de cards na maioria dos seus decks",
+      other: "{count} cards na maioria dos seus decks",
+    },
+    note: "Uma dupla de comandantes conta como um único comandante. As contagens vêm das listas publicadas em eventos competitivos com pelo menos metade das listas publicadas. Um top cut só conta quando o resultado é conhecido, e as taxas de vitória vêm dos resultados de partidas informados. As posições se mantêm quando você filtra.",
   },
 };

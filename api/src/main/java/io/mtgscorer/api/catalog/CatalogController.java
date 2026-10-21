@@ -20,7 +20,7 @@ public class CatalogController {
   @GetMapping
   @Operation(
       operationId = "searchCards",
-      summary = "Search names and faces within a jointly eligible printing pool")
+      summary = "Search names, type lines and rules text within a jointly eligible printing pool")
   public CardPage search(
       @Parameter(hidden = true) @RequestParam MultiValueMap<String, String> query) {
     return catalog.search(CatalogQuery.parse(query, false));

@@ -171,6 +171,34 @@
   --switch-on: oklch(0.86 0.1 195 / 0.22);
   --count-bg: oklch(0.165 0.014 255 / 0.88);
 
+  /* Metagame: chart series in rank order, then the decklist's card types. */
+  --series-1: oklch(0.86 0.1 195);
+  --series-2: oklch(0.8 0.12 80);
+  --series-3: oklch(0.72 0.14 300);
+  --series-4: oklch(0.78 0.13 150);
+  --series-5: oklch(0.72 0.15 25);
+  --series-6: oklch(0.75 0.1 250);
+  --type-creature: oklch(0.86 0.1 195);
+  --type-planeswalker: oklch(0.72 0.14 300);
+  --type-instant: oklch(0.75 0.1 250);
+  --type-sorcery: oklch(0.72 0.15 25);
+  --type-artifact: oklch(0.72 0.016 255);
+  --type-enchantment: oklch(0.8 0.12 80);
+  --type-battle: oklch(0.78 0.13 150);
+  --type-land: oklch(0.45 0.02 255);
+  /* Color dots: black is a dark disc with a lighter ring, so it reads on night. */
+  --mana-dot-b: oklch(0.32 0.04 300);
+  --mana-b-ring: oklch(0.6 0.05 300);
+  /* Chart furniture: gridlines, the mirror cell and the matrix's hover lines. */
+  --chart-grid: oklch(0.3 0.02 255);
+  --mirror-bg: oklch(1 0 0 / 0.025);
+  --matrix-line: oklch(1 0 0 / 0.1);
+  --curve-bar: linear-gradient(oklch(0.5 0.02 255), oklch(0.32 0.02 255));
+  --curve-peak: linear-gradient(var(--sigil-300), oklch(0.86 0.1 195 / 0.3));
+  --glow-curve: 0 0 16px -4px oklch(0.86 0.1 195 / 0.6);
+  --ban-line: oklch(0.8 0.12 80 / 0.75);
+  --ban-line-soft: oklch(0.8 0.12 80 / 0.4);
+
   /* Semantic aliases */
   --bg-page: var(--night-900);
   --bg-deep: var(--night-950);
@@ -329,6 +357,12 @@
     circle at 76% 46%,
     oklch(0.86 0.1 195 / 0.13),
     transparent 36%
+  );
+  /* Metagame heroes: the glow sits further right and tighter than the card hero's. */
+  --metagame-glow: radial-gradient(
+    circle at 80% 40%,
+    oklch(0.86 0.1 195 / 0.11),
+    transparent 34%
   );
   --panel-glow: radial-gradient(
     circle at 50% 26%,

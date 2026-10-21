@@ -117,7 +117,7 @@ function Sortable({
 }: {
   label: string;
   sort: CompareSort;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <th

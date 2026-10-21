@@ -263,13 +263,13 @@ def parse_decks(page: str) -> list[dict[str, Any]]:
             # A heading without cards, such as a page title in the deck layout.
             continue
         name, *named = DECK_IN_HEADER.split(page_text(player), maxsplit=1)
-        label = (page_text(label) if label else "") or "".join(named)
+        caption = (page_text(label) if label else "") or "".join(named)
         decks.append(
             {
                 "player": name,
                 # 2009 pages caption every deck with the event ("Pro Tour-Austin 2009,
                 # Extended"), which names no archetype.
-                "label": None if not label or EVENT_CAPTION.search(label) else label,
+                "label": None if not caption or EVENT_CAPTION.search(caption) else caption,
                 **zones,
             }
         )
@@ -451,7 +451,7 @@ def _similar_names(decks: list[str], players: list[str]) -> dict[str, str]:
             continue
         surname, given = score[pair]
         alone = all(
-            other == pair or pair[0] not in other and pair[1] not in other for other in score
+            other == pair or (pair[0] not in other and pair[1] not in other) for other in score
         )
         if given >= FIRST_NAME_SIMILARITY or (surname == 1.0 and alone):
             joined[deck] = pair[1]
@@ -467,7 +467,7 @@ def _name_similarity(deck: str, player: str) -> tuple[float, float]:
     """
 
     first, last = name_parts(player)
-    tokens = sum(name_parts(deck), [])
+    tokens = [token for part in name_parts(deck) for token in part]
 
     def oriented(given: list[str], surname: list[str]) -> tuple[float, float]:
         if not given or not surname or not last:
@@ -539,9 +539,12 @@ def catalog_resolver(dsn: str) -> Resolver:
         import psycopg
 
         with psycopg.connect(dsn) as connection:
-            (snapshot,) = connection.execute(
+            active = connection.execute(
                 "SELECT catalog_snapshot_id FROM catalog.active_catalog"
             ).fetchone()
+            if active is None:
+                raise ValueError("the catalog has no active snapshot to resolve names against")
+            (snapshot,) = active
             rows = connection.execute(
                 "SELECT a.alias_key, a.kind, a.oracle_id::text, c.name "
                 "FROM catalog.catalog_alias a "

@@ -360,7 +360,7 @@ def test_the_catalog_resolver_reads_the_active_snapshot(monkeypatch) -> None:
     assert resolution.catalog_snapshot_id == "catalog-local"
     assert resolution.matches["Psychatog"] == ((oracle(3), "Psychatog"),)
     assert opened[0].dsn == "dbname=catalog"
-    query, parameters = opened[0].queries[1]
+    _query, parameters = opened[0].queries[1]
     assert parameters[0] == "catalog-local"
     assert "token" in parameters[1]
 
@@ -560,7 +560,7 @@ def test_a_changed_page_is_rejected(tmp_path) -> None:
     directory = save(tmp_path)
     (directory / "page-res1.html").write_text("tampered", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="page-res1.html does not match"):
+    with pytest.raises(ValueError, match=r"page-res1\.html does not match"):
         read_saved_pages(directory, resolver)
 
 

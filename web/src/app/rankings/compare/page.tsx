@@ -87,7 +87,7 @@ export default async function Compare({
   const wanted = chosenFormats.length ? chosenFormats : everyDesignFormat;
   const query = new URLSearchParams(wanted.map((format) => ["format", format]));
   if (method) query.set("method", method);
-  for (const key of ["q", "every", "sort", "order", "limit", "offset"])
+  for (const key of ["q", "in", "every", "sort", "order", "limit", "offset"])
     if (params.get(key)) query.set(key, params.get(key)!);
   for (const color of params.getAll("color")) query.append("color", color);
   const { t, fill, plural, method: methodText, term } = await getI18n();
@@ -136,8 +136,9 @@ export default async function Compare({
       ...compared.map((format) => ["format", format] as [string, string]),
       ...stats.map((stat) => ["stat", stat] as [string, string]),
       ...summaries.map((summary) => ["summary", summary] as [string, string]),
-      ...(["q", "every", "sort", "order", "limit"] as const).flatMap((key) =>
-        params.get(key) ? [[key, params.get(key)!] as [string, string]] : [],
+      ...(["q", "in", "every", "sort", "order", "limit"] as const).flatMap(
+        (key) =>
+          params.get(key) ? [[key, params.get(key)!] as [string, string]] : [],
       ),
       ...params
         .getAll("color")
@@ -161,7 +162,7 @@ export default async function Compare({
           order: next === first ? null : next,
         }),
         active,
-        order: active ? (page.order as "asc" | "desc") : first,
+        order: active ? page.order : first,
       };
     };
     const option = (

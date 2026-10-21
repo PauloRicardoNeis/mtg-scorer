@@ -8,6 +8,7 @@ export const de: Messages = {
       "Erkunde einen versionierten Magic-Kartenkatalog und seinen Quelldatensatz. Gastzugang; keine Turnierwertungen.",
     rankings: "MTG Scorer · Kartenranglisten",
     compare: "MTG Scorer · Formate vergleichen",
+    commanders: "MTG Scorer · Commander-Ranglisten",
   },
   layout: {
     skip: "Zum Inhalt springen",
@@ -27,6 +28,14 @@ export const de: Messages = {
   search: {
     cards: "Karten suchen",
     rankedCards: "Gewertete Karten suchen",
+    commanders: "Commander suchen",
+    in: "Suchen in",
+    fields: {
+      all: "Ganze Karte",
+      name: "Name",
+      type: "Typzeile",
+      text: "Regeltext",
+    },
   },
   common: {
     apply: "Anwenden",
@@ -125,7 +134,7 @@ export const de: Messages = {
   },
   filters: {
     label: "Pool-Filter",
-    name: "Karten- oder Seitenname",
+    name: "Name, Typ oder Text",
     namePlaceholder: "Probier Insectile Aberration…",
     find: "Karten finden",
     searching: "Suche läuft…",
@@ -192,10 +201,69 @@ export const de: Messages = {
     source: "Scryfall-Quelle",
     sourceFor: "für {set} (öffnet neuen Tab)",
     morePrintings: "Weitere Drucke",
+    decksHeading: "Turnierdecks",
+    decksLead:
+      "Veröffentlichte Turnierdecks, die diese Karte gespielt haben, das neueste Event zuerst. Jedes Format zeigt seinen aktuellen Zeitraum.",
+    decksFormats: "Formate der Decks",
+    decksRange: {
+      one: "{first}–{last} von {count} Deck",
+      other: "{first}–{last} von {count} Decks",
+    },
+    decksWindow: "Events {window}",
+    decksNone: "Kein veröffentlichtes Turnierdeck hat diese Karte gespielt.",
+    decksNoneHere: "Keine Decks mit dieser Karte auf dieser Seite.",
+    decksNoneBody:
+      "Nur Events aus den veröffentlichten Turnierdaten zählen; eine Karte, die hier fehlt, kann anderswo gespielt werden.",
+    decksPages: "Deckseiten",
+    previousDecks: "Vorherige Decks",
+    moreDecks: "Weitere Decks",
+    deckEventOpens: "(öffnet neuen Tab)",
+    deckPlayers: { one: "{count} Spieler", other: "{count} Spieler" },
+    deckCopies: "{count}×",
+    deckCopiesLabel: {
+      one: "{count} Exemplar im Hauptdeck",
+      other: "{count} Exemplare im Hauptdeck",
+    },
+    deckRecord: "Bilanz: Siege, Niederlagen, Unentschieden",
+    deckRecordValue: "{wins}–{losses}–{draws}",
+    deckNoRecord: "Keine Bilanz",
+    deckFinish: "Platz {rank}",
+    deckOpen: "Das {archetype}-Deck von {event} öffnen",
     noteTitle: "Turnierbelege nicht verfügbar",
     noteBody:
       "Es ist kein Turnierdatensatz angehängt. Aus diesen Drucken lässt sich weder eine Spielhäufigkeit noch eine Wettbewerbswertung ableiten.",
     inspectMethodology: "Quelle und Methodik ansehen",
+  },
+  deckPage: {
+    back: "Zurück zu {card}",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "Turnierergebnisse",
+    commanders: {
+      one: "Kommandeur",
+      other: "Kommandeure",
+    },
+    mainDeck: "Hauptdeck",
+    sideboard: "Sideboard",
+    cardCount: {
+      one: "{count} Karte",
+      other: "{count} Karten",
+    },
+    groups: {
+      creature: "Kreaturen",
+      planeswalker: "Planeswalker",
+      battle: "Schlachten",
+      instant: "Spontanzauber",
+      sorcery: "Hexereien",
+      artifact: "Artefakte",
+      enchantment: "Verzauberungen",
+      land: "Länder",
+      misc: "Andere Karten",
+    },
+    noSideboard:
+      "Die Quelle hat für dieses Deck kein Sideboard gemeldet, oder nicht vollständig.",
+    noList:
+      "Dieses Deck wurde veröffentlicht, bevor Decklisten gespeichert wurden.",
+    fromCard: "die Karte, von der du kommst",
   },
   dataset: {
     back: "Diesen Katalog entdecken",
@@ -263,6 +331,11 @@ export const de: Messages = {
       description:
         "0–100. Belohnt Karten, die in wenigen Archetypen bleiben (50 %), die ihr Stamm-Archetyp weit öfter spielt als andere Decks (30 %) und deren Decks gewinnen (20 %), sodass überall gespielte Staples niedrig landen. Kleine Stichproben werden zum Feld gezogen, und 50 entspricht dem Median der gewerteten Karten.",
     },
+    "hidden-gem-score": {
+      label: "Geheimtipp-Wertung",
+      description:
+        "0–100. Findet Karten, die wenige Decks spielen, um die diese Decks aber herumgebaut sind und mit denen sie gewinnen. Multipliziert, wie oft eine Karte als Playset gespielt wird, wie weit ihre Decks Siegquote (70 %) und Top-Cut-Quote (30 %) des Felds übertreffen und auf wie vielen Events sie auftaucht, und wertet dann nach Meta-Anteil ab: Eine Karte in 2 % der Decks behält die Hälfte ihrer Wertung, Staples kaum etwas. Kleine Stichproben werden zum Feld gezogen. Karten, deren Decks nicht besser als das Feld abschneiden, erhalten 0, und 50 ist der Median der übrigen; Singleton-Formate haben keine Wertung.",
+    },
     foundation: {
       label: "Staple, Build-around und Belege",
       description:
@@ -324,17 +397,33 @@ export const de: Messages = {
     eyebrowOverall: "Gesamtrangliste der Karten",
     leadSignature:
       "Jede Karte, gewertet danach, wie sehr sie zu einer Strategie gehört: wie wenige Archetypen sie spielen, wie viel öfter ihr Haupt-Archetyp sie spielt als andere Decks und wie diese Decks abschneiden. Überall gespielte Staples landen weit unten.",
+    leadHiddenGem:
+      "Karten, die wenige Decks spielen, gewertet danach, wie sehr die Decks, die sie spielen, auf sie setzen und wie sie abschneiden: wie oft sie ein volles Playset spielen, wie weit sie das Feld übertreffen und auf wie vielen Events, abgewertet nach Meta-Anteil, sodass Staples weit unten landen.",
     leadOverall:
       "Eine Note pro Karte aus ihrer Constructed-Note in jedem Format, das sie wertet. Formate zählen danach, wie viele Decklisten sie stützen, und eine Karte, die sich in vielen Formaten bewährt, liegt vor einer, die nur in einem stark ist.",
     unscoredTitle: "Keine {method} für {format}.",
     unscoredSignature:
       "Sie braucht Archetyp-Zuordnungen, und die {source}-Decklisten dieses Formats haben keine.",
+    unscoredHiddenGem:
+      "Sie sucht Karten, die Decks als Playset spielen, und in diesem Format spielt kaum ein Deck vier Exemplare einer Karte.",
     unscoredBody: "Diese Methode konnte in diesem Zeitraum keine Karte werten.",
     rankBy: "Nach {method} sortieren",
     overallNote:
       "Die Gesamtnote kombiniert die Constructed-Note jedes Formats. Siegquoten werden nicht über Formate hinweg zusammengefasst, da sich Eins-gegen-eins- und Vier-Spieler-Partien unterscheiden: „Vs. Feld“ ist der Abstand jedes Formats zu seinem eigenen Feld, gewichtet nach Partien.",
     needsArchetypeLabels: "braucht Archetyp-Zuordnungen",
+    needsPlaysets: "braucht Playsets",
     noScores: "keine Werte",
+    menu: "Filter",
+    menuActive: {
+      one: "{count} aktiver Filter",
+      other: "{count} aktive Filter",
+    },
+    menuShow: "Ergebnisse anzeigen",
+    sortBy: "Sortieren nach",
+    order: "Reihenfolge",
+    descending: "Absteigend",
+    ascending: "Aufsteigend",
+    sortMovement: "Rangänderung",
   },
   rankingTable: {
     grade: "Note",
@@ -446,5 +535,41 @@ export const de: Messages = {
       other: "Die {method} wertet {graded} von {count} Formaten.",
     },
     unlabelledFormats: "Den übrigen fehlen Archetyp-Zuordnungen.",
+  },
+  commanders: {
+    eyebrow: "Commander-Ranglisten",
+    lead: "Jeder Commander und jedes Partner-Paar, sortiert danach, wie viele Decks sie anführen, mit der Turnierleistung dieser Decks: Siegquote gegen das Feld, Top-Cut-Quote und Trend.",
+    count: "Commander",
+    podium: "Meistgespielte Commander",
+    kinds: "Rangliste",
+    cards: "Karten",
+    commanders: "Commander",
+    filters: "Commander-Filter",
+    updating: "Commander werden aktualisiert…",
+    minDecks: "Mindestanzahl Decks",
+    anyDecks: "Beliebig viele Decks",
+    atLeast: "{count}+ Decks",
+    perPage: "Commander pro Seite",
+    commander: "Commander",
+    events: "Turniere",
+    decks: "Decks",
+    range: {
+      one: "{first}–{last} von {count} Commander",
+      other: "{first}–{last} von {count} Commandern",
+    },
+    noneMatch: "Keine Commander gefunden",
+    emptyTitle: "Keine Commander gefunden.",
+    emptyBody:
+      "Lockere den Farb- oder Deckfilter oder suche nach einem anderen Namen.",
+    noneTitle: "Für {format} sind keine Commander gewertet.",
+    noneBody:
+      "Commander werden in Formaten gewertet, deren Decks einen benennen, und zwar in Wertungsläufen, die seit dem Start der Commander-Ranglisten veröffentlicht wurden. Wähle einen anderen Zeitraum oder ein anderes Format.",
+    rankCards: "Kartenrangliste für {format}",
+    selected: "Ausgewählter Commander",
+    coreCards: {
+      one: "{count} Karte in den meisten seiner Decks",
+      other: "{count} Karten in den meisten seiner Decks",
+    },
+    note: "Ein Partner-Paar zählt als ein Commander. Die Zahlen stammen aus veröffentlichten Decklisten kompetitiver Turniere, bei denen mindestens die Hälfte der Listen veröffentlicht ist. Ein Top Cut zählt nur, wo das Ergebnis bekannt ist, und Siegquoten stammen aus gemeldeten Match-Ergebnissen. Ränge behalten beim Filtern ihren Platz.",
   },
 };

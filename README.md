@@ -463,6 +463,14 @@ Chromium browser tests. It uses a separate `mtg_verify_<id>` database and ports
 the app, whereas `up` keeps the preview running. The test database and evidence
 are retained for diagnosis. Verification is optional for simply browsing the demo.
 
+To run one layer's checks without the database stage, as each CI job does:
+
+```powershell
+python scripts/demo.py check --only web
+```
+
+`--only` takes any of `python`, `contracts`, `java` and `web`.
+
 ### Test coverage
 
 The offline test stage of `up` and `verify` measures coverage and fails below each
@@ -475,14 +483,18 @@ coverage grows:
 | Java | `.\api\mvnw.cmd -f api/pom.xml --batch-mode verify` | `jacoco.minimum.*` in `api/pom.xml` | `api/target/site/jacoco/index.html` |
 | Web | `npm.cmd --prefix web run test:unit` | `thresholds` in `web/vitest.config.ts` | `web/coverage/index.html` |
 
-The offline floors cover what runs without PostgreSQL. The SQL behind PostgreSQL
-publication (Python) and catalog queries (Java) is exercised by the database stage
-of `verify`, which those numbers do not include. Next.js pages are covered by the
-Playwright browser tests rather than by unit coverage. CI uploads the reports as
-the `coverage` artifact.
+The offline floors cover what runs without PostgreSQL. `verify` appends its
+database stage to the Python measurement and reports the merged total at the end,
+so that total includes the publication code that only runs against PostgreSQL; the
+Java floors still exclude the catalog queries, which the database stage exercises
+without measuring. Next.js pages are covered by the Playwright browser tests rather
+than by unit coverage. CI uploads the reports as the `python-coverage-merged`,
+`java-reports` and `web-coverage` artifacts.
 
 See [local setup and recovery](docs/local-catalog.md),
 [analytics development](analytics/README.md), and [API development](api/README.md).
+The [QA documentation](docs/qa/README.md) records what each layer tests today, the
+known gaps, and the plan for static analysis, mutation testing and the CI pipeline.
 Downloaded corpora, local databases, build outputs and runtime logs are ignored.
 Retained source fixtures carry exact hashes and attribution; live probes stay outside CI.
 

@@ -5,7 +5,18 @@ import sys
 from pathlib import Path
 
 import pytest
-from synthetic_topdeck import BOLT, COUNTERSPELL, ISLAND, open_event, save, weekly_event
+from synthetic_topdeck import (
+    BOLT,
+    COUNTERSPELL,
+    ISLAND,
+    commander_deck,
+    deck,
+    event,
+    open_event,
+    row,
+    save,
+    weekly_event,
+)
 
 from mtg_scorer import SCORE_METHODS, MaxRatioMethod, cli
 from mtg_scorer.ingest.topdeck import read_saved_responses
@@ -75,6 +86,8 @@ def test_the_cohort_summary_keeps_events_exclusions_and_totals(tmp_path) -> None
     ]
     assert cohort["events"][0] == {
         "source_event_id": "synthetic-open",
+        "name": "Synthetic synthetic-open",
+        "url": "https://topdeck.gg/bracket/synthetic-open",
         "occurred_on": "2026-03-10",
         "players": 4,
         "decklists": 3,
@@ -120,6 +133,29 @@ def test_the_cohort_summary_states_the_field_baselines_trend_and_archetypes(tmp_
     assert cohort["archetypes"][1]["core_cards"] == [COUNTERSPELL]
 
 
+def test_archetypes_are_described_like_cards(tmp_path) -> None:
+    control = document(tmp_path)["cohort"]["archetypes"][1]
+
+    # Control went 2-1 and 1-2 in the open, lost the weekly, and made the open's top 2 once.
+    assert {key: value for key, value in control.items() if key != "core_cards"} == {
+        "label": "Control",
+        "deck_count": 3,
+        "commanders": [],
+        "event_count": 2,
+        "top_cut_count": 1,
+        "top_cut_known_decks": 2,
+        "record": {"decks": 3, "wins": 3, "losses": 4, "draws": 0},
+        "performance": {
+            "win_rate": 0.4286,
+            "win_rate_delta": -0.2078,
+            "win_rate_ci95": 0.3666,
+            "top_cut_lift": 0.75,
+            "share_delta": None,
+        },
+        "series": [0, 2, 1] + [0] * 9,
+    }
+
+
 def test_basic_lands_are_described_but_not_scored(tmp_path) -> None:
     run = document(tmp_path)
     cards = {card["oracle_id"]: card for card in run["cards"]}
@@ -156,7 +192,63 @@ def test_cards_carry_their_usage_with_denominators(tmp_path) -> None:
             "share_delta": None,
         },
         "series": [0, 2, 1] + [0] * 9,
+        # The weekly's Burn deck, then the open's Burn and Control decks.
+        "decks": [0, 2, 3],
+        "deck_copies": [4, 4, 2],
     }
+
+
+def test_the_run_lists_its_decks_newest_event_first(tmp_path) -> None:
+    decks = document(tmp_path)["decks"]
+
+    # Each event keeps its standings' order; the open's fourth player listed no deck.
+    assert [deck["source_deck_id"] for deck in decks] == [
+        "synthetic-weekly#1",
+        "synthetic-weekly#2",
+        "synthetic-open#1",
+        "synthetic-open#2",
+        "synthetic-open#3",
+    ]
+    assert decks[2] == {
+        "source_deck_id": "synthetic-open#1",
+        "source_event_id": "synthetic-open",
+        "archetype": "Burn",
+        "final_rank": None,
+        "made_top_cut": True,
+        "record": {"wins": 3, "losses": 0, "draws": 0},
+        "commanders": [],
+        "sideboard": [],
+    }
+    # The weekly cut to no top 8, so whether a deck made one is unknown, not false.
+    assert decks[0]["made_top_cut"] is None
+
+
+def test_each_deck_states_its_commanders_and_the_sideboard_its_source_reported(tmp_path) -> None:
+    sided = deck({"Bolt": (BOLT, 4)}, {"Island": (ISLAND, 3), "Counterspell": (COUNTERSPELL, 2)})
+    unsided = deck({"Bolt": (BOLT, 4)})
+    led = commander_deck({"Counterspell": (COUNTERSPELL, 1)}, {"Island": (ISLAND, 99)})
+    events = [
+        event("synthetic-sided", [row(1, deck_obj=sided), row(0, 1, deck_obj=unsided)]),
+        event("synthetic-led", [row(1, deck_obj=led)], day="2026-03-09"),
+    ]
+    run = build_score_run(
+        read_saved_responses(save(tmp_path / "saved", {"search.json": events})), RULES
+    )
+    decks = {deck["source_deck_id"]: deck for deck in run["decks"]}
+
+    # A sideboard lists its cards by oracle id; one the source never sent stays unknown.
+    assert decks["synthetic-sided#1"]["sideboard"] == sorted(
+        [
+            {"oracle_id": ISLAND, "name": "Island", "copies": 3},
+            {"oracle_id": COUNTERSPELL, "name": "Counterspell", "copies": 2},
+        ],
+        key=lambda card: card["oracle_id"],
+    )
+    assert decks["synthetic-sided#2"]["sideboard"] is None
+    assert (decks["synthetic-led#1"]["commanders"], decks["synthetic-led#1"]["sideboard"]) == (
+        [COUNTERSPELL],
+        None,
+    )
 
 
 def test_every_registered_method_scores_the_population(tmp_path) -> None:
@@ -169,6 +261,8 @@ def test_every_registered_method_scores_the_population(tmp_path) -> None:
     assert scores(runs["constructed-score"], "score") == {BOLT: 75.0, COUNTERSPELL: 25.0}
     # Every Counterspell deck is Control; Bolt splits between Burn and Control.
     assert scores(runs["signature-score"], "score") == {BOLT: 25.0, COUNTERSPELL: 75.0}
+    # Bolt's decks went 6-1; Counterspell's lost more than they won.
+    assert scores(runs["hidden-gem-score"], "score") == {BOLT: 50.0, COUNTERSPELL: 0.0}
 
 
 def test_writing_names_the_file_after_its_identity(tmp_path) -> None:
@@ -252,11 +346,14 @@ def test_the_database_header_counts_every_row_it_will_load(tmp_path) -> None:
     )
     assert header["row_counts"] == {
         "cards": 3,
-        "methods": 4,
-        "scores": 18,
-        "inputs": 24,
+        "methods": 5,
+        "scores": 20,
+        "inputs": 38,
         "card_archetypes": 5,
         "archetypes": 2,
+        "decks": 5,
     }
     assert header["results_sha256"] == results_sha256(run)
     assert header["summary"]["cohort"] == run["cohort"]
+    # Decks are rows of their own, never part of the summary.
+    assert "decks" not in header["summary"]

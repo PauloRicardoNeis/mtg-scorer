@@ -23,6 +23,7 @@ class CatalogQueryValidationTests {
         .isEqualTo(
             new CatalogQuery(
                 null,
+                "all",
                 List.of(),
                 List.of(),
                 null,
@@ -54,18 +55,26 @@ class CatalogQueryValidationTests {
         .isEqualTo(
             new CatalogQuery(
                 null,
+                "all",
                 List.of("m11"),
                 List.of("rare"),
                 "arena",
                 null,
                 List.of(),
                 null,
-                "scryfall_id_asc",
+                "original_first",
                 10,
                 "catalog-abc",
                 "opaque"));
-    for (String name : List.of("q", "color_identity", "color", "type", "sort"))
+    for (String name : List.of("q", "in", "color_identity", "color", "type", "sort"))
       assertInvalidQuery(() -> printings(name, "x"), "Unknown query parameter.");
+  }
+
+  @Test
+  void searchLooksInTheWholeCardUnlessAPartIsNamed() {
+    for (String in : CatalogQuery.SEARCH_IN) assertThat(cards("in", in).in()).isEqualTo(in);
+    for (String in : List.of("Name", "oracle", "flavor", ""))
+      assertInvalidQuery(() -> cards("in", in), "Invalid search field.");
   }
 
   @Test
@@ -165,6 +174,7 @@ class CatalogQueryValidationTests {
     for (String name :
         List.of(
             "q",
+            "in",
             "game",
             "color_identity",
             "type",

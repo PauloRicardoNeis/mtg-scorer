@@ -157,11 +157,7 @@ const sorts: Record<string, SortLink> = {
 
 function table(
   items: RankedCard[],
-  {
-    catalog = "snap-1" as string | null,
-    method = constructed,
-    scored = run.scored_cards,
-  } = {},
+  { catalog = "snap-1", method = constructed, scored = run.scored_cards } = {},
 ) {
   return (
     <RankingTable

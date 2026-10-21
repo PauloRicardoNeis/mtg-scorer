@@ -56,6 +56,7 @@ def test_modern_rankings_follow_the_published_constructed_scores():
     assert {method["method_id"]: method["scored_cards"] for method in run["methods"]} == {
         "constructed-score": 8,
         "foundation": 8,
+        "hidden-gem-score": 8,
         "max-ratio": 8,
         "signature-score": 8,
     }
@@ -66,12 +67,13 @@ def test_modern_rankings_follow_the_published_constructed_scores():
         "score_run_id": run["score_run_id"],
         "decks": 7,
         "players_per_game": 2,
+        "commanders": 0,
     } in page["formats"]
     assert page["total"] == 8
     assert page["view_counts"] == {"all": 8, "risers": 0, "fallers": 0}
     assert (page["previous_score_run_id"], page["max_deck_count"]) == (None, 4)
-    assert [(w["score_run_id"], w["active"]) for w in page["windows"]] == [
-        (run["score_run_id"], True)
+    assert [(w["score_run_id"], w["active"], w["commanders"]) for w in page["windows"]] == [
+        (run["score_run_id"], True, 0)
     ]
     ranked = [(card["rank"], card["name"], card["score"]) for card in page["items"]]
     assert ranked[:2] == [(1, "Lightning Bolt", 93.75), (2, "Bonecrusher Giant // Stomp", 81.25)]
@@ -90,7 +92,8 @@ def test_cards_carry_usage_and_catalog_details_or_explicit_nulls():
     assert bolt["color_identity"] == ["R"]
     assert bolt["preview_printing"]["images"]
     assert (bolt["win_rate"], bolt["win_rate_delta"], bolt["top_cut_lift"]) == (0.8, 0.3, 2.0)
-    assert bolt["games"] > 0 and bolt["avg_copies"] >= 1
+    assert bolt["games"] > 0
+    assert bolt["avg_copies"] >= 1
     assert [a["label"] for a in bolt["archetypes"]] == ["Burn", "Izzet Tempo"]
     assert "R" in bolt["archetypes"][0]["colors"]
     assert (bolt["archetype_count"], bolt["rank_change"]) == (2, None)
@@ -110,6 +113,14 @@ def test_filters_keep_each_cards_overall_rank():
     assert fire["rank"] == 4
     _, searched = get(q="fire")
     assert names(searched) == ["Fire // Ice"]
+    # Delver's type lines name Humans, Bruna's rules text does.
+    _, humans = get(q="human")
+    assert set(names(humans)) == {
+        "Delver of Secrets // Insectile Aberration",
+        "Bruna, the Fading Light",
+    }
+    _, typed = get(q="human", **{"in": "type"})
+    assert names(typed) == ["Delver of Secrets // Insectile Aberration"]
     _, white = get(color="W")
     assert names(white) == ["Bruna, the Fading Light"]
 
@@ -190,7 +201,8 @@ def test_compare_filters_and_sorts_by_one_formats_column():
     _, searched = compare(format="Modern", q="fire", color="R")
     assert names(searched) == ["Fire // Ice"]
     _, by_name = compare(format="Modern", sort="name", limit=3, offset=3)
-    assert names(by_name) == sorted(names(by_name)) and len(by_name["items"]) == 3
+    assert names(by_name) == sorted(names(by_name))
+    assert len(by_name["items"]) == 3
     _, fallback = compare(format="Modern", sort="Vintage:grade")
     assert fallback["sort"] == "best"
 
@@ -239,5 +251,170 @@ def test_compare_problems_have_stable_codes(query, status, code):
 )
 def test_problems_have_stable_codes(query, status, code):
     actual, body = get(**query)
+    assert (actual, body["code"]) == (status, code)
+    validate(body, "CatalogError")
+
+
+def commanders(**query):
+    search = "?" + urlencode(query, doseq=True) if query else ""
+    url = BASE + "/api/v1/rankings/commanders" + search
+    try:
+        with urlopen(url, timeout=10) as response:
+            return response.status, json.load(response)
+    except HTTPError as error:
+        return error.code, json.load(error)
+
+
+def test_a_format_whose_decks_name_no_commanders_lists_none():
+    # The synthetic Modern decks carry TopDeck labels, so no archetype is a commander.
+    status, page = commanders(format="Modern")
+    assert status == 200
+    validate(page, "CommanderPage")
+    assert page["score_run"]["format_name"] == "Modern"
+    assert (page["total"], page["max_deck_count"], page["items"]) == (0, 0, [])
+    assert (page["sort"], page["order"], page["previous_score_run_id"]) == ("decks", "desc", None)
+    _, fewer = commanders(format="Modern", min_decks="5")
+    assert (fewer["total"], fewer["max_deck_count"]) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    ("query", "status", "code"),
+    [
+        ({}, 503, "rankings_unavailable"),
+        ({"format": "Modern", "sort": "score"}, 400, "invalid_query"),
+        ({"format": "Modern", "type": "creature"}, 400, "invalid_query"),
+        ({"format": "Modern", "view": "risers"}, 400, "invalid_query"),
+        ({"format": "Modern", "min_decks": "0"}, 400, "invalid_query"),
+    ],
+)
+def test_commander_problems_have_stable_codes(query, status, code):
+    # Without a format, commanders default to EDH, which verify does not publish.
+    actual, body = commanders(**query)
+    assert (actual, body["code"]) == (status, code)
+    validate(body, "CatalogError")
+
+
+def decks(card, **query):
+    url = BASE + f"/api/v1/cards/{card}/decks" + ("?" + urlencode(query) if query else "")
+    try:
+        with urlopen(url, timeout=10) as response:
+            return response.status, json.load(response)
+    except HTTPError as error:
+        return error.code, json.load(error)
+
+
+def test_a_cards_decks_are_the_published_decks_that_played_it_newest_event_first():
+    status, page = decks(BOLT)
+    assert status == 200
+    validate(page, "CardDeckPage")
+    assert [(f["format_name"], f["deck_count"]) for f in page["formats"]] == [("Modern", 4)]
+    assert (page["run"]["format_name"], page["total"], page["offset"]) == ("Modern", 4, 0)
+    # The weekly's two Bolt decks, then the open's: positions skip decks without Bolt.
+    assert [deck["position"] for deck in page["items"]] == [0, 1, 3, 4]
+    assert [deck["copies"] for deck in page["items"]] == [4, 2, 4, 4]
+    weekly = page["items"][0]
+    assert weekly["event"] == {
+        "source_event_id": "synthetic-verify-weekly",
+        "name": "SYNTHETIC verify weekly",
+        "url": "https://topdeck.gg/bracket/synthetic-verify-weekly",
+        "occurred_on": "2026-05-02",
+        "players": 3,
+    }
+    assert (weekly["archetype"], weekly["wins"], weekly["losses"], weekly["draws"]) == (
+        "Burn",
+        2,
+        0,
+        0,
+    )
+    # The weekly cut to no top 8; the open's two Bolt decks made its top 2.
+    assert [deck["made_top_cut"] for deck in page["items"]] == [None, None, True, True]
+
+
+def test_a_cards_decks_page_within_a_pinned_run():
+    _, first = decks(BOLT, limit=2)
+    status, second = decks(BOLT, limit=2, offset=2, score_run_id=first["run"]["score_run_id"])
+    assert status == 200
+    assert [deck["position"] for deck in second["items"]] == [3, 4]
+    _, past = decks(BOLT, offset=4)
+    assert (past["total"], past["items"]) == (4, [])
+
+
+def test_a_card_out_of_the_catalog_still_lists_its_decks_and_an_unplayed_one_none():
+    _, unlisted = decks(UNLISTED)
+    assert [deck["source_deck_id"] for deck in unlisted["items"]] == ["synthetic-verify-open#3"]
+    status, unplayed = decks("00000000-0000-4000-8000-000000000000")
+    assert status == 200
+    validate(unplayed, "CardDeckPage")
+    assert (unplayed["formats"], unplayed["run"], unplayed["total"]) == ([], None, 0)
+
+
+@pytest.mark.parametrize(
+    ("card", "query", "status", "code"),
+    [
+        ("bolt", {}, 400, "invalid_query"),
+        (BOLT, {"sort": "newest"}, 400, "invalid_query"),
+        (BOLT, {"limit": "101"}, 400, "invalid_query"),
+        (BOLT, {"score_run_id": "scores-" + "0" * 64}, 404, "score_run_not_found"),
+    ],
+)
+def test_deck_problems_have_stable_codes(card, query, status, code):
+    actual, body = decks(card, **query)
+    assert (actual, body["code"]) == (status, code)
+    validate(body, "CatalogError")
+
+
+def deck(run, position, **query):
+    url = BASE + f"/api/v1/decks/{run}/{position}" + ("?" + urlencode(query) if query else "")
+    try:
+        with urlopen(url, timeout=10) as response:
+            return response.status, json.load(response)
+    except HTTPError as error:
+        return error.code, json.load(error)
+
+
+def test_a_deck_is_read_with_its_whole_list_in_the_catalog():
+    _, page = decks(BOLT)
+    run = page["run"]["score_run_id"]
+    status, weekly = deck(run, 0)
+    assert status == 200
+    validate(weekly, "DeckDetail")
+    assert (weekly["source_deck_id"], weekly["archetype"], weekly["run"]["score_run_id"]) == (
+        "synthetic-verify-weekly#1",
+        "Burn",
+        run,
+    )
+    # A listed deck states its commanders and the sideboard its source reported, here empty.
+    assert (weekly["commanders"], weekly["sideboard"]) == ([], [])
+    assert sum(card["copies"] for card in weekly["mainboard"]) == 7
+    bolt = next(card for card in weekly["mainboard"] if card["oracle_id"] == BOLT)
+    assert (bolt["copies"], bolt["type_line"], bolt["mana_cost"], bolt["in_catalog"]) == (
+        4,
+        "Instant",
+        "{R}",
+        True,
+    )
+    # A card the catalog does not have keeps the run's name and has no details.
+    _, third = deck(run, 5, catalog_snapshot_id=weekly["catalog_snapshot_id"])
+    unlisted = next(card for card in third["mainboard"] if card["oracle_id"] == UNLISTED)
+    assert (unlisted["name"], unlisted["in_catalog"], unlisted["type_line"]) == (
+        "Synthetic Unlisted Card",
+        False,
+        None,
+    )
+
+
+@pytest.mark.parametrize(
+    ("run", "position", "query", "status", "code"),
+    [
+        (None, "99", {}, 404, "deck_not_found"),
+        ("scores-" + "0" * 64, "0", {}, 404, "score_run_not_found"),
+        (None, "first", {}, 400, "invalid_query"),
+        (None, "0", {"offset": "1"}, 400, "invalid_query"),
+    ],
+)
+def test_deck_page_problems_have_stable_codes(run, position, query, status, code):
+    if run is None:
+        run = decks(BOLT)[1]["run"]["score_run_id"]
+    actual, body = deck(run, position, **query)
     assert (actual, body["code"]) == (status, code)
     validate(body, "CatalogError")

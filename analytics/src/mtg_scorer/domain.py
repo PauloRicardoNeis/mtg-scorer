@@ -127,10 +127,17 @@ class Tournament:
     source_format_name: str | None = None
     # Players advancing to elimination rounds: 0 when the event had none.
     top_cut_size: int | None = None
+    # The event as its source names it and the source's own page for it, when known.
+    name: str | None = None
+    source_url: str | None = None
 
     def __post_init__(self) -> None:
         if not self.format_name.strip():
             raise ValueError("format_name cannot be blank")
+        if self.name is not None and not self.name.strip():
+            raise ValueError("name cannot be blank when present")
+        if self.source_url is not None and not self.source_url.startswith("https://"):
+            raise ValueError("source_url must be an https URL when present")
         if self.player_count is not None and self.player_count <= 0:
             raise ValueError("player_count must be positive when known")
         if self.top_cut_size is not None and self.top_cut_size < 0:

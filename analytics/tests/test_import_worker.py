@@ -237,7 +237,7 @@ def test_main_once_rebuilds_from_a_verified_retained_source(tmp_path, monkeypatc
 
 
 def test_main_without_once_keeps_polling_the_live_source(monkeypatch):
-    class Stop(Exception):
+    class StopPollingError(Exception):
         pass
 
     downloads, sleeps = [], []
@@ -245,14 +245,14 @@ def test_main_without_once_keeps_polling_the_live_source(monkeypatch):
     def sleep(seconds):
         sleeps.append(seconds)
         if len(sleeps) == 2:
-            raise Stop
+            raise StopPollingError
 
     monkeypatch.setattr(
         worker, "run_once", lambda dsn, data_dir, *, download: downloads.append(download)
     )
     monkeypatch.setattr(worker.time, "sleep", sleep)
 
-    with pytest.raises(Stop):
+    with pytest.raises(StopPollingError):
         start_main(monkeypatch)
     assert downloads == [worker.download_default_cards_snapshot] * 2
     assert sleeps == [2, 2]

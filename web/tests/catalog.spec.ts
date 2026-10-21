@@ -63,7 +63,7 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
   await expect(
     page.getByRole("link", { name: "Skip to content" }),
   ).toBeFocused();
-  await page.getByLabel("Card or face name").fill("Insectile");
+  await page.getByLabel("Name, type or text").fill("Insectile");
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(
     page.getByRole("link", {
@@ -105,7 +105,7 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   const reopened = await context.newPage();
   await reopened.goto(pinned);
-  await expect(reopened.getByLabel("Card or face name")).toHaveValue(
+  await expect(reopened.getByLabel("Name, type or text")).toHaveValue(
     "Insectile",
   );
   await expect(
@@ -302,7 +302,7 @@ test("loading feedback remains visible during a pending filter navigation", asyn
       await route.continue();
     },
   );
-  await page.getByLabel("Card or face name").fill("Erayo");
+  await page.getByLabel("Name, type or text").fill("Erayo");
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   try {
     await expect(
@@ -328,7 +328,7 @@ test("printing scans follow the pool and show both Delver sides", async ({
       path.resolve("../analytics/seeds/scryfall-layouts-v1/00.json"),
       "utf8",
     ),
-  );
+  ) as { image_uris: { normal: string } };
   await page.goto("/cards?q=Lightning+Bolt&set=m11");
   const scan = page.locator(".card-tile img.card-image");
   await expect(scan).toHaveAttribute("src", bolt.image_uris.normal);
@@ -391,7 +391,7 @@ test("header search, '/' shortcut and sticky filter toolbar", async ({
     page.getByRole("link", { name: "Methodology", exact: true }),
   ).toBeVisible();
   // "/" types normally inside a field and focuses the header search elsewhere.
-  const name = page.getByLabel("Card or face name");
+  const name = page.getByLabel("Name, type or text");
   await name.fill("a");
   await name.press("/");
   await expect(name).toHaveValue("a/");

@@ -8,6 +8,7 @@ export const ko: Messages = {
       "버전이 관리되는 매직 카드 카탈로그와 그 원본 데이터셋을 살펴보세요. 게스트로 이용할 수 있으며 토너먼트 점수는 없습니다.",
     rankings: "MTG Scorer · 카드 랭킹",
     compare: "MTG Scorer · 포맷 비교",
+    commanders: "MTG Scorer · 사령관 랭킹",
   },
   layout: {
     skip: "본문으로 건너뛰기",
@@ -27,6 +28,14 @@ export const ko: Messages = {
   search: {
     cards: "카드 검색",
     rankedCards: "랭킹 카드 검색",
+    commanders: "사령관 검색",
+    in: "검색 범위",
+    fields: {
+      all: "카드 전체",
+      name: "이름",
+      type: "유형 줄",
+      text: "규칙 텍스트",
+    },
   },
   common: {
     apply: "적용",
@@ -122,7 +131,7 @@ export const ko: Messages = {
   },
   filters: {
     label: "카드 풀 필터",
-    name: "카드 또는 면 이름",
+    name: "이름, 유형 또는 텍스트",
     namePlaceholder: "예: Insectile Aberration…",
     find: "카드 찾기",
     searching: "검색 중…",
@@ -187,10 +196,60 @@ export const ko: Messages = {
     source: "Scryfall 원본",
     sourceFor: "({set}, 새 탭에서 열림)",
     morePrintings: "다른 판본",
+    decksHeading: "대회 덱",
+    decksLead:
+      "이 카드를 사용한 공개 대회 덱입니다. 최신 대회부터 표시합니다. 각 포맷은 현재 집계 기간을 보여 줍니다.",
+    decksFormats: "덱 포맷",
+    decksRange: { other: "덱 {count}개 중 {first}–{last}" },
+    decksWindow: "대회 기간: {window}",
+    decksNone: "이 카드를 사용한 공개 대회 덱이 없습니다.",
+    decksNoneHere: "이 페이지에는 이 카드를 사용한 덱이 없습니다.",
+    decksNoneBody:
+      "공개된 대회 데이터의 대회만 집계하므로, 여기에 없는 카드도 다른 곳에서는 쓰일 수 있습니다.",
+    decksPages: "덱 페이지",
+    previousDecks: "이전 덱",
+    moreDecks: "덱 더 보기",
+    deckEventOpens: "(새 탭에서 열림)",
+    deckPlayers: { other: "{count}명" },
+    deckCopies: "{count}장",
+    deckCopiesLabel: { other: "메인 덱에 {count}장" },
+    deckRecord: "전적: 승, 패, 무",
+    deckRecordValue: "{wins}승 {losses}패 {draws}무",
+    deckNoRecord: "전적 없음",
+    deckFinish: "{rank}위",
+    deckOpen: "{event}의 {archetype} 덱 열기",
     noteTitle: "토너먼트 근거 없음",
     noteBody:
       "연결된 토너먼트 데이터셋이 없습니다. 이 판본들로는 사용 횟수나 경쟁력 점수를 추정할 수 없습니다.",
     inspectMethodology: "원본과 방법론 살펴보기",
+  },
+  deckPage: {
+    back: "{card}(으)로 돌아가기",
+    eyebrow: "{format} · {event} · {date}",
+    eventResults: "대회 결과",
+    commanders: {
+      other: "커맨더",
+    },
+    mainDeck: "메인 덱",
+    sideboard: "사이드보드",
+    cardCount: {
+      other: "{count}장",
+    },
+    groups: {
+      creature: "생물",
+      planeswalker: "플레인즈워커",
+      battle: "전투",
+      instant: "순간마법",
+      sorcery: "집중마법",
+      artifact: "마법물체",
+      enchantment: "부여마법",
+      land: "대지",
+      misc: "기타 카드",
+    },
+    noSideboard:
+      "출처가 이 덱의 사이드보드를 알리지 않았거나 일부만 알렸습니다.",
+    noList: "이 덱은 덱 리스트를 저장하기 전에 공개되었습니다.",
+    fromCard: "이동해 온 카드",
   },
   dataset: {
     back: "이 카탈로그 탐색하기",
@@ -258,6 +317,11 @@ export const ko: Messages = {
       description:
         "0–100. 소수의 아키타입에만 쓰이는 카드(50%), 주 아키타입이 다른 덱보다 훨씬 자주 쓰는 카드(30%), 사용한 덱이 이기는 카드(20%)에 높은 점수를 주므로, 어디에나 쓰이는 스테이플은 낮은 순위가 됩니다. 표본이 작으면 필드 쪽으로 보정되며, 50은 순위에 오른 카드의 중앙값입니다.",
     },
+    "hidden-gem-score": {
+      label: "숨은 보석 점수",
+      description:
+        "0–100. 사용하는 덱은 적지만 그 덱들이 중심으로 삼아 이기는 카드를 찾습니다. 카드를 4장 모두 쓰는 빈도, 그 덱들이 필드의 승률(70%)과 탑컷 진출률(30%)을 얼마나 넘어서는지, 몇 개 이벤트에서 반복해 나오는지를 곱한 뒤 메타 점유율에 따라 할인합니다. 덱의 2%에 쓰이는 카드는 점수의 절반을 유지하고 스테이플은 거의 남지 않습니다. 표본이 작으면 필드 쪽으로 보정됩니다. 덱이 필드보다 나은 성적을 내지 못한 카드는 0점이고 50은 나머지 카드의 중앙값입니다. 싱글턴 포맷에는 점수가 없습니다.",
+    },
     foundation: {
       label: "스테이플, 빌드어라운드, 근거",
       description:
@@ -318,17 +382,30 @@ export const ko: Messages = {
     eyebrowOverall: "종합 카드 랭킹",
     leadSignature:
       "각 카드가 하나의 전략에 얼마나 속하는지로 점수를 매깁니다: 사용하는 아키타입이 얼마나 적은지, 주 아키타입이 다른 덱보다 얼마나 더 자주 사용하는지, 그리고 그 덱들의 성적. 어디서나 쓰이는 스테이플은 낮은 순위를 받습니다.",
+    leadHiddenGem:
+      "사용하는 덱이 적은 카드를, 그 카드를 쓰는 덱이 얼마나 그 카드에 집중하고 어떤 성적을 내는지로 점수를 매깁니다: 4장을 모두 쓰는 빈도, 필드를 얼마나 넘어서는지, 몇 개 이벤트에서 나오는지. 메타 점유율에 따라 할인하므로 스테이플은 낮은 순위를 받습니다.",
     leadOverall:
       "카드를 순위에 올린 모든 포맷의 구축 등급으로 카드마다 하나의 등급을 냅니다. 각 포맷은 뒷받침하는 덱리스트 수에 따라 반영되며, 여러 포맷에서 검증된 카드가 한 포맷에서만 강한 카드보다 높은 순위를 받습니다.",
     unscoredTitle: "{format}에 대한 {method} 없음",
     unscoredSignature:
       "아키타입 분류가 필요하지만, 이 포맷의 {source} 덱리스트에는 분류가 없습니다.",
+    unscoredHiddenGem:
+      "4장씩 쓰이는 카드를 찾는 방식인데, 이 포맷에서는 같은 카드를 4장 넣는 덱이 거의 없습니다.",
     unscoredBody: "이 기간에는 이 방식으로 점수를 매긴 카드가 없습니다.",
     rankBy: "{method} 기준으로 정렬",
     overallNote:
       "종합 등급은 각 포맷의 구축 등급을 합친 것입니다. 1대1 게임과 4인 게임은 서로 다르기 때문에 승률은 포맷 간에 합산하지 않습니다. 필드 대비는 각 포맷이 자기 필드와 보이는 차이를 게임 수로 가중한 값입니다.",
     needsArchetypeLabels: "아키타입 분류 필요",
+    needsPlaysets: "4장 사용 필요",
     noScores: "점수 없음",
+    menu: "필터",
+    menuActive: { other: "필터 {count}개 적용됨" },
+    menuShow: "결과 보기",
+    sortBy: "정렬 기준",
+    order: "순서",
+    descending: "내림차순",
+    ascending: "오름차순",
+    sortMovement: "순위 변동",
   },
   rankingTable: {
     grade: "등급",
@@ -437,5 +514,38 @@ export const ko: Messages = {
       other: "{method}은(는) 포맷 {count}개 중 {graded}개를 평가합니다.",
     },
     unlabelledFormats: "나머지에는 아키타입 분류가 없습니다.",
+  },
+  commanders: {
+    eyebrow: "사령관 랭킹",
+    lead: "모든 사령관과 사령관 쌍을 이끄는 덱 수로 순위를 매기고, 그 덱들의 토너먼트 성적을 함께 보여 줍니다: 필드 대비 승률, 탑컷 진출률, 추세.",
+    count: "사령관",
+    podium: "가장 많이 쓰인 사령관",
+    kinds: "랭킹 대상",
+    cards: "카드",
+    commanders: "사령관",
+    filters: "사령관 필터",
+    updating: "사령관을 업데이트하는 중…",
+    minDecks: "최소 덱 수",
+    anyDecks: "덱 수 제한 없음",
+    atLeast: "덱 {count}개 이상",
+    perPage: "페이지당 사령관 수",
+    commander: "사령관",
+    events: "대회",
+    decks: "덱",
+    range: {
+      other: "사령관 {count}개 중 {first}–{last}",
+    },
+    noneMatch: "일치하는 사령관 없음",
+    emptyTitle: "일치하는 사령관이 없습니다.",
+    emptyBody: "색이나 덱 수 필터를 완화하거나 다른 이름으로 검색하세요.",
+    noneTitle: "{format}에서 순위에 오른 사령관이 없습니다.",
+    noneBody:
+      "사령관은 덱이 사령관을 지정하는 포맷에서, 사령관 랭킹이 시작된 이후 공개된 점수 산출 결과를 기준으로 순위가 매겨집니다. 다른 기간이나 포맷을 선택하세요.",
+    rankCards: "{format} 카드 랭킹",
+    selected: "선택한 사령관",
+    coreCards: {
+      other: "대부분의 덱에 들어가는 카드 {count}장",
+    },
+    note: "사령관 쌍은 사령관 하나로 집계합니다. 집계는 덱리스트의 절반 이상이 공개된 경쟁 대회의 공개 덱리스트를 기준으로 합니다. 탑컷은 결과가 알려진 경우에만 집계하고, 승률은 보고된 매치 기록을 기준으로 합니다. 필터를 적용해도 순위는 그대로 유지됩니다.",
   },
 };

@@ -47,8 +47,11 @@ def test_the_cohort_counts_complete_decks_and_their_records(tmp_path) -> None:
     )
 
     (event,) = run["cohort"]["events"]
+    # The saved coverage names neither the event nor a page for it.
     assert event == {
         "source_event_id": "ptsyn05",
+        "name": None,
+        "url": None,
         "occurred_on": "2005-10-28",
         "players": 9,
         "decklists": 7,

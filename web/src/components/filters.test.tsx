@@ -43,7 +43,7 @@ describe("Filters", () => {
     it("starts empty with 24 cards per page", () => {
       render(<Filters snapshot={snapshot} query="" />);
       expect(
-        screen.getByRole("searchbox", { name: "Card or face name" }),
+        screen.getByRole("searchbox", { name: "Name, type or text" }),
       ).toHaveValue("");
       for (const box of screen.getAllByRole("checkbox"))
         expect(box).not.toBeChecked();
@@ -53,18 +53,20 @@ describe("Filters", () => {
       expect(select("Color identity")).toHaveValue("");
       expect(select("Game")).toHaveValue("");
       expect(select("Cards per page")).toHaveValue("24");
+      expect(select("Search in")).toHaveValue("");
     });
 
     it("reflects every filter in the query", () => {
       render(
         <Filters
           snapshot={snapshot}
-          query="q=Bolt&color=R&color=C&type=instant&set=m11&set=lea&rarity=rare&rarity=mythic&color_identity=WU&game=arena&limit=50"
+          query="q=Bolt&in=name&color=R&color=C&type=instant&set=m11&set=lea&rarity=rare&rarity=mythic&color_identity=WU&game=arena&limit=50"
         />,
       );
       expect(
-        screen.getByRole("searchbox", { name: "Card or face name" }),
+        screen.getByRole("searchbox", { name: "Name, type or text" }),
       ).toHaveValue("Bolt");
+      expect(select("Search in")).toHaveValue("name");
       expect(screen.getByRole("checkbox", { name: "Red" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Colorless" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Blue" })).not.toBeChecked();
@@ -219,7 +221,7 @@ describe("Filters", () => {
       expect(form).toHaveAttribute("action", "/cards");
 
       await user.type(
-        screen.getByRole("searchbox", { name: "Card or face name" }),
+        screen.getByRole("searchbox", { name: "Name, type or text" }),
         "Æther & co",
       );
       await user.click(screen.getByRole("checkbox", { name: "Blue" }));
@@ -253,11 +255,28 @@ describe("Filters", () => {
       );
     });
 
+    it("searches the part of each card chosen, only with text to search for", async () => {
+      const user = userEvent.setup();
+      render(<Filters snapshot={snapshot} query="" />);
+      await user.selectOptions(select("Search in"), "Rules text");
+      await user.click(screen.getByRole("button", { name: "Find cards" }));
+      expect(router.push).toHaveBeenLastCalledWith(
+        "/cards?catalog_snapshot_id=snap-1&limit=24",
+      );
+      await user.type(
+        screen.getByRole("searchbox", { name: "Name, type or text" }),
+        "flying{Enter}",
+      );
+      expect(router.push).toHaveBeenLastCalledWith(
+        "/cards?in=text&q=flying&catalog_snapshot_id=snap-1&limit=24",
+      );
+    });
+
     it("submits from the search field with Enter", async () => {
       const user = userEvent.setup();
       render(<Filters snapshot={snapshot} query="" />);
       await user.type(
-        screen.getByRole("searchbox", { name: "Card or face name" }),
+        screen.getByRole("searchbox", { name: "Name, type or text" }),
         "bolt{Enter}",
       );
       expect(router.push).toHaveBeenCalledWith(
@@ -282,7 +301,10 @@ describe("Filters", () => {
         "Loading matching cards…",
       );
 
-      await act(async () => settle());
+      await act(() => {
+        settle();
+        return Promise.resolve();
+      });
 
       expect(screen.getByRole("button", { name: "Find cards" })).toBeEnabled();
       expect(screen.getByRole("status")).toBeEmptyDOMElement();

@@ -22,6 +22,10 @@ mtg-scorer = "mtg_scorer.cli:main"
 dev = [
   "pytest>=8.3",
   "pytest-cov==7.1.0",
+  "pytest-randomly==5.0.0",
+  "pytest-timeout==2.4.0",
+  "pyright==1.1.414",
+  "pre-commit==4.7.0",
   "ruff>=0.9",
   "openapi-spec-validator==0.7.2",
 ]
@@ -32,6 +36,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 # Coverage is opt-in (--cov); single-file database stages must not trip fail_under.
 testpaths = ["tests"]
+# A hung test fails with a traceback instead of stalling the stage. pytest-randomly
+# shuffles the offline suite on every run; the database stages pass -p no:randomly.
+addopts = "--timeout=120"
 
 # From the repository root coverage.py does not find this file on its own:
 #   python -m pytest analytics/tests --cov --cov-config=analytics/pyproject.toml
@@ -54,4 +61,47 @@ target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = [
+  "E", "F", "I", "UP", "B",
+  "S", "PT", "SIM", "C4", "RUF", "PL", "ARG", "RET", "TRY", "PERF", "N", "DTZ",
+]
+ignore = [
+  # Validation errors state their case inline; that is the project's style.
+  "TRY003",
+  # Lazy imports keep psycopg and duckdb out of the analytical core and the runner light.
+  "PLC0415",
+  # Function size is reviewed, not linted.
+  "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917",
+  # Thresholds and tolerances read better in place; the real constants are named.
+  "PLR2004",
+  # URLs opened are the sources' https endpoints or operator-supplied, and subprocess
+  # calls run constant argument lists.
+  "S310", "S603",
+  # Normalization tests and source names use full-width letters and dashes on purpose.
+  "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, use fixture credentials and stub interfaces whose arguments they ignore.
+"test_*.py" = ["S101", "S106", "ARG"]
+
+[tool.mutmut]
+# Mutation testing (weekly in CI; mutmut needs fork, so Linux or WSL). mutmut copies
+# the sources into mutants/ and runs pytest from there; the validators find contracts/
+# by walking up, so the copy reads the same schemas. Only the analytical core is
+# mutated: adapters that stream files, the catalog exporter and the PostgreSQL
+# publishers are proved by the database stage, not by the offline suite.
+source_paths = ["src/mtg_scorer/"]
+only_mutate = [
+  "src/mtg_scorer/domain.py",
+  "src/mtg_scorer/features.py",
+  "src/mtg_scorer/tournament_features.py",
+  "src/mtg_scorer/scoring/*",
+  "src/mtg_scorer/ingest/topdeck.py",
+  "src/mtg_scorer/ingest/wizards.py",
+  "src/mtg_scorer/publish/score_run.py",
+  "src/mtg_scorer/publish/score_validation.py",
+  "src/mtg_scorer/publish/overall_run.py",
+]
+also_copy = ["seeds/", "cohorts/"]
+pytest_add_cli_args = ["-p", "no:randomly", "-p", "no:cacheprovider", "-q"]

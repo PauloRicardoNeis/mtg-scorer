@@ -17,6 +17,7 @@ public record CompareQuery(
     List<String> formats,
     String method,
     String q,
+    String in,
     List<String> colors,
     boolean every,
     String sort,
@@ -44,7 +45,7 @@ public record CompareQuery(
           "trend", "share_delta");
 
   public static final Set<String> PARAMETERS =
-      Set.of("format", "method", "q", "color", "every", "sort", "order", "limit", "offset");
+      Set.of("format", "method", "q", "in", "color", "every", "sort", "order", "limit", "offset");
 
   /** Parameters that may repeat; every other one appears once. */
   static final Set<String> REPEATED = Set.of("format", "color");
@@ -71,6 +72,7 @@ public record CompareQuery(
       q = NameKey.normalize(q);
       if (q.isEmpty()) q = null;
     }
+    String in = CatalogQuery.searchIn(input);
     List<String> selected = input.getOrDefault("color", List.of());
     if (selected.size() > CatalogQuery.COLORS.size())
       throw CatalogProblem.query("Too many color filters.");
@@ -103,6 +105,7 @@ public record CompareQuery(
         List.copyOf(formats),
         method,
         q,
+        in,
         colors,
         "true".equals(every),
         sort,

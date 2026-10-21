@@ -40,3 +40,9 @@ web/.next/
 web/playwright-report/
 web/test-results/
 web/tsconfig.tsbuildinfo
+
+# Mutation testing state and reports (mutmut, PIT, Stryker)
+analytics/mutants/
+api/.pit-history/
+web/.stryker-tmp/
+web/reports/

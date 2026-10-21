@@ -9,28 +9,25 @@ import { Toasts, type ToastMessage } from "./toast";
 export function CopySearch() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const { t } = useI18n();
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      setToast({
+        tone: "success",
+        title: t.copy.copied,
+        message: t.copy.pinned,
+      });
+    } catch {
+      setToast({
+        tone: "warning",
+        title: t.copy.failed,
+        message: t.copy.manual,
+      });
+    }
+  };
   return (
     <span className="copy-action">
-      <button
-        type="button"
-        className="secondary"
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(location.href);
-            setToast({
-              tone: "success",
-              title: t.copy.copied,
-              message: t.copy.pinned,
-            });
-          } catch {
-            setToast({
-              tone: "warning",
-              title: t.copy.failed,
-              message: t.copy.manual,
-            });
-          }
-        }}
-      >
+      <button type="button" className="secondary" onClick={() => void copy()}>
         <Icon name="copy" size={14} />
         {t.copy.button}
       </button>

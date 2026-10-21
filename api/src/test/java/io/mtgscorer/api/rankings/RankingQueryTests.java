@@ -18,6 +18,7 @@ class RankingQueryTests {
     assertThat(query.format()).isNull();
     assertThat(query.method()).isNull();
     assertThat(query.q()).isNull();
+    assertThat(query.in()).isEqualTo("all");
     assertThat(query.type()).isNull();
     assertThat(query.colors()).isEmpty();
     assertThat(query.sort()).isEqualTo("score");
@@ -32,17 +33,18 @@ class RankingQueryTests {
   void everyParameterIsParsedAndNormalized() {
     var query =
         RankingQuery.parse(
-            Map.of(
-                "format", List.of("Modern"),
-                "method", List.of("max-ratio"),
-                "q", List.of(" ＢＯＬＴ "),
-                "type", List.of("instant"),
-                "color", List.of("C", "R", "W", "R"),
-                "sort", List.of("top_cuts"),
-                "order", List.of("asc"),
-                "limit", List.of("100"),
-                "offset", List.of("10000"),
-                "score_run_id", List.of(RUN)));
+            Map.ofEntries(
+                Map.entry("format", List.of("Modern")),
+                Map.entry("method", List.of("max-ratio")),
+                Map.entry("q", List.of(" ＢＯＬＴ ")),
+                Map.entry("in", List.of("text")),
+                Map.entry("type", List.of("instant")),
+                Map.entry("color", List.of("C", "R", "W", "R")),
+                Map.entry("sort", List.of("top_cuts")),
+                Map.entry("order", List.of("asc")),
+                Map.entry("limit", List.of("100")),
+                Map.entry("offset", List.of("10000")),
+                Map.entry("score_run_id", List.of(RUN))));
 
     assertThat(query)
         .isEqualTo(
@@ -50,6 +52,7 @@ class RankingQueryTests {
                 "Modern",
                 "max-ratio",
                 "bolt",
+                "text",
                 "instant",
                 List.of("W", "R", "C"),
                 "top_cuts",
@@ -94,6 +97,7 @@ class RankingQueryTests {
             Map.of("format", List.of("M".repeat(41))),
             Map.of("method", List.of("Max-Ratio")),
             Map.of("q", List.of("x".repeat(101))),
+            Map.of("in", List.of("flavor")),
             Map.of("type", List.of("battle")),
             Map.of("color", List.of("X")),
             Map.of("color", List.of("W", "U", "B", "R", "G", "C", "W")),

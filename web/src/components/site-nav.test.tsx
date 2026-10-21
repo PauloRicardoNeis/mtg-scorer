@@ -32,10 +32,11 @@ describe("SiteNav", () => {
   ])("marks the current section on %s", (pathname, current) => {
     setPathname(pathname);
     render(<SiteNav />);
-    for (const link of screen.getAllByRole("link"))
-      if (link.textContent === current)
-        expect(link).toHaveAttribute("aria-current", "page");
-      else expect(link).not.toHaveAttribute("aria-current");
+    const marked = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("aria-current") === "page")
+      .map((link) => link.textContent);
+    expect(marked).toEqual([current]);
   });
 
   it("marks no section elsewhere", () => {

@@ -79,8 +79,8 @@ export function CompareFilters({
   const form = useRef<HTMLFormElement>(null);
   const current = new URLSearchParams(query);
   const colors = current.getAll("color");
-  // Kept as they are: a change re-sorts the same name search under the same order.
-  const kept = ["q", "sort", "order", "limit"].flatMap((key) => {
+  // Kept as they are: a change re-sorts the same search under the same order.
+  const kept = ["q", "in", "sort", "order", "limit"].flatMap((key) => {
     const value = current.get(key);
     return value ? [[key, value] as const] : [];
   });

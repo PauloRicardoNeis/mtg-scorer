@@ -8,6 +8,7 @@ import java.util.Set;
 /** Authoritative HTTP bounds and filter identity, independent of SQL and Spring. */
 public record CatalogQuery(
     String q,
+    String in,
     List<String> sets,
     List<String> rarities,
     String game,
@@ -29,9 +30,16 @@ public record CatalogQuery(
   public static final Set<String> TYPES =
       Set.of("creature", "planeswalker", "instant", "sorcery", "artifact", "enchantment", "land");
 
+  /**
+   * Where the search text is looked for, on any face: names, type lines, rules text, or all of
+   * them, the default.
+   */
+  public static final List<String> SEARCH_IN = List.of("all", "name", "type", "text");
+
   public static final Set<String> CARD_PARAMETERS =
       Set.of(
           "q",
+          "in",
           "set",
           "rarity",
           "game",
@@ -53,6 +61,7 @@ public record CatalogQuery(
       q = NameKey.normalize(q);
       if (q.isEmpty()) q = null;
     }
+    String in = searchIn(input);
     List<String> sets = repeated(input, "set", 32);
     if (sets.stream().anyMatch(s -> !s.matches("[a-z0-9]{2,8}")))
       throw CatalogProblem.query("Invalid set code.");
@@ -94,13 +103,14 @@ public record CatalogQuery(
       throw CatalogProblem.query("Invalid snapshot ID.");
     return new CatalogQuery(
         q,
+        in,
         sets,
         rarities,
         game,
         colors,
         anyColors,
         type,
-        printings ? "scryfall_id_asc" : "name_asc",
+        printings ? "original_first" : "name_asc",
         limit,
         snapshot,
         scalar(input, "cursor"));
@@ -114,6 +124,14 @@ public record CatalogQuery(
           && entry.getValue().size() != 1)
         throw CatalogProblem.query("Duplicate scalar parameter.");
     }
+  }
+
+  /** The part of a card to search, "all" when absent; it applies only with search text. */
+  public static String searchIn(Map<String, List<String>> input) {
+    String in = scalar(input, "in");
+    if (in == null) return SEARCH_IN.getFirst();
+    if (!SEARCH_IN.contains(in)) throw CatalogProblem.query("Invalid search field.");
+    return in;
   }
 
   private static String scalar(Map<String, List<String>> input, String key) {

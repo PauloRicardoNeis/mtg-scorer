@@ -145,4 +145,60 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <!-- Mutation testing with PIT; weekly in CI, on demand locally:
+                 mvnw -Pmutation -Djacoco.skip=true test-compile org.pitest:pitest-maven:mutationCoverage
+                 Reports land in target/pit-reports; .pit-history keeps incremental state. -->
+            <id>mutation</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.19.1</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.2</version>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <targetClasses>
+                                <param>io.mtgscorer.api.*</param>
+                            </targetClasses>
+                            <excludedClasses>
+                                <!-- Only delegates to SpringApplication.run. -->
+                                <param>io.mtgscorer.api.MtgScorerApiApplication</param>
+                                <!-- OpenAPI wiring is pinned by the contract tests, not by logic. -->
+                                <param>io.mtgscorer.api.config.*</param>
+                            </excludedClasses>
+                            <targetTests>
+                                <param>io.mtgscorer.api.*</param>
+                            </targetTests>
+                            <excludedTestClasses>
+                                <!-- These boot a Spring context; too slow to run per mutant. -->
+                                <param>io.mtgscorer.api.ApiApplicationTests</param>
+                                <param>io.mtgscorer.api.config.*</param>
+                            </excludedTestClasses>
+                            <mutators>
+                                <mutator>DEFAULTS</mutator>
+                            </mutators>
+                            <threads>4</threads>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                            <timestampedReports>false</timestampedReports>
+                            <historyInputFile>${project.basedir}/.pit-history/history.bin</historyInputFile>
+                            <historyOutputFile>${project.basedir}/.pit-history/history.bin</historyOutputFile>
+                            <failWhenNoMutations>true</failWhenNoMutations>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

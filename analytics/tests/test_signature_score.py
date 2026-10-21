@@ -139,14 +139,14 @@ def test_among_equally_distinctive_cards_the_winning_one_scores_higher() -> None
 
 
 @pytest.mark.parametrize(
-    "changes",
+    ("changes", "message"),
     [
-        {"focus_weight": 0.6},
-        {"reliance_weight": -0.1, "focus_weight": 0.9},
-        {"focus_prior_decks": -1.0},
-        {"version": " "},
+        ({"focus_weight": 0.6}, "weights must be non-negative and sum to 1"),
+        ({"reliance_weight": -0.1, "focus_weight": 0.9}, "weights must be non-negative"),
+        ({"focus_prior_decks": -1.0}, "prior strengths cannot be negative"),
+        ({"version": " "}, "version cannot be blank"),
     ],
 )
-def test_the_config_rejects_unusable_settings(changes) -> None:
-    with pytest.raises(ValueError):
+def test_the_config_rejects_unusable_settings(changes, message) -> None:
+    with pytest.raises(ValueError, match=message):
         SignatureConfig(**changes)

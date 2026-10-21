@@ -31,9 +31,15 @@ export type I18n = {
   lift: (ratio: number) => string;
   share: (part: number, whole: number) => string;
   usd: (value: number) => string;
+  /** A deck or card price: "$4.20", or whole dollars from $100: "$1,284". */
+  price: (value: number) => string;
+  /** A count, in thousands past a thousand: "940", "1.2k". */
+  compact: (value: number) => string;
   perDollar: (value: number) => string;
   dateWindow: (startsOn: string, endsBefore: string) => string;
   dateWithYear: (instant: string) => string;
+  /** An ISO date without its year: "Oct 13". */
+  day: (isoDate: string) => string;
   dateTime: (instant: string) => string;
   /** A published window as the window select names it: "Last 90 days", "Since Jan 1, 2024". */
   windowLabel: (
@@ -103,9 +109,17 @@ export function createI18n(locale: Locale, t: Messages): I18n {
     lift: (ratio) => format.lift(ratio, locale),
     share: (part, whole) => format.share(part, whole, locale),
     usd: (value) => format.usd(value, locale),
+    price: (value) => format.price(value, locale),
+    compact: (value) =>
+      value < 1000
+        ? count(value)
+        : fill(t.metagame.thousands, {
+            count: format.decimal(value / 1000, 1, locale),
+          }),
     perDollar: (value) => format.perDollar(value, locale),
     dateWindow,
     dateWithYear,
+    day: (isoDate) => format.day(isoDate, locale),
     dateTime: (instant) => format.dateTime(instant, locale),
     windowLabel: (startsOn, endsBefore, latestEnd) => {
       if (endsBefore !== latestEnd) return dateWindow(startsOn, endsBefore);

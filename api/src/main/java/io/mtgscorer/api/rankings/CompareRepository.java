@@ -58,9 +58,8 @@ class CompareRepository {
     List<String> where = new ArrayList<>();
     if (query.q() != null) {
       where.add(
-          "(strpos(lower(x.name),:q)>0 OR EXISTS(SELECT FROM catalog.published_catalog_alias a"
-              + " WHERE a.catalog_snapshot_id=c.catalog_snapshot_id AND a.oracle_id=c.oracle_id"
-              + " AND strpos(a.alias_key,:q)>0))");
+          CatalogSql.search(
+              query.in(), "(strpos(lower(x.name),:q)>0 OR " + CatalogSql.NAME_MATCH + ")"));
       args.put("q", query.q());
     }
     if (!query.colors().isEmpty()) {

@@ -12,7 +12,13 @@ beforeEach(() => {
 function requested(): { url: string; init: RequestInit | undefined } {
   expect(fetchMock).toHaveBeenCalledTimes(1);
   const [input, init] = fetchMock.mock.calls[0];
-  return { url: String(input), init };
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url;
+  return { url, init };
 }
 
 describe("request URLs", () => {
@@ -91,6 +97,26 @@ describe("request URLs", () => {
     await api.printings("oracle#1", new URLSearchParams("set=m11"));
     expect(requested().url).toBe(
       "http://api/api/v1/cards/oracle%231/printings?set=m11",
+    );
+  });
+
+  it("requests a card's decks in the pinned run", async () => {
+    vi.stubEnv("CATALOG_API_URL", "http://api");
+    await api.decks("oracle#1", new URLSearchParams("offset=20"));
+    expect(requested().url).toBe(
+      "http://api/api/v1/cards/oracle%231/decks?offset=20",
+    );
+  });
+
+  it("requests one deck of a run in the given catalog", async () => {
+    vi.stubEnv("CATALOG_API_URL", "http://api");
+    await api.deck(
+      "scores-a",
+      "7",
+      new URLSearchParams("catalog_snapshot_id=c"),
+    );
+    expect(requested().url).toBe(
+      "http://api/api/v1/decks/scores-a/7?catalog_snapshot_id=c",
     );
   });
 
