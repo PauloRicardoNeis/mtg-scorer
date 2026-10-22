@@ -93,6 +93,33 @@ class CommanderRepositoryTests {
   }
 
   @Test
+  void colorlessAloneAndColorsAloneEachFilterByTheIdentity() {
+    when(jdbc.queryForObject(sql.capture(), args.capture(), eq(Long.class))).thenReturn(1L);
+
+    repository.count(RUN, null, query("color", "C"));
+    assertThat(args.getValue()).doesNotContainKey("anyColors");
+    assertThat(sql.getValue()).contains(" WHERE (idc.colors='{}')");
+
+    repository.count(RUN, null, query("color", "G"));
+    assertThat(args.getValue()).containsEntry("anyColors", "G");
+    assertThat(sql.getValue())
+        .contains(" WHERE (idc.colors && string_to_array(:anyColors,','))")
+        .doesNotContain("idc.colors='{}'");
+  }
+
+  @Test
+  void theLargestDeckCountIsZeroWhenNoCommanderIsRanked() {
+    when(jdbc.queryForObject(sql.capture(), args.capture(), eq(Integer.class)))
+        .thenReturn(null)
+        .thenReturn(4012);
+
+    assertThat(repository.maxDeckCount(RUN)).isZero();
+    assertThat(repository.maxDeckCount(RUN)).isEqualTo(4012);
+    assertThat(args.getValue()).containsEntry("run", RUN);
+    assertThat(sql.getValue()).contains("max(deck_count)").contains("cardinality(commanders)>0");
+  }
+
+  @Test
   void sortsOrderByStoredValuesWithTheLabelBreakingTies() {
     assertThat(CommanderRepository.orderBy(query()))
         .isEqualTo("r.deck_count DESC NULLS LAST,r.label");

@@ -157,7 +157,16 @@ const sorts: Record<string, SortLink> = {
 
 function table(
   items: RankedCard[],
-  { catalog = "snap-1", method = constructed, scored = run.scored_cards } = {},
+  {
+    catalog = "snap-1",
+    method = constructed,
+    scored = run.scored_cards,
+  }: {
+    // null is what the page passes when no catalog is joined.
+    catalog?: string | null;
+    method?: typeof constructed;
+    scored?: typeof run.scored_cards;
+  } = {},
 ) {
   return (
     <RankingTable
@@ -177,6 +186,49 @@ function table(
       pricesUpdatedAt="2026-09-27T21:05:46.301Z"
       clearHref="/rankings?format=Modern"
       footer={<p role="status">1–3 of 3 ranked cards</p>}
+    />
+  );
+}
+
+// The overall run pools every format's run and grades by format.
+const overallGrade = {
+  ...constructed,
+  method_id: "overall-grade",
+  method_version: "overall-grade-v1",
+  label: "Overall grade",
+};
+const overall: RankingPage["score_run"] = {
+  ...run,
+  format_name: "Overall",
+  decks: 92506,
+  components: Array.from({ length: 15 }, (_, index) => ({
+    format_name: `Format ${index}`,
+    score_run_id: `run-${index}`,
+    decks: 100,
+    weight: 0.3,
+  })),
+  methods: [overallGrade],
+};
+
+function overallTable(items: RankedCard[]) {
+  return (
+    <RankingTable
+      items={items}
+      run={overall}
+      method={overallGrade}
+      graded
+      labels={{
+        share: "Decklists",
+        cut: "Top cut",
+        trend: null,
+        value: "Grade per $",
+      }}
+      sorts={sorts}
+      maxDeckCount={18235}
+      catalogSnapshotId="snap-1"
+      pricesUpdatedAt={null}
+      clearHref="/rankings?format=Overall"
+      footer={null}
     />
   );
 }
@@ -520,12 +572,6 @@ describe("RankingTable", () => {
 
   it("grades the overall run by format instead of trend and archetype", async () => {
     const user = userEvent.setup();
-    const overallGrade = {
-      ...constructed,
-      method_id: "overall-grade",
-      method_version: "overall-grade-v1",
-      label: "Overall grade",
-    };
     const staple = card({
       win_rate: null,
       win_rate_ci95: null,
@@ -539,37 +585,7 @@ describe("RankingTable", () => {
         { format_name: "Modern", score: 40 },
       ],
     });
-    render(
-      <RankingTable
-        items={[staple]}
-        run={{
-          ...run,
-          format_name: "Overall",
-          decks: 92506,
-          components: Array.from({ length: 15 }, (_, index) => ({
-            format_name: `Format ${index}`,
-            score_run_id: `run-${index}`,
-            decks: 100,
-            weight: 0.3,
-          })),
-          methods: [overallGrade],
-        }}
-        method={overallGrade}
-        graded
-        labels={{
-          share: "Decklists",
-          cut: "Top cut",
-          trend: null,
-          value: "Grade per $",
-        }}
-        sorts={sorts}
-        maxDeckCount={18235}
-        catalogSnapshotId="snap-1"
-        pricesUpdatedAt={null}
-        clearHref="/rankings?format=Overall"
-        footer={null}
-      />,
-    );
+    render(overallTable([staple]));
     expect(
       screen.getAllByRole("columnheader").map((header) => header.textContent),
     ).toEqual([
@@ -595,6 +611,16 @@ describe("RankingTable", () => {
     expect(preview().getByText("Formats").nextSibling).toHaveTextContent(
       "4 of 15",
     );
+  });
+
+  it("reads a card the overall run grades in no format as graded in none", () => {
+    // An API from before format grades sends no list at all.
+    render(overallTable([bolt]));
+    expect(cells(/Lightning Bolt/)[7]).toHaveTextContent("—");
+    expect(preview().getByText("Formats").nextSibling).toHaveTextContent(
+      "0 of 15",
+    );
+    expect(preview().getByText("No format grades")).toBeInTheDocument();
   });
 
   it("explains an empty page inside the table and drops the preview", () => {

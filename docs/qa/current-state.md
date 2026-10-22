@@ -257,9 +257,12 @@ four other sessions editing the same checkout.
 - `vitest`: 30 failures, all in `src/i18n/messages/messages.test.ts`, because
   `en.ts` gained about 240 keys for archetype and decklist pages that the other
   10 locales do not yet carry. The test is doing its job; the work is in
-  progress. All 454 other cases pass.
+  progress. All 454 other cases pass. Fixed on 2026-10-22: the 242 missing
+  messages were translated into the 10 locales, and 44 unit tests restored the
+  coverage thresholds the new components and libraries had fallen below.
 - JaCoCo report generated at 22:37 shows 4 of 633 branches missed (99.4%), below
-  the 100% branch floor, from the same in-progress API work.
+  the 100% branch floor, from the same in-progress API work. Fixed on 2026-10-22 with two
+  CommanderRepository tests.
 - A `.coverage` data file at the repository root from a partial run reports 87%;
   it is not the gated number. The gated run writes to `.local/coverage/python`.
 - Parallel sessions in one checkout make local suites fail on each other's

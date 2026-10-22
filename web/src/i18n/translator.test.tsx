@@ -149,6 +149,33 @@ describe("numbers", () => {
     expect(english.usd(1125.9)).toBe("$1,125.90");
     expect(english.perDollar(1666.7)).toBe("1,667");
   });
+
+  it("prices in cents below a hundred dollars and whole dollars from it", () => {
+    expect(english.price(4.2)).toBe("$4.20");
+    expect(english.price(1284.49)).toBe("$1,284");
+    expect(spaced(german.price(1284.49))).toBe("1.284 $");
+  });
+});
+
+describe("compact", () => {
+  it("counts in full below a thousand", () => {
+    expect(english.compact(0)).toBe("0");
+    expect(english.compact(940)).toBe("940");
+    expect(english.compact(999)).toBe("999");
+  });
+
+  it("counts in thousands with one decimal from a thousand", () => {
+    expect(english.compact(1000)).toBe("1.0k");
+    expect(english.compact(1234)).toBe("1.2k");
+    expect(english.compact(12_345)).toBe("12.3k");
+  });
+
+  it("words the thousands the language's way", () => {
+    expect(german.compact(1234)).toBe(
+      de.metagame.thousands.replace("{count}", "1,2"),
+    );
+    expect(german.compact(940)).toBe("940");
+  });
 });
 
 describe("dates", () => {
@@ -163,6 +190,11 @@ describe("dates", () => {
     expect(spaced(english.dateTime("2026-10-19T12:00:00Z"))).toBe(
       "October 19, 2026 at 12:00 PM UTC",
     );
+  });
+
+  it("names a day without its year the locale's way", () => {
+    expect(english.day("2026-10-13")).toBe("Oct 13");
+    expect(spaced(german.day("2026-10-13"))).toBe("13. Okt.");
   });
 });
 

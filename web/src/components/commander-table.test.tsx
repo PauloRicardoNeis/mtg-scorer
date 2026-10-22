@@ -102,25 +102,41 @@ const pair = commander({
   core_card_count: 1,
 });
 
-const sorts: Record<string, SortLink> = Object.fromEntries(
-  ["name", "decks", "win_rate", "top_cut_lift", "trend"].map((key) => [
-    key,
-    {
-      href: `/rankings/commanders?sort=${key}`,
-      active: key === "decks",
-      order: key === "name" ? "asc" : "desc",
-    },
-  ]),
-);
+/** Every column's sort link, with the named one active. */
+function links(active: string): Record<string, SortLink> {
+  return Object.fromEntries(
+    ["name", "decks", "win_rate", "top_cut_lift", "trend"].map((key) => [
+      key,
+      {
+        href: `/rankings/commanders?sort=${key}`,
+        active: key === active,
+        order: key === "name" ? "asc" : "desc",
+      },
+    ]),
+  );
+}
 
-function table(items: RankedCommander[], catalog: string | null = "snap-1") {
+const sorts = links("decks");
+
+function table(
+  items: RankedCommander[],
+  {
+    catalog = "snap-1",
+    sorts: sortLinks = sorts,
+    trendLabel = "12 mo",
+  }: {
+    catalog?: string | null;
+    sorts?: Record<string, SortLink>;
+    trendLabel?: string | null;
+  } = {},
+) {
   return (
     <CommanderTable
       items={items}
       run={run}
-      sorts={sorts}
+      sorts={sortLinks}
       shareLabel="Meta share"
-      trendLabel="12 mo"
+      trendLabel={trendLabel}
       maxDeckCount={12}
       catalogSnapshotId={catalog}
       clearHref="/rankings/commanders?format=EDH"
@@ -153,6 +169,22 @@ describe("CommanderTable", () => {
     expect(
       screen.getByRole("columnheader", { name: /Meta share/ }),
     ).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("marks an ascending sort and heads an untimed trend plainly", () => {
+    render(table([kinnan], { sorts: links("name"), trendLabel: null }));
+    const commander = screen.getByRole("columnheader", { name: /Commander/ });
+
+    expect(commander).toHaveAttribute("aria-sort", "ascending");
+    expect(within(commander).getByRole("link")).toHaveTextContent(
+      "Commander ↑",
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "Meta share" }),
+    ).not.toHaveAttribute("aria-sort");
+    expect(
+      screen.getByRole("columnheader", { name: "Trend" }),
+    ).toBeInTheDocument();
   });
 
   it("names a partner pair's commanders apart, each linked to its card", () => {
@@ -204,6 +236,50 @@ describe("CommanderTable", () => {
         .map((link) => link.textContent),
     ).toEqual(["Kraum, Ludevic's Opus"]);
     expect(preview().getByText("Tymna the Weaver")).toBeInTheDocument();
+  });
+
+  it("selects the row a keyboard reader focuses", () => {
+    render(table([kinnan, pair]));
+    expect(screen.getByRole("row", { name: /Kinnan/ })).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+
+    fireEvent.focus(screen.getByRole("row", { name: /Tymna/ }));
+
+    expect(screen.getByRole("row", { name: /Tymna/ })).toHaveAttribute(
+      "data-selected",
+      "true",
+    );
+    expect(screen.getByRole("row", { name: /Kinnan/ })).not.toHaveAttribute(
+      "data-selected",
+    );
+    expect(preview().getByText("Rank 2")).toBeInTheDocument();
+  });
+
+  it("previews a commander whose printing has no scan as unavailable", () => {
+    const unscanned = commander({
+      label: "Tymna the Weaver",
+      commanders: [
+        card("tymna", "Tymna the Weaver", {
+          preview_printing: { ...printing("unused"), images: [] },
+        }),
+      ],
+    });
+    render(table([unscanned]));
+
+    expect(
+      preview().getByRole("img", {
+        name: "Tymna the Weaver — Commander Legends #1 (EN): image unavailable",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("row", { name: /Tymna/ }).querySelector(".thumb img"),
+    ).toBeNull();
+    // The card is in the catalog, so its name and the preview still open it.
+    expect(
+      preview().getByRole("link", { name: "Open card: Tymna the Weaver" }),
+    ).toHaveAttribute("href", "/cards/tymna?catalog_snapshot_id=snap-1");
   });
 
   it("offers to clear filters when no commander matches", () => {

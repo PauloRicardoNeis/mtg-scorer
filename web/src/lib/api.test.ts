@@ -78,6 +78,19 @@ describe("request URLs", () => {
     );
   });
 
+  it("requests commander rankings with the given filters", async () => {
+    vi.stubEnv("CATALOG_API_URL", "http://api");
+    await api.commanders(
+      new URLSearchParams([
+        ["format", "Commander"],
+        ["offset", "20"],
+      ]),
+    );
+    expect(requested().url).toBe(
+      "http://api/api/v1/rankings/commanders?format=Commander&offset=20",
+    );
+  });
+
   it("omits the question mark for an empty query", async () => {
     vi.stubEnv("CATALOG_API_URL", "http://api");
     await api.cards(new URLSearchParams());

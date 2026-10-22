@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Checkbox, Chip, Radio, Segmented, Switch } from "./forms";
 
@@ -31,6 +31,17 @@ describe("Checkbox", () => {
   it("starts checked when asked", () => {
     render(<Checkbox label="Paper" defaultChecked />);
     expect(screen.getByRole("checkbox", { name: "Paper" })).toBeChecked();
+  });
+
+  it("lends the input to a ref from the parent", () => {
+    // React 19 passes a parent's ref along with the other input props, which
+    // the input takes over its own; the partial-selection effect then has no
+    // box of its own to set and leaves the input to the parent.
+    const taken = { ref: createRef<HTMLInputElement>() };
+    render(<Checkbox label="All sets" indeterminate {...taken} />);
+    expect(taken.ref.current).toBe(
+      screen.getByRole("checkbox", { name: "All sets" }),
+    );
   });
 });
 

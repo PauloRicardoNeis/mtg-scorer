@@ -40,7 +40,7 @@ push to main / pull_request          concurrency: ci-<ref>, cancel-in-progress
 | --- | --- | --- |
 | Triggers | push to `main`, every pull request | unchanged |
 | Jobs | 1 (`catalog`) | 5: `python`, `java`, `web` in parallel, then `integration`, then `gate` |
-| Wall clock | 3 min 59 s (2026-10-20) | to be measured on the first run; the layer jobs no longer wait for each other |
+| Wall clock | 3 min 59 s (2026-10-20) | first run 2026-10-22 (red on web and java, integration skipped): layer jobs 48 to 61 s, gate at 1 min 10 s; a green run's figure is pending |
 | Required for merge | nothing; `main` is unprotected | still nothing; the check to require is `CI gate` |
 | Concurrency, timeouts | none | group `ci-${{ github.ref }}` with cancel-in-progress; 15 min per layer job, 20 for integration, 5 for the gate |
 | Test result annotations | none; failures are read from the step log | JUnit XML from pytest, Surefire, vitest and Playwright, annotated inline by `mikepenz/action-junit-report@v5` (annotate only, with a summary table) |
