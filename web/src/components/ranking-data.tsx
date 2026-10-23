@@ -7,10 +7,15 @@ import { ColorPips } from "./mana";
 
 type Run = RankingPage["score_run"];
 
+/** What the win-rate and trend cells read; a ranked commander has the same fields. */
+type Performance = Pick<RankedCard, "win_rate" | "win_rate_delta">;
+type Series = Pick<RankedCard, "series_decks" | "share_delta">;
+
 /** Methods whose 0–100 percentile scale carries letter grades. */
 const GRADED_METHODS = [
   "constructed-score",
   "signature-score",
+  "hidden-gem-score",
   "overall-grade",
 ];
 
@@ -19,10 +24,18 @@ export function isGraded(methodId: string): boolean {
 }
 
 /** The gradings a reader can rank by, in menu order; a run offers those it has. */
-export const GRADINGS = ["constructed-score", "signature-score", "max-ratio"];
+export const GRADINGS = [
+  "constructed-score",
+  "signature-score",
+  "hidden-gem-score",
+  "max-ratio",
+];
 
-/** The gradings formats can be compared by, in menu order; the first is the default. */
-export const COMPARE_GRADINGS = GRADINGS.filter(isGraded);
+/**
+ * The gradings formats can be compared by, in menu order; the first is the default.
+ * The comparison API grades by these alone.
+ */
+export const COMPARE_GRADINGS = ["constructed-score", "signature-score"];
 
 /** The method the API ranks by without one: the first of these the run has. */
 export function defaultMethod(run: Run): string {
@@ -103,7 +116,7 @@ export function RankMove({ change }: { change: number | null | undefined }) {
  * the delta in points beside it and the raw win rate below. The overall run has
  * only the delta, since win rates of one-on-one and multiplayer formats differ.
  */
-export function WinRate({ card }: { card: RankedCard }) {
+export function WinRate({ card }: { card: Performance }) {
   const { t, fill, percent, signed } = useI18n();
   if (card.win_rate_delta === null)
     return <span className="muted">{t.common.unknown}</span>;
@@ -178,7 +191,10 @@ export function TopCutLift({ value }: { value: number | null }) {
 }
 
 /** The card's meta share in each trend period the cohort has decks for. */
-export function shares(card: RankedCard, run: Run): (number | null)[] {
+export function shares(
+  card: Pick<Series, "series_decks">,
+  run: Run,
+): (number | null)[] {
   const totals = run.series_decks;
   if (!card.series_decks || !totals) return [];
   return card.series_decks.map((decks, index) =>
@@ -204,7 +220,7 @@ function trendTone(delta: number): "up" | "down" | "flat" {
  * A 64×24 sparkline of meta share, its end point marked, and the change in points
  * beside it. Periods without decks leave a gap in the data, not a zero.
  */
-export function Trend({ card, run }: { card: RankedCard; run: Run }) {
+export function Trend({ card, run }: { card: Series; run: Run }) {
   const { t, signed } = useI18n();
   const series = shares(card, run);
   const known = series.flatMap((share, index) =>

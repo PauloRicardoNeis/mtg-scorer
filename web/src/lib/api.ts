@@ -10,11 +10,21 @@ export type RankingPage = components["schemas"]["RankingPage"];
 export type RankedCard = components["schemas"]["RankedCard"];
 export type ComparePage = components["schemas"]["ComparePage"];
 export type ComparedCard = components["schemas"]["ComparedCard"];
+export type CommanderPage = components["schemas"]["CommanderPage"];
+export type RankedCommander = components["schemas"]["RankedCommander"];
+export type CardDeckPage = components["schemas"]["CardDeckPage"];
+export type CardDeck = components["schemas"]["CardDeck"];
+export type DeckDetail = components["schemas"]["DeckDetail"];
+export type DeckCard = components["schemas"]["DeckCard"];
 type CatalogError = components["schemas"]["CatalogError"];
+
+/** The catalog's error codes, plus the sample metagame data's own not-found cases. */
+export type ErrorCode =
+  CatalogError["code"] | "archetype_not_found" | "decklist_not_found";
 
 export class ApiError extends Error {
   constructor(
-    public readonly code: CatalogError["code"],
+    public readonly code: ErrorCode,
     public readonly status: number,
   ) {
     super(code);
@@ -38,9 +48,9 @@ async function read<T>(path: string, query?: URLSearchParams): Promise<T> {
   }
   if (!response.ok) {
     // A proxy in front of the API can answer with an HTML error page.
-    const problem: Partial<CatalogError> = await response
+    const problem = (await response
       .json()
-      .catch(() => ({}));
+      .catch(() => ({}))) as Partial<CatalogError>;
     throw new ApiError(problem.code ?? "internal_error", response.status);
   }
   return response.json() as Promise<T>;
@@ -55,10 +65,19 @@ export const api = {
     ),
   printings: (id: string, query: URLSearchParams) =>
     read<PrintingPage>(`/cards/${encodeURIComponent(id)}/printings`, query),
+  decks: (id: string, query: URLSearchParams) =>
+    read<CardDeckPage>(`/cards/${encodeURIComponent(id)}/decks`, query),
+  deck: (scoreRun: string, position: string, query: URLSearchParams) =>
+    read<DeckDetail>(
+      `/decks/${encodeURIComponent(scoreRun)}/${encodeURIComponent(position)}`,
+      query,
+    ),
   snapshot: (id: string) =>
     read<Snapshot>(`/snapshots/${encodeURIComponent(id)}`),
   snapshots: () => read<SnapshotList>("/snapshots"),
   rankings: (query: URLSearchParams) => read<RankingPage>("/rankings", query),
   compare: (query: URLSearchParams) =>
     read<ComparePage>("/rankings/compare", query),
+  commanders: (query: URLSearchParams) =>
+    read<CommanderPage>("/rankings/commanders", query),
 };

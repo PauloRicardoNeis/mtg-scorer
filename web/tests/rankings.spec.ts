@@ -27,7 +27,18 @@ test("Modern rankings show the published run, its credit and every ranked card",
     .getByRole("navigation", { name: "Main" })
     .getByRole("link", { name: "Rankings" })
     .click();
+  // Rankings open on the overall grade; each format is a tab away.
   await expect(page).toHaveURL(/\/rankings$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Overall" }),
+  ).toBeVisible();
+  const formats = page.getByRole("navigation", { name: "Formats" });
+  await expect(formats.getByRole("link", { name: /Overall/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await formats.getByRole("link", { name: /Modern/ }).click();
+  await expect(page).toHaveURL(/\/rankings\?format=Modern$/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Modern" }),
   ).toBeVisible();
@@ -104,7 +115,7 @@ test("Modern rankings show the published run, its credit and every ranked card",
 test("filters apply at once and keep overall ranks, and a card opens its catalog page", async ({
   page,
 }) => {
-  await page.goto("/rankings");
+  await page.goto("/rankings?format=Modern");
   const type = page.getByLabel("Card type");
   await type.focus();
   await type.selectOption("instant");
@@ -138,12 +149,13 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
 test("the grading menu re-ranks by signature score and the choice follows every link", async ({
   page,
 }) => {
-  await page.goto("/rankings");
+  await page.goto("/rankings?format=Modern");
   const grading = page.getByLabel("Grading");
   await expect(grading).toHaveValue("");
   await expect(grading.getByRole("option")).toHaveText([
     "Constructed score",
     "Signature score",
+    "Hidden gem score",
     "Relative volume",
   ]);
   await grading.selectOption("signature-score");
@@ -189,7 +201,7 @@ test("the grading menu re-ranks by signature score and the choice follows every 
 test("an empty result explains itself inside the table and clears every filter", async ({
   page,
 }) => {
-  await page.goto("/rankings?q=nothing-matches&color=G");
+  await page.goto("/rankings?format=Modern&q=nothing-matches&color=G");
   const rankings = page.getByRole("region", { name: "Modern rankings" });
   await expect(
     rankings.getByRole("heading", { level: 3, name: "No ranked cards match." }),
@@ -207,7 +219,7 @@ test("an empty result explains itself inside the table and clears every filter",
 test("hovering a row previews its card, the header explains the method, and a row opens its card", async ({
   page,
 }) => {
-  await page.goto("/rankings");
+  await page.goto("/rankings?format=Modern");
   await page.getByRole("row", { name: /Fire \/\/ Ice/ }).hover();
   await expect(preview(page)).toContainText("Rank 4");
 
@@ -225,14 +237,14 @@ test("hovering a row previews its card, the header explains the method, and a ro
 });
 
 test("loading more and paging stay on the pinned run", async ({ page }) => {
-  await page.goto("/rankings?sort=name&limit=3");
+  await page.goto("/rankings?format=Modern&sort=name&limit=3");
   await expect(results(page)).toHaveText("1–3 of 8 ranked cards");
   await page.getByRole("link", { name: "Load 25 more" }).click();
   await expect(page).toHaveURL(/score_run_id=scores-[0-9a-f]{64}/);
   await expect(page).toHaveURL(/limit=28/);
   await expect(results(page)).toHaveText("1–8 of 8 ranked cards");
 
-  await page.goto("/rankings?sort=name&limit=3&offset=3");
+  await page.goto("/rankings?format=Modern&sort=name&limit=3&offset=3");
   await expect(results(page)).toHaveText("4–6 of 8 ranked cards");
   await page.getByRole("link", { name: "Next 3" }).click();
   await expect(results(page)).toHaveText("7–8 of 8 ranked cards");
@@ -243,7 +255,7 @@ test("loading more and paging stay on the pinned run", async ({ page }) => {
 test("column headers sort and the view tabs count risers and fallers", async ({
   page,
 }) => {
-  await page.goto("/rankings");
+  await page.goto("/rankings?format=Modern");
   const views = page.getByRole("navigation", { name: "Views" });
   await expect(views.getByRole("link")).toHaveText([
     "All8",
@@ -317,7 +329,7 @@ test("a format without published rankings explains itself", async ({
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to rankings" }).click();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Modern" }),
+    page.getByRole("heading", { level: 1, name: "Overall" }),
   ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

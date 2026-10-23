@@ -1,0 +1,9 @@
+{
+  "include": ["analytics/src", "scripts"],
+  "venvPath": "analytics",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "strict": ["analytics/src/mtg_scorer/domain.py", "analytics/src/mtg_scorer/features.py"],
+  "reportMissingTypeStubs": false
+}

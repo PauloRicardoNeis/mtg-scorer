@@ -42,6 +42,147 @@
         ],
         "type": "object"
       },
+      "CardDeck": {
+        "properties": {
+          "archetype": {
+            "description": "The source's label, or an unlabelled commander deck's commanders.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "copies": {
+            "description": "Mainboard copies of the card the deck plays.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "draws": {
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event": {
+            "$ref": "#/components/schemas/DeckEvent"
+          },
+          "final_rank": {
+            "description": "Final standing when the source states one.",
+            "format": "int32",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "losses": {
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "made_top_cut": {
+            "description": "Null when unknown or when the event had no top cut.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "position": {
+            "description": "The deck's place in its run, newest event first.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_deck_id": {
+            "type": "string"
+          },
+          "wins": {
+            "description": "Match wins reported in standings; with losses and draws, or null.",
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "archetype",
+          "copies",
+          "draws",
+          "event",
+          "final_rank",
+          "losses",
+          "made_top_cut",
+          "position",
+          "source_deck_id",
+          "wins"
+        ],
+        "type": "object"
+      },
+      "CardDeckPage": {
+        "properties": {
+          "formats": {
+            "description": "Active runs that list the card's decks, most decks first.",
+            "items": {
+              "$ref": "#/components/schemas/DeckFormat"
+            },
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CardDeck"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "oracle_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeckRun"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when no active run lists the card's decks."
+          },
+          "total": {
+            "description": "The card's decks in the run.",
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "formats",
+          "items",
+          "limit",
+          "offset",
+          "oracle_id",
+          "run",
+          "total"
+        ],
+        "type": "object"
+      },
       "CardDetail": {
         "properties": {
           "catalog_snapshot_id": {
@@ -211,6 +352,7 @@
               "invalid_cursor",
               "snapshot_not_found",
               "card_not_found",
+              "deck_not_found",
               "catalog_unavailable",
               "rankings_unavailable",
               "score_run_not_found",
@@ -246,6 +388,144 @@
           "status",
           "title",
           "type"
+        ],
+        "type": "object"
+      },
+      "CommanderCard": {
+        "properties": {
+          "color_identity": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "mana_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "description": "As the run's decks most often spell it.",
+            "type": "string"
+          },
+          "oracle_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "preview_printing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Printing"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the card is not in the active catalog."
+          },
+          "type_line": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "color_identity",
+          "mana_cost",
+          "name",
+          "oracle_id",
+          "preview_printing",
+          "type_line"
+        ],
+        "type": "object"
+      },
+      "CommanderPage": {
+        "properties": {
+          "catalog_snapshot_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "formats": {
+            "items": {
+              "$ref": "#/components/schemas/RankedFormat"
+            },
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RankedCommander"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_deck_count": {
+            "description": "The most decks any commander has in this run.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "offset": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "order": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          },
+          "previous_score_run_id": {
+            "description": "The run rank changes are measured against.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "score_run": {
+            "$ref": "#/components/schemas/ScoreRunSummary"
+          },
+          "sort": {
+            "type": "string"
+          },
+          "total": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "windows": {
+            "description": "Every published window of this format, latest end first, one run per source and window.",
+            "items": {
+              "$ref": "#/components/schemas/RunWindow"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog_snapshot_id",
+          "formats",
+          "items",
+          "limit",
+          "max_deck_count",
+          "offset",
+          "order",
+          "previous_score_run_id",
+          "score_run",
+          "sort",
+          "total",
+          "windows"
         ],
         "type": "object"
       },
@@ -494,6 +774,276 @@
           "oracle_id",
           "ranked_in",
           "type_line"
+        ],
+        "type": "object"
+      },
+      "DeckCard": {
+        "properties": {
+          "copies": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "in_catalog": {
+            "description": "Whether the catalog shown has the card, so it can be opened.",
+            "type": "boolean"
+          },
+          "mana_cost": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mana_value": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "oracle_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type_line": {
+            "description": "Null when the catalog shown does not have the card.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "copies",
+          "in_catalog",
+          "mana_cost",
+          "mana_value",
+          "name",
+          "oracle_id",
+          "type_line"
+        ],
+        "type": "object"
+      },
+      "DeckDetail": {
+        "properties": {
+          "archetype": {
+            "description": "The source's label, or an unlabelled commander deck's commanders.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "catalog_snapshot_id": {
+            "description": "The catalog the cards' details come from.",
+            "type": "string"
+          },
+          "commanders": {
+            "description": "The cards the source listed as commanders, apart from the main deck.",
+            "items": {
+              "$ref": "#/components/schemas/DeckCard"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "draws": {
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "event": {
+            "$ref": "#/components/schemas/DeckEvent"
+          },
+          "final_rank": {
+            "description": "Final standing when the source states one.",
+            "format": "int32",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "losses": {
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "made_top_cut": {
+            "description": "Null when unknown or when the event had no top cut.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "mainboard": {
+            "description": "The main deck, by name, without commanders.",
+            "items": {
+              "$ref": "#/components/schemas/DeckCard"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "position": {
+            "description": "The deck's place in its run, newest event first.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "run": {
+            "$ref": "#/components/schemas/DeckRun"
+          },
+          "sideboard": {
+            "description": "The sideboard, by name.",
+            "items": {
+              "$ref": "#/components/schemas/DeckCard"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "source_deck_id": {
+            "type": "string"
+          },
+          "wins": {
+            "description": "Match wins reported in standings; with losses and draws, or null.",
+            "format": "int32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "archetype",
+          "catalog_snapshot_id",
+          "commanders",
+          "draws",
+          "event",
+          "final_rank",
+          "losses",
+          "made_top_cut",
+          "mainboard",
+          "position",
+          "run",
+          "sideboard",
+          "source_deck_id",
+          "wins"
+        ],
+        "type": "object"
+      },
+      "DeckEvent": {
+        "properties": {
+          "name": {
+            "description": "The event as its source names it; null when it named none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurred_on": {
+            "format": "date",
+            "type": "string"
+          },
+          "players": {
+            "format": "int32",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "source_event_id": {
+            "type": "string"
+          },
+          "url": {
+            "description": "The source's page for the event.",
+            "format": "uri",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "occurred_on",
+          "players",
+          "source_event_id",
+          "url"
+        ],
+        "type": "object"
+      },
+      "DeckFormat": {
+        "properties": {
+          "deck_count": {
+            "description": "The card's decks in the run.",
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "format_name": {
+            "type": "string"
+          },
+          "score_run_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deck_count",
+          "format_name",
+          "score_run_id",
+          "source"
+        ],
+        "type": "object"
+      },
+      "DeckRun": {
+        "properties": {
+          "attribution": {
+            "type": "string"
+          },
+          "format_name": {
+            "type": "string"
+          },
+          "score_run_id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "window_ends_before": {
+            "description": "Exclusive end of the cohort window.",
+            "format": "date",
+            "type": "string"
+          },
+          "window_starts_on": {
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attribution",
+          "format_name",
+          "score_run_id",
+          "source",
+          "window_ends_before",
+          "window_starts_on"
         ],
         "type": "object"
       },
@@ -1114,8 +1664,158 @@
         ],
         "type": "object"
       },
+      "RankedCommander": {
+        "properties": {
+          "colors": {
+            "description": "The commanders' combined color identity in WUBRG order, empty when colorless; null when no commander is in the active catalog.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "commanders": {
+            "description": "One card, or two for a partner pair, in label order.",
+            "items": {
+              "$ref": "#/components/schemas/CommanderCard"
+            },
+            "type": "array"
+          },
+          "core_card_count": {
+            "description": "Cards at least half of its decks play.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deck_count": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "event_count": {
+            "format": "int32",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "games": {
+            "description": "Games behind the win rate.",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "description": "The commander's name, or a partner pair's joined by \" + \".",
+            "type": "string"
+          },
+          "rank": {
+            "description": "Position by decks among the run's commanders.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "rank_change": {
+            "description": "Places gained since the previous run of this format; null without one or when the commander was not ranked there.",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "series_decks": {
+            "description": "Its decks in each trend period, oldest first.",
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "share_delta": {
+            "description": "Meta share in the newer half of the trend series minus the older.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "top_cut_count": {
+            "description": "Unknown when none of its decks has a known top-cut result.",
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "top_cut_known_decks": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "top_cut_lift": {
+            "description": "Top-cut conversion divided by the field's.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "win_rate": {
+            "description": "Match points per game of its decks, 0-1.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "win_rate_ci95": {
+            "description": "Half-width of the 95% interval.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "win_rate_delta": {
+            "description": "Win rate minus the field's, as a fraction.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "colors",
+          "commanders",
+          "core_card_count",
+          "deck_count",
+          "event_count",
+          "games",
+          "label",
+          "rank",
+          "rank_change",
+          "series_decks",
+          "share_delta",
+          "top_cut_count",
+          "top_cut_known_decks",
+          "top_cut_lift",
+          "win_rate",
+          "win_rate_ci95",
+          "win_rate_delta"
+        ],
+        "type": "object"
+      },
       "RankedFormat": {
         "properties": {
+          "commanders": {
+            "description": "Commanders the run ranks; 0 in formats without commanders and in runs from before commanders were ranked.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
           "decks": {
             "format": "int32",
             "minimum": 0,
@@ -1139,6 +1839,7 @@
           }
         },
         "required": [
+          "commanders",
           "decks",
           "format_name",
           "players_per_game",
@@ -1298,6 +1999,12 @@
             "description": "Whether this is the run shown without a pinned run.",
             "type": "boolean"
           },
+          "commanders": {
+            "description": "Commanders the run ranks.",
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
           "decks": {
             "format": "int32",
             "minimum": 0,
@@ -1321,6 +2028,7 @@
         },
         "required": [
           "active",
+          "commanders",
           "decks",
           "score_run_id",
           "source",
@@ -1988,6 +2696,22 @@
             }
           },
           {
+            "description": "Where q is looked for, on any face: names, type lines, rules text, or all of them.",
+            "in": "query",
+            "name": "in",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "name",
+                "type",
+                "text"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -2128,7 +2852,7 @@
             "description": "Sanitized Problem Details with a stable code"
           }
         },
-        "summary": "Search names and faces within a jointly eligible printing pool",
+        "summary": "Search names, type lines and rules text within a jointly eligible printing pool",
         "tags": [
           "catalog-controller"
         ]
@@ -2211,6 +2935,121 @@
         "summary": "Get a card with every canonical face",
         "tags": [
           "catalog-controller"
+        ]
+      }
+    },
+    "/api/v1/cards/{oracle_id}/decks": {
+      "get": {
+        "operationId": "listCardDecks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "oracle_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A format whose active run lists the card's decks; without one, the run with the most of them.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pin a published run so every page shows the same results.",
+            "in": "query",
+            "name": "score_run_id",
+            "required": false,
+            "schema": {
+              "pattern": "^scores-[0-9a-f]{64}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardDeckPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "summary": "List the published tournament decks that played a card, newest event first",
+        "tags": [
+          "deck-controller"
         ]
       }
     },
@@ -2365,6 +3204,94 @@
         ]
       }
     },
+    "/api/v1/decks/{score_run_id}/{position}": {
+      "get": {
+        "operationId": "getDeck",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "score_run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "position",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "catalog_snapshot_id",
+            "required": false,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9-]{0,95}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "summary": "Get one published tournament deck and its list",
+        "tags": [
+          "deck-controller"
+        ]
+      }
+    },
     "/api/v1/info": {
       "get": {
         "operationId": "info",
@@ -2418,8 +3345,24 @@
             "name": "format",
             "required": false,
             "schema": {
-              "default": "Modern",
+              "default": "Overall",
               "pattern": "^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Where q is looked for, on any face: names, type lines, rules text, or all of them.",
+            "in": "query",
+            "name": "in",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "name",
+                "type",
+                "text"
+              ],
               "type": "string"
             }
           },
@@ -2604,6 +3547,189 @@
         ]
       }
     },
+    "/api/v1/rankings/commanders": {
+      "get": {
+        "operationId": "listCommanders",
+        "parameters": [
+          {
+            "description": "Card colors; a card matches any selected one. C selects known colorless cards.",
+            "explode": true,
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "items": {
+                "enum": [
+                  "W",
+                  "U",
+                  "B",
+                  "R",
+                  "G",
+                  "C"
+                ],
+                "type": "string"
+              },
+              "maxItems": 6,
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "EDH",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "format": "int32",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Keep only commanders leading at least this many decks; ranks still count every commander.",
+            "in": "query",
+            "name": "min_decks",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "format": "int32",
+              "maximum": 100000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "format": "int32",
+              "maximum": 10000,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Defaults to desc, except asc for name. Unknown values sort last.",
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Pin a published run so every page shows the same results.",
+            "in": "query",
+            "name": "score_run_id",
+            "required": false,
+            "schema": {
+              "pattern": "^scores-[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "decks orders by decks led, which is also the rank; movement by places gained since the previous run.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "decks",
+              "enum": [
+                "decks",
+                "name",
+                "win_rate",
+                "top_cut_lift",
+                "trend",
+                "movement"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommanderPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogError"
+                }
+              }
+            },
+            "description": "Sanitized Problem Details with a stable code"
+          }
+        },
+        "summary": "Rank one format's commanders and partner pairs by the decks they lead",
+        "tags": [
+          "ranking-controller"
+        ]
+      }
+    },
     "/api/v1/rankings/compare": {
       "get": {
         "operationId": "compareRankings",
@@ -2656,6 +3782,22 @@
               "type": "array"
             },
             "style": "form"
+          },
+          {
+            "description": "Where q is looked for, on any face: names, type lines, rules text, or all of them.",
+            "in": "query",
+            "name": "in",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "name",
+                "type",
+                "text"
+              ],
+              "type": "string"
+            }
           },
           {
             "in": "query",

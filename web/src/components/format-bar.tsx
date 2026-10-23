@@ -26,7 +26,8 @@ function decks(value: number, { t, fill, plural, decimal }: I18n): string {
  * The formats as two-line tabs: a dot and the name, then the deck count. A format
  * without published rankings stays visible but cannot be opened. The bar scrolls
  * sideways, and the current format scrolls into view. The overall tab leads and
- * keeps its own grading; the last tab compares formats.
+ * keeps its own grading; the last tab compares formats, unless the page ranks
+ * something cards cannot be compared by, such as commanders.
  */
 export function FormatBar({
   tabs,
@@ -34,6 +35,8 @@ export function FormatBar({
   comparing = false,
   query = "",
   compareQuery = "",
+  path = "/rankings",
+  compare = true,
 }: {
   tabs: FormatTab[];
   current: string | null;
@@ -42,6 +45,9 @@ export function FormatBar({
   query?: string;
   /** Choices that follow the reader to the comparison, which grades by fewer methods. */
   compareQuery?: string;
+  /** The page each format's tab opens. */
+  path?: string;
+  compare?: boolean;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -76,7 +82,7 @@ export function FormatBar({
               className={
                 tab.overall ? "format-tab format-tab-overall" : "format-tab"
               }
-              href={`/rankings?format=${encodeURIComponent(tab.format)}${kept && `&${kept}`}`}
+              href={`${path}?format=${encodeURIComponent(tab.format)}${kept && `&${kept}`}`}
               aria-current={active ? "page" : undefined}
               aria-disabled={ready ? undefined : true}
               tabIndex={ready ? undefined : -1}
@@ -95,17 +101,19 @@ export function FormatBar({
             </Link>
           );
         })}
-        <Link
-          className="format-tab format-tab-all"
-          href={`/rankings/compare${compareQuery && `?${compareQuery}`}`}
-          aria-current={comparing ? "page" : undefined}
-        >
-          <span className="format-tab-label">
-            <Icon name="layout-grid" size={12} />
-            {t.formats.allFormats}
-          </span>
-          <span className="format-tab-sub">{t.formats.compare}</span>
-        </Link>
+        {compare && (
+          <Link
+            className="format-tab format-tab-all"
+            href={`/rankings/compare${compareQuery && `?${compareQuery}`}`}
+            aria-current={comparing ? "page" : undefined}
+          >
+            <span className="format-tab-label">
+              <Icon name="layout-grid" size={12} />
+              {t.formats.allFormats}
+            </span>
+            <span className="format-tab-sub">{t.formats.compare}</span>
+          </Link>
+        )}
       </nav>
     </div>
   );

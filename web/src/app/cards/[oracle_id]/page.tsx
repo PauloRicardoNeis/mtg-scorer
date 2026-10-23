@@ -3,12 +3,16 @@ import { api, ApiError } from "@/lib/api";
 import { useI18n } from "#i18n";
 import { getI18n } from "@/i18n/server";
 import {
+  DECK_OFFSET,
+  DECK_RUN,
+  deckParams,
   edition,
   printingParams,
   queryParams,
   type SearchParams,
 } from "@/lib/urls";
 import { Problem } from "@/components/problem";
+import { CardDecks } from "@/components/card-decks";
 import { CardImage, CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
 import { ColorPips, ManaCost, Rarity, SymbolText } from "@/components/mana";
@@ -68,12 +72,14 @@ export default async function Card({
     firstQuery.set("limit", "1");
     if (query.has("printing_cursor"))
       printingQuery.set("cursor", query.get("printing_cursor")!);
-    const [card, printings, first] = await Promise.all([
+    const [card, printings, first, decks] = await Promise.all([
       api.card(oracle_id, snapshot),
       api.printings(oracle_id, printingQuery),
       query.has("printing_cursor")
         ? api.printings(oracle_id, firstQuery)
         : null,
+      // Decks are optional: without them the card page still shows the catalog.
+      api.decks(oracle_id, deckParams(query)).catch(() => null),
     ]);
     const featured = (first ?? printings).items[0] ?? null;
     const manaCost = card.mana_cost ?? card.faces[0]?.mana_cost ?? null;
@@ -87,6 +93,8 @@ export default async function Card({
     const back = new URLSearchParams(query);
     back.delete("printing_cursor");
     back.delete("cursor");
+    back.delete(DECK_RUN);
+    back.delete(DECK_OFFSET);
     const next = new URLSearchParams(query);
     if (printings.next_cursor)
       next.set("printing_cursor", printings.next_cursor);
@@ -175,6 +183,13 @@ export default async function Card({
             </article>
           )}
         </section>
+        {decks && (
+          <CardDecks
+            page={decks}
+            path={`/cards/${encodeURIComponent(oracle_id)}`}
+            query={query}
+          />
+        )}
         <section className="printings" aria-labelledby="printings-heading">
           <h2 id="printings-heading">{t.card.printingsHeading}</h2>
           <p>{t.card.printingsLead}</p>
@@ -243,14 +258,16 @@ export default async function Card({
             </Link>
           )}
         </section>
-        <aside className="method-note">
-          <Icon name="info" size={18} />
-          <strong>{t.card.noteTitle}</strong>
-          <p>{t.card.noteBody}</p>
-          <Link href={`/datasets/${snapshot}`}>
-            {t.card.inspectMethodology}
-          </Link>
-        </aside>
+        {decks === null && (
+          <aside className="method-note">
+            <Icon name="info" size={18} />
+            <strong>{t.card.noteTitle}</strong>
+            <p>{t.card.noteBody}</p>
+            <Link href={`/datasets/${snapshot}`}>
+              {t.card.inspectMethodology}
+            </Link>
+          </aside>
+        )}
       </>
     );
   } catch (error) {

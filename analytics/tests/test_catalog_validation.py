@@ -190,7 +190,8 @@ def test_set_vocabulary_bound_is_inclusive(payload):
 def test_manifest_detects_same_length_export_corruption(exported):
     raw, manifest = exported
     corrupted = raw.replace(b'"source":"scryfall"', b'"source":"scryfalL"', 1)
-    assert len(corrupted) == len(raw) and corrupted != raw
+    assert len(corrupted) == len(raw)
+    assert corrupted != raw
 
     with pytest.raises(ValueError, match="export checksum mismatch"):
         validate_manifest(manifest, corrupted)

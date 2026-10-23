@@ -1,6 +1,8 @@
 package io.mtgscorer.api.config;
 
 import io.mtgscorer.api.catalog.CatalogQuery;
+import io.mtgscorer.api.decks.DeckQuery;
+import io.mtgscorer.api.rankings.CommanderQuery;
 import io.mtgscorer.api.rankings.CompareQuery;
 import io.mtgscorer.api.rankings.RankingQuery;
 import io.swagger.v3.oas.models.media.*;
@@ -24,23 +26,31 @@ public class CatalogOpenApi {
           .forEach(
               (path, item) -> {
                 if (!path.startsWith("/api/v1/cards")
+                    && !path.startsWith("/api/v1/decks")
                     && !path.startsWith("/api/v1/snapshots")
                     && !path.startsWith("/api/v1/rankings")) return;
                 var operation = item.getGet();
-                boolean rankings = path.equals("/api/v1/rankings");
+                boolean commanders = path.equals("/api/v1/rankings/commanders");
+                boolean rankings = path.equals("/api/v1/rankings") || commanders;
                 boolean compare = path.equals("/api/v1/rankings/compare");
+                boolean decks = path.equals("/api/v1/cards/{oracle_id}/decks");
                 Set<String> names =
                     compare
                         ? CompareQuery.PARAMETERS
-                        : rankings
-                            ? RankingQuery.PARAMETERS
-                            : path.equals("/api/v1/cards")
-                                ? CatalogQuery.CARD_PARAMETERS
-                                : path.endsWith("/printings")
-                                    ? CatalogQuery.PRINTING_PARAMETERS
-                                    : path.startsWith("/api/v1/cards/")
-                                        ? Set.of("catalog_snapshot_id")
-                                        : Set.of();
+                        : commanders
+                            ? CommanderQuery.PARAMETERS
+                            : rankings
+                                ? RankingQuery.PARAMETERS
+                                : path.equals("/api/v1/cards")
+                                    ? CatalogQuery.CARD_PARAMETERS
+                                    : path.endsWith("/printings")
+                                        ? CatalogQuery.PRINTING_PARAMETERS
+                                        : decks
+                                            ? DeckQuery.PARAMETERS
+                                            : path.startsWith("/api/v1/cards/")
+                                                    || path.startsWith("/api/v1/decks/")
+                                                ? Set.of("catalog_snapshot_id")
+                                                : Set.of();
                 names.stream()
                     .sorted()
                     .forEach(
@@ -48,7 +58,11 @@ public class CatalogOpenApi {
                             operation.addParametersItem(
                                 compare
                                     ? compareParameter(name)
-                                    : rankings ? rankingParameter(name) : parameter(name)));
+                                    : commanders
+                                        ? commanderParameter(name)
+                                        : rankings
+                                            ? rankingParameter(name)
+                                            : decks ? deckParameter(name) : parameter(name)));
                 for (String status : List.of("400", "404", "503", "500")) {
                   operation
                       .getResponses()
@@ -80,6 +94,7 @@ public class CatalogOpenApi {
                       "invalid_cursor",
                       "snapshot_not_found",
                       "card_not_found",
+                      "deck_not_found",
                       "catalog_unavailable",
                       "rankings_unavailable",
                       "score_run_not_found",
@@ -116,18 +131,33 @@ public class CatalogOpenApi {
                         });
               });
       // A card outside the active catalog has no preview printing: an explicit null.
-      Schema<?> ranked = api.getComponents().getSchemas().get("RankedCard");
-      if (ranked != null)
-        ranked
+      for (String name : List.of("RankedCard", "CommanderCard")) {
+        Schema<?> ranked = api.getComponents().getSchemas().get(name);
+        if (ranked != null)
+          ranked
+              .getProperties()
+              .put(
+                  "preview_printing",
+                  new Schema<>()
+                      .anyOf(
+                          List.of(
+                              new Schema<>().$ref("#/components/schemas/Printing"),
+                              new Schema<>().types(Set.of("null"))))
+                      .description("Null when the card is not in the active catalog."));
+      }
+      // A card that no active run lists the decks of has no run: an explicit null.
+      Schema<?> deckPage = api.getComponents().getSchemas().get("CardDeckPage");
+      if (deckPage != null)
+        deckPage
             .getProperties()
             .put(
-                "preview_printing",
+                "run",
                 new Schema<>()
                     .anyOf(
                         List.of(
-                            new Schema<>().$ref("#/components/schemas/Printing"),
+                            new Schema<>().$ref("#/components/schemas/DeckRun"),
                             new Schema<>().types(Set.of("null"))))
-                    .description("Null when the card is not in the active catalog."));
+                    .description("Null when no active run lists the card's decks."));
       // Record DTOs always serialize every component, including explicit nulls.
       api.getComponents()
           .getSchemas()
@@ -186,6 +216,63 @@ public class CatalogOpenApi {
     return parameter;
   }
 
+  /** Commander parameters: the card rankings' bounds with their own format and orderings. */
+  private Parameter commanderParameter(String name) {
+    if (name.equals("min_decks"))
+      return new Parameter()
+          .name(name)
+          .in("query")
+          .required(false)
+          .schema(
+              new IntegerSchema()
+                  .minimum(BigDecimal.ONE)
+                  .maximum(BigDecimal.valueOf(CommanderQuery.MAX_MIN_DECKS))
+                  ._default(1))
+          .description(
+              "Keep only commanders leading at least this many decks; ranks still count every"
+                  + " commander.");
+    Parameter parameter = rankingParameter(name);
+    if (name.equals("format"))
+      parameter.setSchema(
+          new StringSchema()
+              .pattern("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$")
+              ._default(CommanderQuery.DEFAULT_FORMAT));
+    if (name.equals("sort"))
+      parameter
+          .schema(new StringSchema()._enum(CommanderQuery.SORTS)._default("decks"))
+          .description(
+              "decks orders by decks led, which is also the rank; movement by places gained"
+                  + " since the previous run.");
+    return parameter;
+  }
+
+  /** A card's deck parameters: the rankings' format and pinned run, with their own paging. */
+  private Parameter deckParameter(String name) {
+    Parameter parameter = rankingParameter(name);
+    switch (name) {
+      case "format" ->
+          parameter
+              .schema(new StringSchema().pattern("^[A-Za-z0-9][A-Za-z0-9 /.-]{0,39}$"))
+              .description(
+                  "A format whose active run lists the card's decks; without one, the run with"
+                      + " the most of them.");
+      case "limit" ->
+          parameter.setSchema(
+              new IntegerSchema()
+                  .minimum(BigDecimal.ONE)
+                  .maximum(BigDecimal.valueOf(DeckQuery.MAX_LIMIT))
+                  ._default(DeckQuery.DEFAULT_LIMIT));
+      case "offset" ->
+          parameter.setSchema(
+              new IntegerSchema()
+                  .minimum(BigDecimal.ZERO)
+                  .maximum(BigDecimal.valueOf(DeckQuery.MAX_OFFSET))
+                  ._default(0));
+      default -> {}
+    }
+    return parameter;
+  }
+
   /** Compare-only parameters; q and color share the catalog's bounds. */
   private Parameter compareParameter(String name) {
     Schema<?> schema =
@@ -239,6 +326,7 @@ public class CatalogOpenApi {
     Schema<?> schema =
         switch (name) {
           case "q" -> new StringSchema().maxLength(100);
+          case "in" -> new StringSchema()._enum(CatalogQuery.SEARCH_IN)._default("all");
           case "set" ->
               new ArraySchema().items(new StringSchema().pattern("^[a-z0-9]{2,8}$")).maxItems(32);
           case "rarity" ->
@@ -266,6 +354,9 @@ public class CatalogOpenApi {
       parameter.description(
           "Card colors; a card matches any selected one. C selects known colorless cards.");
     if (name.equals("type")) parameter.description("A card type on any face's type line.");
+    if (name.equals("in"))
+      parameter.description(
+          "Where q is looked for, on any face: names, type lines, rules text, or all of them.");
     if (Set.of("set", "rarity", "color").contains(name))
       parameter.style(Parameter.StyleEnum.FORM).explode(true);
     return parameter;

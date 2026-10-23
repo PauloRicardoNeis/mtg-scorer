@@ -15,6 +15,7 @@ public record RankingQuery(
     String format,
     String method,
     String q,
+    String in,
     String type,
     List<String> colors,
     String sort,
@@ -23,7 +24,10 @@ public record RankingQuery(
     int limit,
     int offset,
     String scoreRun) {
-  public static final String DEFAULT_FORMAT = "Modern";
+  /** Without a format, the overall run; Modern's until an overall run is published. */
+  public static final String DEFAULT_FORMAT = "Overall";
+
+  public static final String FALLBACK_FORMAT = "Modern";
   public static final String DEFAULT_METHOD = "constructed-score";
 
   /** Without an explicit method, the first of these the run has; else the run's first. */
@@ -60,6 +64,7 @@ public record RankingQuery(
           "format",
           "method",
           "q",
+          "in",
           "type",
           "color",
           "sort",
@@ -83,6 +88,7 @@ public record RankingQuery(
       q = NameKey.normalize(q);
       if (q.isEmpty()) q = null;
     }
+    String in = CatalogQuery.searchIn(input);
     String type = scalar(input, "type");
     if (type != null && !CatalogQuery.TYPES.contains(type))
       throw CatalogProblem.query("Invalid card type.");
@@ -106,7 +112,7 @@ public record RankingQuery(
     if (scoreRun != null && !scoreRun.matches("scores-[0-9a-f]{64}"))
       throw CatalogProblem.query("Invalid score run ID.");
     return new RankingQuery(
-        format, method, q, type, colors, sort, order, view, limit, offset, scoreRun);
+        format, method, q, in, type, colors, sort, order, view, limit, offset, scoreRun);
   }
 
   private static String scalar(Map<String, List<String>> input, String key) {

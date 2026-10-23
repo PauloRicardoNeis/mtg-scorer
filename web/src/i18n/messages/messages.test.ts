@@ -22,7 +22,7 @@ function leaves(tree: Tree, at = ""): [string, string | Plural][] {
 
 const holes = (text: string) => (text.match(/\{\w+\}/g) ?? []).sort();
 
-const english = new Map(leaves(en as unknown as Tree));
+const english = new Map(leaves(en));
 
 describe.each(locales.filter(({ code }) => code !== "en"))(
   "$name messages",
@@ -34,11 +34,15 @@ describe.each(locales.filter(({ code }) => code !== "en"))(
     });
 
     it("keep each message's placeholders", () => {
+      // Every mismatch is collected, so one run names them all.
+      const problems: string[] = [];
       for (const [key, source] of english) {
         const target = translated.get(key)!;
         if (typeof source === "string") {
-          expect(typeof target, key).toBe("string");
-          expect(holes(target as string), key).toEqual(holes(source));
+          if (typeof target !== "string")
+            problems.push(`${key} is not a string`);
+          else if (holes(target).join(" ") !== holes(source).join(" "))
+            problems.push(`${key} has ${holes(target).join(" ") || "nothing"}`);
           continue;
         }
         // A form for exactly one may say "one" in words instead of {count}.
@@ -46,23 +50,29 @@ describe.each(locales.filter(({ code }) => code !== "en"))(
         for (const [form, text] of Object.entries(target as Plural)) {
           const got = new Set(holes(text));
           for (const hole of wanted)
-            if (hole !== "{count}" || form === "other" || form === "many")
-              expect(got.has(hole), `${key}.${form} needs ${hole}`).toBe(true);
+            if (
+              (hole !== "{count}" || form === "other" || form === "many") &&
+              !got.has(hole)
+            )
+              problems.push(`${key}.${form} needs ${hole}`);
           for (const hole of got)
-            expect(wanted.has(hole), `${key}.${form} adds ${hole}`).toBe(true);
+            if (!wanted.has(hole)) problems.push(`${key}.${form} adds ${hole}`);
         }
       }
+      expect(problems).toEqual([]);
     });
 
     it("give each plural exactly the forms the language uses", () => {
       const forms = new Intl.PluralRules(code)
         .resolvedOptions()
-        .pluralCategories.toSorted();
-      for (const [key, source] of english)
-        if (isPlural(source))
-          expect(Object.keys(translated.get(key)!).toSorted(), key).toEqual(
-            forms,
-          );
+        .pluralCategories.toSorted()
+        .join(" ");
+      const wrong = [...english]
+        .filter(([, source]) => isPlural(source))
+        .map(([key]) => [key, Object.keys(translated.get(key)!).toSorted()])
+        .filter(([, found]) => (found as string[]).join(" ") !== forms)
+        .map(([key]) => key);
+      expect(wrong).toEqual([]);
     });
 
     it("name every score method the runs publish", () => {
@@ -72,11 +82,12 @@ describe.each(locales.filter(({ code }) => code !== "en"))(
         "signature-score",
         "foundation",
         "overall-grade",
-      ])
-        expect(messages[code].methods[id], id).toEqual({
-          label: expect.any(String),
-          description: expect.any(String),
-        });
+      ]) {
+        const method = messages[code].methods[id];
+        expect(method, id).toBeDefined();
+        expect(typeof method?.label, id).toBe("string");
+        expect(typeof method?.description, id).toBe("string");
+      }
     });
   },
 );

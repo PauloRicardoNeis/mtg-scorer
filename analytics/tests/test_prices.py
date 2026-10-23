@@ -76,5 +76,6 @@ def test_a_snapshot_is_named_by_its_source_bytes_and_rule():
 
     assert first == price_snapshot_id("a" * 64)
     assert first != price_snapshot_id("b" * 64)
-    assert first.startswith("prices-") and len(first) == len("prices-") + 64
+    assert first.startswith("prices-")
+    assert len(first) == len("prices-") + 64
     assert RULE == "cheapest-playable-paper-usd-v1"

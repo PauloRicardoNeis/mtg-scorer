@@ -27,6 +27,18 @@ SEED = ROOT / "analytics/seeds/scryfall-layouts-v1"
 # SYNTHETIC TopDeck responses over the seed's cards; only verify publishes them.
 SYNTHETIC_SCORES = ROOT / "analytics/tests/fixtures/topdeck-synthetic"
 SYNTHETIC_COHORT = ROOT / "analytics/tests/fixtures/topdeck-synthetic-cohort.json"
+# The database stages share one database and run file by file; the offline suite is
+# shuffled by pytest-randomly, these keep their order.
+ORDERED = ("-p", "no:randomly")
+# Python coverage is one data file across the offline and database stages: the database
+# stage appends to what the build stage measured, and the floor is checked once, at the end.
+COVERAGE_DIR = LOCAL / "coverage/python"
+COVERAGE_DATA = COVERAGE_DIR / ".coverage"
+# JUnit XML per test run, for CI annotations.
+JUNIT = LOCAL / "junit"
+NPM = "npm.cmd" if os.name == "nt" else "npm"
+# The build-stage checks by layer; `check --only` runs a subset, CI runs them in parallel.
+CHECKS = ("python", "contracts", "java", "web")
 PG_URL = "https://get.enterprisedb.com/postgresql/postgresql-17.11-3-windows-x64-binaries.zip"
 PG_HASH = "4b8db0930c38f6ef845db919551dedda3b6b845aeb0927b3d79a6e8e9e4537cf"
 
@@ -77,8 +89,7 @@ def install() -> None:
             "dev",
         ]
     )
-    npm = "npm.cmd" if os.name == "nt" else "npm"
-    run([npm, "--prefix", ROOT / "web", "ci", "--no-audit", "--no-fund"])
+    run([NPM, "--prefix", ROOT / "web", "ci", "--no-audit", "--no-fund"])
     run(["node", ROOT / "web/node_modules/playwright/cli.js", "install", "chromium"])
 
 
@@ -177,7 +188,7 @@ def postgres_admin_dsn() -> str:
 # with the appropriate database and role. Both point to the same PostgreSQL service.
 def database(admin: str, name: str) -> dict[str, str]:
     import psycopg
-    from psycopg import sql
+    from psycopg import conninfo, sql
 
     with psycopg.connect(admin, autocommit=True) as connection:
         for role in ("catalog_api_local", "catalog_publisher_local"):
@@ -191,25 +202,25 @@ def database(admin: str, name: str) -> dict[str, str]:
                 )
         if not connection.execute("SELECT 1 FROM pg_database WHERE datname=%s", (name,)).fetchone():
             connection.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
-    parts = psycopg.conninfo.conninfo_to_dict(admin)
+    parts = conninfo.conninfo_to_dict(admin)
     env = os.environ.copy()
-    host, port = parts.get("host", "127.0.0.1"), parts.get("port", "5432")
+    host, port = str(parts.get("host", "127.0.0.1")), str(parts.get("port", "5432"))
     env.update(
         {
             "CATALOG_JDBC_URL": f"jdbc:postgresql://{host}:{port}/{name}",
             "CATALOG_DB_USER": "catalog_api_local",
             "CATALOG_DB_PASSWORD": "local-catalog-only",
             "CATALOG_MIGRATE": "true",
-            "CATALOG_MIGRATION_USER": parts.get("user", "postgres"),
-            "CATALOG_MIGRATION_PASSWORD": parts.get("password", ""),
-            "CATALOG_TEST_ADMIN_DSN": psycopg.conninfo.make_conninfo(admin, dbname=name),
-            "CATALOG_TEST_PUBLISH_DSN": psycopg.conninfo.make_conninfo(
+            "CATALOG_MIGRATION_USER": str(parts.get("user", "postgres")),
+            "CATALOG_MIGRATION_PASSWORD": str(parts.get("password", "")),
+            "CATALOG_TEST_ADMIN_DSN": conninfo.make_conninfo(admin, dbname=name),
+            "CATALOG_TEST_PUBLISH_DSN": conninfo.make_conninfo(
                 admin,
                 dbname=name,
                 user="catalog_publisher_local",
-                password="local-catalog-only",
+                password="local-catalog-only",  # noqa: S106 -- local development role
             ),
-            "TEST_DATABASE_DSN": psycopg.conninfo.make_conninfo(admin, dbname=name),
+            "TEST_DATABASE_DSN": conninfo.make_conninfo(admin, dbname=name),
             "CATALOG_TEST_PYTHON": str(PYTHON),
             "NEXT_TELEMETRY_DISABLED": "1",
         }
@@ -283,10 +294,10 @@ def seed(env: dict[str, str], output_root: Path) -> Path:
     artifact = export_catalog(SEED, output_root, created_at="2026-09-08T00:46:15Z")
     result = publish_catalog(artifact, SEED, env["CATALOG_TEST_PUBLISH_DSN"])
     with psycopg.connect(env["CATALOG_TEST_PUBLISH_DSN"]) as connection:
-        active = connection.execute(
+        (active,) = connection.execute(
             "SELECT catalog_snapshot_id FROM catalog.active_catalog"
-        ).fetchone()[0]
-    if active != artifact.name:
+        ).fetchone() or (None,)
+    if active is not None and active != artifact.name:
         rollback_catalog(env["CATALOG_TEST_PUBLISH_DSN"], artifact.name, active)
     print(json.dumps(result), flush=True)
     return artifact
@@ -378,41 +389,28 @@ def serve_and_verify(args: argparse.Namespace) -> None:
         grant_runtime_roles(admin)
         if verify:
             run([PYTHON, ROOT / "scripts/api_contract.py", "--url", api_url], env=env)
-            run(
-                [
-                    PYTHON,
-                    "-m",
-                    "pytest",
-                    "analytics/tests/test_catalog_http.py",
-                    "-q",
-                    "-k",
-                    "initial_catalog",
-                ],
-                env={**env, "CATALOG_TEST_EMPTY": "1"},
+            pytest_stage(
+                "initial-catalog",
+                ["analytics/tests/test_catalog_http.py"],
+                {**env, "CATALOG_TEST_EMPTY": "1"},
+                "-k",
+                "initial_catalog",
             )
             print("Checkpoint: real PostgreSQL publication and failure tests", flush=True)
-            run(
-                [PYTHON, "-m", "pytest", "analytics/tests/test_catalog_import_jobs.py", "-q"],
-                env=env,
+            pytest_stage("import-jobs", ["analytics/tests/test_catalog_import_jobs.py"], env)
+            pytest_stage(
+                "catalog-publication", ["analytics/tests/test_postgres_publication.py"], env
             )
-            run(
+            pytest_stage(
+                "score-publication",
                 [
-                    PYTHON,
-                    "-m",
-                    "pytest",
-                    "analytics/tests/test_postgres_publication.py",
-                    "-q",
+                    "analytics/tests/test_score_publication.py",
+                    "analytics/tests/test_score_publication_race.py",
                 ],
-                env=env,
+                env,
             )
-            run(
-                [PYTHON, "-m", "pytest", "analytics/tests/test_score_publication.py", "-q"],
-                env=env,
-            )
-            run(
-                [PYTHON, "-m", "pytest", "analytics/tests/test_price_publication.py", "-q"],
-                env=env,
-            )
+            pytest_stage("price-publication", ["analytics/tests/test_price_publication.py"], env)
+        artifact: Path | None = None
         if verify or args.seed_sample:
             artifact = seed(env, run_dir / "catalog")
             if verify:
@@ -424,17 +422,15 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                 "Checkpoint: Python -> PostgreSQL -> Java contracts and refresh",
                 flush=True,
             )
-            run(
+            pytest_stage(
+                "http",
                 [
-                    PYTHON,
-                    "-m",
-                    "pytest",
                     "analytics/tests/test_catalog_http.py",
                     "analytics/tests/test_rankings_http.py",
-                    "-q",
                 ],
-                env=env,
+                env,
             )
+            report_coverage(env)
         with server(
             [
                 "node",
@@ -465,6 +461,8 @@ def serve_and_verify(args: argparse.Namespace) -> None:
                     ],
                     env=env,
                 )
+                if artifact is None:
+                    raise RuntimeError("verification seeds the catalog before measuring it")
                 run(
                     [
                         PYTHON,
@@ -497,9 +495,105 @@ def serve_and_verify(args: argparse.Namespace) -> None:
 # rerun in the project Python environment when needed so its dependencies are available.
 # Unless builds are skipped, run language and contract checks, tests, and production
 # builds before handing control to the demo or verification flow.
+def pytest_stage(name: str, files: list[str], env: dict[str, str], *extra: str) -> None:
+    """One database-stage pytest run: files in order, JUnit written, and coverage appended
+    to the offline data when the build stage left it (the floor is checked once, at the
+    end, by ``report_coverage``)."""
+
+    JUNIT.mkdir(parents=True, exist_ok=True)
+    arguments: list[str | Path] = [PYTHON, "-m", "pytest", *files, "-q", *ORDERED]
+    arguments += [f"--junitxml={JUNIT / f'pytest-{name}.xml'}", *extra]
+    if COVERAGE_DATA.exists():
+        arguments += [
+            "--cov",
+            "--cov-config=analytics/pyproject.toml",
+            "--cov-append",
+            "--cov-report=",
+            "--cov-fail-under=0",
+        ]
+    run(arguments, env={**env, "COVERAGE_FILE": str(COVERAGE_DATA)})
+
+
+def report_coverage(env: dict[str, str]) -> None:
+    """Report the merged Python coverage of both stages and enforce the floor once."""
+
+    if not COVERAGE_DATA.exists():
+        print("Coverage: no offline data here; the floor was enforced where the build ran.")
+        return
+    print("Checkpoint: merged Python coverage, offline and database stages", flush=True)
+    coverage = [PYTHON, "-m", "coverage"]
+    options = ["--rcfile=analytics/pyproject.toml"]
+    cov_env = {**env, "COVERAGE_FILE": str(COVERAGE_DATA)}
+    # The reports are written first, floor or not, so a red run still ships them; the
+    # fail_under in pyproject.toml makes the final report exit non-zero below the floor.
+    xml = [*coverage, "xml", *options, "--fail-under=0", "-o", COVERAGE_DIR / "coverage.xml"]
+    html = [*coverage, "html", *options, "--fail-under=0", "-d", COVERAGE_DIR / "html"]
+    run(xml, env=cov_env)
+    run(html, env=cov_env)
+    run([*coverage, "report", *options], env=cov_env)
+
+
+def check_python() -> None:
+    """Lint, format, types and the offline suite with its coverage floor and JUnit output."""
+
+    print("Checkpoint: Python checks and offline tests", flush=True)
+    run([PYTHON, "-m", "ruff", "check", "analytics", "scripts"])
+    run([PYTHON, "-m", "ruff", "format", "--check", "analytics", "scripts"])
+    run([PYTHON, "-m", "pyright"])
+    COVERAGE_DIR.mkdir(parents=True, exist_ok=True)
+    JUNIT.mkdir(parents=True, exist_ok=True)
+    run(
+        [
+            PYTHON,
+            "-m",
+            "pytest",
+            "analytics/tests",
+            "-q",
+            f"--junitxml={JUNIT / 'pytest-offline.xml'}",
+            "--cov",
+            "--cov-config=analytics/pyproject.toml",
+            "--cov-report=term-missing",
+            f"--cov-report=xml:{COVERAGE_DIR / 'coverage.xml'}",
+            f"--cov-report=html:{COVERAGE_DIR / 'html'}",
+        ],
+        env={**os.environ, "COVERAGE_FILE": str(COVERAGE_DATA)},
+    )
+
+
+def check_contracts() -> None:
+    """Publication schemas, fixtures, the OpenAPI document and the dependency boundaries."""
+
+    print("Checkpoint: contracts and dependency boundaries", flush=True)
+    run([PYTHON, "scripts/verify_contracts.py"])
+    run([PYTHON, "scripts/check_boundaries.py"])
+
+
+def check_java() -> None:
+    """Spotless, Enforcer, the Java tests with the JaCoCo floors and the runnable jar."""
+
+    print("Checkpoint: Java build, tests and coverage floors", flush=True)
+    maven("verify")
+
+
+def check_web() -> None:
+    """Prettier, ESLint, the vitest suite with its thresholds, the production build, tsc."""
+
+    print("Checkpoint: web checks, unit tests and production build", flush=True)
+    for script in ("format:check", "lint", "test:unit", "build", "typecheck"):
+        run([NPM, "--prefix", "web", "run", script])
+
+
+CHECK_FUNCTIONS = {
+    "python": check_python,
+    "contracts": check_contracts,
+    "java": check_java,
+    "web": check_web,
+}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["install", "up", "verify"])
+    parser.add_argument("command", choices=["install", "up", "verify", "check"])
     parser.add_argument(
         "--seed-sample", action="store_true", help="Explicitly activate the seven-card sample"
     )
@@ -511,17 +605,29 @@ def main() -> None:
         action="store_true",
         help="Use existing verified Java/web builds",
     )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        choices=CHECKS,
+        default=list(CHECKS),
+        help="check: the layers to check (default: all); CI runs one layer per job",
+    )
     args = parser.parse_args()
     LOCAL.mkdir(exist_ok=True)
     os.chdir(ROOT)
     os.environ["NEXT_TELEMETRY_DISABLED"] = "1"
-    if not args.skip_install:
+    # `check` assumes an installed environment; `install` is the explicit step.
+    if not args.skip_install and args.command != "check":
         install()
     if args.command == "install":
         return
     # POSIX virtualenv executables can resolve to the global Python binary.
     # Compare environment roots so imports use the installed project dependencies.
-    if Path(sys.prefix).resolve() != PYTHON.parent.parent.resolve():
+    # Java- and web-only checks need no Python environment at all.
+    needs_project_python = args.command != "check" or any(
+        layer in ("python", "contracts") for layer in args.only
+    )
+    if needs_project_python and Path(sys.prefix).resolve() != PYTHON.parent.parent.resolve():
         run(
             [
                 PYTHON,
@@ -530,37 +636,18 @@ def main() -> None:
                 "--skip-install",
                 *(["--skip-build"] if args.skip_build else []),
                 *(["--seed-sample"] if args.seed_sample else []),
+                *(["--only", *args.only] if args.command == "check" else []),
             ]
         )
         return
+    if args.command == "check":
+        for layer in CHECKS:
+            if layer in args.only:
+                CHECK_FUNCTIONS[layer]()
+        return
     if not args.skip_build:
-        print("Checkpoint: Python/language checks and production builds", flush=True)
-        run([PYTHON, "-m", "ruff", "check", "analytics", "scripts"])
-        run([PYTHON, "-m", "ruff", "format", "--check", "analytics", "scripts"])
-        # Offline tests enforce each layer's coverage floor; reports land in
-        # .local/coverage/python, api/target/site/jacoco and web/coverage.
-        run(
-            [
-                PYTHON,
-                "-m",
-                "pytest",
-                "analytics/tests",
-                "-q",
-                "--cov",
-                "--cov-config=analytics/pyproject.toml",
-                "--cov-report=term-missing",
-                "--cov-report=xml:.local/coverage/python/coverage.xml",
-                "--cov-report=html:.local/coverage/python/html",
-            ]
-        )
-        run([PYTHON, "scripts/verify_contracts.py"])
-        run([PYTHON, "scripts/check_boundaries.py"])
-        maven("verify")
-        npm = "npm.cmd" if os.name == "nt" else "npm"
-        run([npm, "--prefix", "web", "run", "format:check"])
-        run([npm, "--prefix", "web", "run", "test:unit"])
-        run([npm, "--prefix", "web", "run", "build"])
-        run([npm, "--prefix", "web", "run", "typecheck"])
+        for check in CHECK_FUNCTIONS.values():
+            check()
     serve_and_verify(args)
 
 

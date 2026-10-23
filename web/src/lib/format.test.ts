@@ -5,6 +5,7 @@ import {
   dateTime,
   dateWindow,
   dateWithYear,
+  day,
   daysBetween,
   decimal,
   deltaTone,
@@ -15,6 +16,7 @@ import {
   movement,
   perDollar,
   percent,
+  price,
   share,
   signed,
   usd,
@@ -100,6 +102,20 @@ describe("usd", () => {
   });
 });
 
+describe("price", () => {
+  it("shows cents below a hundred dollars", () => {
+    expect(price(4.2)).toBe("$4.20");
+    expect(price(0.05)).toBe("$0.05");
+    expect(price(99.99)).toBe("$99.99");
+  });
+
+  it("rounds to whole dollars from a hundred", () => {
+    expect(price(100)).toBe("$100");
+    expect(price(1284.49)).toBe("$1,284");
+    expect(price(1284.5)).toBe("$1,285");
+  });
+});
+
 describe("perDollar", () => {
   it("shows whole numbers from 100 and three figures below", () => {
     expect(perDollar(1666.67)).toBe("1,667");
@@ -114,6 +130,17 @@ describe("dateWithYear", () => {
   it("names an instant's UTC day", () => {
     expect(dateWithYear("2026-09-27T21:05:46.301Z")).toBe("Sep 27, 2026");
     expect(dateWithYear("2026-09-27T23:59:59-03:00")).toBe("Sep 28, 2026");
+  });
+});
+
+describe("day", () => {
+  it("names an ISO date without its year", () => {
+    expect(day("2026-10-13")).toBe("Oct 13");
+    expect(day("2026-01-01")).toBe("Jan 1");
+  });
+
+  it("keeps the date of an instant and ignores its time", () => {
+    expect(day("2026-10-13T23:59:59Z")).toBe("Oct 13");
   });
 });
 
@@ -316,5 +343,17 @@ describe("in another locale", () => {
     expect(share(37, 231, "ru")).toBe(`16,0${NBSP}%`);
     expect(usd(1125.9, "pt-BR")).toBe(`US$${NBSP}1.125,90`);
     expect(perDollar(41.23, "de")).toBe("41,2");
+  });
+
+  it("writes prices with its currency placement", () => {
+    expect(spaced(price(1284.49, "de"))).toBe("1.284 $");
+    expect(spaced(price(1284.49, "pt-BR"))).toBe("US$ 1.284");
+    expect(spaced(price(4.2, "de"))).toBe("4,20 $");
+  });
+
+  it("names days with its month abbreviations and order", () => {
+    expect(spaced(day("2026-10-13", "de"))).toBe("13. Okt.");
+    expect(spaced(day("2026-03-01", "fr"))).toBe("1 mars");
+    expect(day("2026-10-13", "ja")).toBe("10月13日");
   });
 });

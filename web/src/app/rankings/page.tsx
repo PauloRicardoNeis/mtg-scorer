@@ -17,6 +17,8 @@ import {
 import {
   RankingFilters,
   type GradingOption,
+  type KindTab,
+  type SortOption,
   type SourceTab,
   type ViewTab,
   type WindowOption,
@@ -80,8 +82,9 @@ function relink(
 }
 
 /** Why a method could not score a run, shown beside it in the grading menu. */
-const unavailable: Record<string, "needsArchetypeLabels"> = {
+const unavailable: Record<string, "needsArchetypeLabels" | "needsPlaysets"> = {
   "signature-score": "needsArchetypeLabels",
+  "hidden-gem-score": "needsPlaysets",
 };
 
 /**
@@ -235,9 +238,11 @@ export default async function Rankings({
     ];
     const kept = [
       ...chosen,
-      ...([...query].filter(([key]) =>
-        ["q", "type", "color", "sort", "order", "view", "limit"].includes(key),
-      ) as [string, string][]),
+      ...[...query].filter(([key]) =>
+        ["q", "in", "type", "color", "sort", "order", "view", "limit"].includes(
+          key,
+        ),
+      ),
     ];
     const filtered = kept.some(([key]) => ["q", "type", "color"].includes(key));
     const podium =
@@ -261,11 +266,42 @@ export default async function Rankings({
               order: next === first ? null : next,
             }),
             active,
-            order: active ? (page.order as "asc" | "desc") : first,
+            order: active ? page.order : first,
           },
         ];
       }),
     );
+    // The filter menu offers the headers' sorts in column order, then the places
+    // a card moved, under the headers' names.
+    const sortOptions: SortOption[] = (
+      [
+        ["score", graded ? t.rankingTable.grade : methodLabel],
+        ["name", t.common.card],
+        ["price", t.rankingTable.price],
+        ["value", labels.value],
+        [
+          "win_rate",
+          overall ? t.rankingTable.vsField : t.rankingTable.winRateVsField,
+        ],
+        ["decks", labels.share],
+        ["top_cut_lift", labels.cut],
+        ...(overall
+          ? []
+          : [
+              [
+                "trend",
+                labels.trend
+                  ? fill(t.rankingTable.trendOver, { period: labels.trend })
+                  : t.rankingTable.trend,
+              ],
+              ["movement", t.rankings.sortMovement],
+            ]),
+      ] as [string, string][]
+    ).map(([key, name]) => ({
+      value: key === "score" ? "" : key,
+      label: name,
+      order: sortable[key] ?? "desc",
+    }));
     const viewTabs: ViewTab[] = views.map(([view, name]) => ({
       view,
       label: t.rankings[name],
@@ -273,6 +309,32 @@ export default async function Rankings({
       href: relink(page, kept, { view: view === "all" ? null : view }),
       current: page.view === view,
     }));
+    // A run whose decks name commanders ranks them too, on their own page; the
+    // switch keeps the run and the colors, which apply to both.
+    const commanderCount =
+      [...page.windows, ...page.formats].find(
+        (entry) => entry.score_run_id === run.score_run_id,
+      )?.commanders ?? 0;
+    const colors = kept.filter(([key]) => key === "color");
+    const kinds: KindTab[] =
+      commanderCount > 0
+        ? [
+            {
+              label: t.commanders.cards,
+              href: link(page, [...chosen, ...colors]),
+              current: true,
+            },
+            {
+              label: t.commanders.commanders,
+              href: `/rankings/commanders?${new URLSearchParams([
+                ["format", run.format_name],
+                ["score_run_id", run.score_run_id],
+                ...colors,
+              ])}`,
+              current: false,
+            },
+          ]
+        : [];
     // Windows of the shown source; another source opens its own latest window.
     const latestEnd = page.windows.reduce(
       (latest, window) =>
@@ -315,6 +377,7 @@ export default async function Rankings({
         ? t.rankings.leadGradedInclusion
         : t.rankings.leadGraded,
       "signature-score": t.rankings.leadSignature,
+      "hidden-gem-score": t.rankings.leadHiddenGem,
       "overall-grade": t.rankings.leadOverall,
       "max-ratio": fill(t.rankings.leadMethod, {
         method: i18n.term(methodLabel),
@@ -463,6 +526,8 @@ export default async function Rankings({
           sources={sources}
           gradings={gradings}
           method={chosen[0]?.[1] ?? ""}
+          kinds={kinds}
+          sorts={sortOptions}
         />
         <section aria-labelledby="ranking-heading" className="ranking-results">
           <h2 id="ranking-heading" className="sr-only">
@@ -480,7 +545,9 @@ export default async function Rankings({
                 <p>
                   {signature
                     ? fill(t.rankings.unscoredSignature, { source })
-                    : t.rankings.unscoredBody}
+                    : method.method_id === "hidden-gem-score"
+                      ? t.rankings.unscoredHiddenGem
+                      : t.rankings.unscoredBody}
                 </p>
                 <Link className="button secondary" href={link(page)}>
                   {fill(t.rankings.rankBy, {

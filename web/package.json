@@ -18,12 +18,15 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3300",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "generate:api": "openapi-typescript ../contracts/catalog-api.openapi.json -o src/lib/api.generated.ts",
     "test:unit": "vitest run --coverage",
     "test:unit:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "mutation": "stryker run",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "next": "16.3.4",
@@ -32,7 +35,11 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@eslint/js": "10.0.1",
+    "@next/eslint-plugin-next": "16.4.2",
     "@playwright/test": "1.63.0",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
@@ -41,11 +48,24 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.3",
     "@vitest/coverage-v8": "5.0.5",
+    "@vitest/eslint-plugin": "1.6.27",
+    "eslint": "10.13.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-playwright": "2.12.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
     "jsdom": "29.1.1",
     "openapi-typescript": "7.13.0",
+    "patch-package": "8.0.1",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0",
     "vite": "8.3.4",
     "vitest": "5.0.5"
+  },
+  "overrides": {
+    "eslint-plugin-jsx-a11y": {
+      "eslint": "$eslint"
+    }
   }
 }

@@ -15,6 +15,7 @@ from hashlib import sha256
 from pathlib import Path
 from sys import intern
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 from ..domain import (
@@ -29,7 +30,10 @@ from ..domain import (
 )
 
 SOURCE = "topdeck"
-PARSER_VERSION = "topdeck-bulk-v3"
+# v4 kept each event's name and page; v5 links the public results page, since the
+# event page asks visitors to sign in.
+PARSER_VERSION = "topdeck-bulk-v5"
+EVENT_URL = "https://topdeck.gg/bracket/{}"
 # Cards in the Mainboard and in a commander zone are played: commander formats keep
 # the commander apart from the Mainboard. The Sideboard is kept separately.
 MAINBOARD = "Mainboard"
@@ -230,6 +234,8 @@ def _tournament(
         source_format_name=event["format"],
         player_count=players or None,
         top_cut_size=_top_cut_size(event.get("topCut")),
+        name=(event.get("tournamentName") or "").strip() or None,
+        source_url=EVENT_URL.format(quote(event["TID"], safe="")),
         coverage=CoverageProfile(
             decklists=_coverage(listed, players),
             standings=_coverage(recorded, players),
@@ -270,13 +276,14 @@ def _top_cut(rows: list[dict[str, Any]], size: int | None) -> tuple[list[bool | 
     if size == 0:
         return [None] * len(rows), NO_TOP_CUT
     bracket = [(_count(row.get("winsBracket")), _count(row.get("lossesBracket"))) for row in rows]
-    if rows and all(won is not None and lost is not None for won, lost in bracket):
-        return [won + lost > 0 for won, lost in bracket], BRACKET_RECORD
+    records = [(won, lost) for won, lost in bracket if won is not None and lost is not None]
+    if rows and len(records) == len(bracket):
+        return [won + lost > 0 for won, lost in records], BRACKET_RECORD
     # Without bracket columns, the response order is read as the final standings. That
     # is undocumented, so it is used only if no player below the cut has more wins
     # than a player inside it.
-    wins = [_count(row.get("wins")) for row in rows]
-    if None in wins or (
+    wins = [won for row in rows if (won := _count(row.get("wins"))) is not None]
+    if len(wins) != len(rows) or (
         len(rows) > size and min(wins[:size], default=0) < max(wins[size:], default=0)
     ):
         return [None] * len(rows), INCONSISTENT_ORDER

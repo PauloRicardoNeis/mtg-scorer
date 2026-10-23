@@ -200,6 +200,29 @@ describe("CompareFilters", () => {
     expect(router.replace).not.toHaveBeenCalled();
   });
 
+  it("follows the address when it offers no grading to choose", () => {
+    const bare = (query: string) => (
+      <CompareFilters
+        formats={formats}
+        stats={stats}
+        summaries={summaries}
+        every={false}
+        query={query}
+        method="signature-score"
+      />
+    );
+    const { rerender } = render(bare("color=R"));
+    rerender(bare("color=G"));
+    expect(screen.queryByRole("combobox", { name: "Grading" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Green" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Red" })).not.toBeChecked();
+    expect(router.replace).not.toHaveBeenCalled();
+    // The grading it was given still travels with the next change.
+    fireEvent.submit(screen.getByRole("form", { name: "Compare settings" }));
+    expect(replaced()).toContainEqual(["method", "signature-score"]);
+    expect(replaced()).toContainEqual(["color", "G"]);
+  });
+
   it("keeps a choice made before the page hydrated", () => {
     const container = document.body.appendChild(document.createElement("div"));
     container.innerHTML = renderToString(filters());

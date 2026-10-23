@@ -34,7 +34,7 @@ def test_provenance_requires_a_timezone_aware_retrieval_time() -> None:
         Provenance(
             source="fixture",
             source_record_id="event-1",
-            retrieved_at=datetime(2026, 8, 28),
+            retrieved_at=datetime(2026, 8, 28),  # noqa: DTZ001 -- the naive value is the case
             parser_version="fixture-v1",
             raw_snapshot_ref="fixtures/source.json",
         )
@@ -218,6 +218,24 @@ RETRIEVED = datetime(2026, 8, 28, tzinfo=UTC)
             ),
             "top_cut_size cannot be negative",
             id="tournament-negative-top-cut",
+        ),
+        pytest.param(
+            lambda: Tournament(
+                provenance(), date(2026, 8, 1), "Modern", CoverageProfile(), name=""
+            ),
+            "name cannot be blank",
+            id="tournament-blank-name",
+        ),
+        pytest.param(
+            lambda: Tournament(
+                provenance(),
+                date(2026, 8, 1),
+                "Modern",
+                CoverageProfile(),
+                source_url="http://example.invalid/event",
+            ),
+            "source_url must be an https URL",
+            id="tournament-plain-url",
         ),
         pytest.param(
             lambda: Standing(provenance(), "event-1", " "),

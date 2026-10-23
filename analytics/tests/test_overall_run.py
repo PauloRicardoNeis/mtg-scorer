@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 import pytest
 from synthetic_topdeck import BOLT, COUNTERSPELL, ISLAND, deck, event, row, save
@@ -162,4 +163,4 @@ def test_the_cli_combines_run_files(tmp_path, monkeypatch, capsys) -> None:
     cli.main()
 
     written = capsys.readouterr().out.strip()
-    assert json.loads(open(written, "rb").read())["format_name"] == FORMAT_NAME
+    assert json.loads(Path(written).read_bytes())["format_name"] == FORMAT_NAME

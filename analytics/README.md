@@ -62,8 +62,15 @@ the inputs that explain them.
 
 | Method | Outputs | Notes |
 | --- | --- | --- |
+| `constructed-score` | `score` | 0-100 percentile blending shrunk win rate against the field (60%), shrunk top-cut conversion (25%) and meta share (15%); the default grading and the component of the overall grade |
+| `signature-score` | `score` | 0-100 percentile blending shrunk archetype focus (50%), home-archetype reliance (30%) and shrunk win rate (20%); unknown without archetype labels |
 | `foundation` | Staple, Build-around, Evidence, coverage | The original weighted model; `ScoreConfig` sets its weights |
 | `max-ratio` | `max_ratio` | Count ÷ the largest count in the stratum × 100; measures volume, not quality |
+| `hidden-gem-score` | `score` | Uncommon cards their decks build around and win with: shrunk playset share × shrunk result lift over the field × event recurrence × a meta-share discount (half at 2%). Cards whose decks do no better than the field score 0, the rest rank by percentile; singleton formats have no score |
+
+Every formula, prior strength and edge case is written out in the
+[scoring documentation](../docs/scoring/README.md), with a worked example run
+through the real pipeline.
 
 To add a method:
 
@@ -99,10 +106,14 @@ python -m uv run --project analytics mtg-scorer score-topdeck --source-dir analy
    `tournament_features.py` applies these rules, leaves out decks whose mainboard is
    incomplete, and counts each mainboard card's decks, events and top cuts, plus its
    most common source archetype label. Top cuts count only decks whose result is
-   known, and that denominator is kept with them.
+   known, and that denominator is kept with them. Each archetype is described the
+   same way, from its own decks; in commander formats an unlabelled deck's archetype
+   is its commander or partner pair, which is how the rankings list commanders.
 3. Every registered method scores the population: all mainboard cards except basic
-   lands. The file `<score_run_id>.json` keeps the cohort, every card's usage and
-   each method's scores. The run id hashes the dataset, parser, features, cohort
+   lands. The file `<score_run_id>.json` keeps the cohort, its decks (newest event
+   first, each with its event, archetype, reported result, commanders and reported
+   sideboard), every card's usage
+   with the decks it was in, and each method's scores. The run id hashes the dataset, parser, features, cohort
    rules, population rule and method identities. A rerun with identical results
    reuses the file; different results under the same id are refused.
 

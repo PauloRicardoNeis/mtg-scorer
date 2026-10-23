@@ -70,6 +70,9 @@ class CardFeatures:
     archetype_concentration: FeatureObservation = field(default_factory=FeatureObservation.unknown)
     # Share of the decks of the card's most common archetype that play it.
     archetype_adoption: FeatureObservation = field(default_factory=FeatureObservation.unknown)
+    # Share of the card's decks that play a full playset of it in the mainboard; support
+    # is those decks and the opportunity all of the card's decks.
+    playset_rate: FeatureObservation = field(default_factory=FeatureObservation.unknown)
     # The whole cohort's rates, which the card's are compared with.
     field_win_rate: float | None = None
     field_top_cut_rate: float | None = None

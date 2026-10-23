@@ -134,15 +134,22 @@ body {
     inset 0 -2px 0 var(--accent),
     var(--focus-ring-inset);
 }
-/* Header search: "/" focuses it from anywhere on the page. */
+/* Header search: "/" focuses it from anywhere on the page. Where it looks
+   gives way to the text on narrower screens. */
 .header-search {
-  flex: 0 1 280px;
+  flex: 0 1 380px;
   min-width: 130px;
   margin-left: auto;
 }
 .header-search .field {
+  --field-pad: 11px;
   height: 34px;
   padding: 0 6px 0 11px;
+}
+@media (max-width: 900px) {
+  .header-search .search-in {
+    display: none;
+  }
 }
 .header-search .field input {
   font-size: var(--fs-small);
@@ -510,6 +517,27 @@ label,
 .field input::-webkit-search-cancel-button {
   filter: grayscale(1);
   cursor: pointer;
+}
+/* Where a search looks: a borderless select at the start of its field, set off
+   by a rule; focus rings the whole field, as the input's does. */
+.field .search-in {
+  flex: none;
+  align-self: stretch;
+  margin-left: calc(-1 * var(--field-pad, var(--space-3)));
+}
+.field .search-in select {
+  width: auto;
+  height: 100%;
+  padding: 0 28px 0 var(--field-pad, var(--space-3));
+  border: 0;
+  border-right: 1px solid var(--line-1);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+}
+.field .search-in select:focus-visible {
+  box-shadow: none;
+  color: var(--text-1);
 }
 select {
   appearance: none;
@@ -2117,6 +2145,165 @@ button.toast-action:focus-visible {
   margin-top: var(--space-5);
 }
 
+/* Card page: the tournament decks behind a card's counts, one format at a time. */
+.card-decks {
+  margin-top: var(--space-10);
+}
+.card-decks > h2 {
+  margin-bottom: var(--space-2_5);
+}
+.card-decks > p {
+  max-width: 640px;
+  margin: 0 0 var(--space-5);
+  font-size: var(--fs-ui);
+  color: var(--text-2);
+}
+.card-decks .tabs {
+  margin-bottom: var(--space-5);
+}
+.card-decks > .deck-summary {
+  max-width: none;
+  margin-bottom: var(--space-3);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+.deck-list li {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+}
+.deck-event h3 {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: 1.35;
+}
+.deck-event h3 a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1_5);
+  color: var(--text-1);
+}
+.deck-archetype {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-ui);
+}
+.deck-copies {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+.deck-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+}
+.deck-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+/* Deck page: one published deck's whole list. The main deck spans the page, its type
+   groups in columns; commanders and sideboard sit beside each other. */
+.deck-intro .deck-result {
+  justify-content: flex-start;
+}
+.deck-intro .deck-result a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1_5);
+  font-family: var(--font-sans);
+}
+.deck-zones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+}
+.deck-zone {
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-frame);
+  background: var(--surface-1);
+}
+.deck-zone.grouped {
+  grid-column: 1 / -1;
+}
+.deck-zone h2 {
+  margin-bottom: var(--space-4);
+  font-size: var(--fs-display-4);
+  line-height: 1.1;
+}
+.deck-zone h3 {
+  margin: 0 0 var(--space-2);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: var(--fs-ui);
+  font-weight: var(--fw-semibold);
+}
+.deck-zone-count {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono-meta);
+  font-weight: normal;
+}
+.deck-groups {
+  columns: 3 240px;
+  column-gap: var(--space-8);
+}
+.deck-group {
+  break-inside: avoid;
+  margin-bottom: var(--space-5);
+}
+.deck-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.deck-line {
+  display: grid;
+  grid-template-columns: 2.5ch minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-1_5);
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-ui);
+}
+.deck-line-copies {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.deck-line.from-card {
+  background: var(--sigil-wash);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.deck-no-sideboard,
+.deck-source {
+  margin-top: var(--space-6);
+  font-size: var(--fs-ui);
+}
+.deck-unlisted {
+  margin-top: var(--space-10);
+}
+
 /* Dataset & method */
 .dataset-grid {
   display: grid;
@@ -2250,6 +2437,12 @@ fieldset.gallery-stack {
   .printing-list li {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-4);
+  }
+  .deck-list li {
+    gap: var(--space-2);
+  }
+  .deck-result {
+    justify-content: flex-start;
   }
   .breadcrumbs .crumb {
     display: none;
@@ -2649,6 +2842,119 @@ fieldset.gallery-stack {
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: var(--fs-mono-meta);
+}
+
+/* Rankings: the filter menu, a panel that opens down from the stuck toolbar,
+   between it and the results, and holds every filter and order. Its button
+   closes the toolbar and needs JavaScript; wrapped onto a line of its own, it
+   keeps to the right. */
+.filter-menu-button {
+  margin-left: auto;
+}
+.filter-menu-button[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.filter-menu-count {
+  display: inline-grid;
+  place-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  line-height: 1;
+}
+@media (scripting: none) {
+  .filter-menu-button {
+    display: none;
+  }
+}
+/* Open, it keeps below the header and the toolbar and scrolls within itself. */
+.filter-menu {
+  max-height: calc(100dvh - var(--header-h) - 58px);
+  overflow-y: auto;
+  border-top: 1px solid var(--line-1);
+  background: var(--bg-band);
+  scrollbar-color: var(--line-2) transparent;
+  scrollbar-width: thin;
+}
+/* Phones leave the toolbar unstuck, so the menu grows with the page. */
+@media (max-width: 640px) {
+  .filter-menu {
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+.filter-menu:not([hidden]) {
+  animation: filter-menu-in var(--dur-slow) var(--ease-out);
+}
+@keyframes filter-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+.filter-menu > form {
+  display: grid;
+  gap: var(--space-4);
+  padding-block: var(--space-4) var(--space-5);
+}
+.filter-menu-head,
+.filter-menu-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2_5);
+}
+.filter-menu-head {
+  justify-content: space-between;
+}
+.filter-menu-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-display-4);
+  font-weight: var(--fw-semibold);
+  line-height: 1.1;
+}
+/* Fields fill as many columns as fit; the search and the views take two. */
+.filter-menu-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  align-items: start;
+  gap: var(--space-4) var(--space-5);
+}
+.filter-menu-wide {
+  grid-column: span 2;
+}
+@media (max-width: 520px) {
+  .filter-menu-wide {
+    grid-column: auto;
+  }
+}
+.filter-menu-body .segmented {
+  display: flex;
+}
+.filter-menu-body .segmented > label {
+  flex: 1;
+  justify-content: center;
+}
+.filter-menu-body .tab-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  color: var(--text-3);
+}
+/* The sort and its direction sit closer together than the other filters. */
+.filter-menu-pair {
+  display: grid;
+  gap: var(--space-3);
+}
+.filter-menu-foot {
+  justify-content: flex-end;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-1);
 }
 
 /* Rankings: the table and the selected card's preview, side by side until the
@@ -3289,6 +3595,51 @@ tr[data-selected] .card-name {
   color: var(--text-3);
 }
 
+/* Rankings: commanders. A partner pair shows two cards wherever one card would. */
+.ranking-table.commander-table {
+  min-width: 1000px;
+}
+.ranking-table .col-events {
+  width: 90px;
+}
+.commander-thumbs {
+  display: flex;
+  flex: none;
+}
+.commander-thumbs.pair .thumb + .thumb {
+  margin-left: -12px;
+}
+.commander-names {
+  overflow: hidden;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.commander-plus {
+  color: var(--text-3);
+}
+.card-meta .color-pips + .card-type {
+  margin-left: var(--space-2);
+}
+.preview-art-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  width: 100%;
+}
+.podium-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.podium-commander .podium-stats {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  text-align: center;
+}
+
 /* Rankings: loading. Skeleton rows at the real row height; no spinner. */
 .skeleton-table {
   min-width: 980px;
@@ -3380,15 +3731,15 @@ tr[data-selected] .card-name {
   font-size: 12px;
 }
 
-/* Link-based segmented controls: presets and sources. */
-:is(.preset-links, .source-tabs) {
+/* Link-based segmented controls: presets, sources and what a page ranks. */
+:is(.preset-links, .source-tabs, .kind-tabs) {
   display: inline-flex;
   overflow: hidden;
   border: 1px solid var(--line-1);
   border-radius: var(--radius-md);
   background: var(--strip-bg);
 }
-:is(.preset-links, .source-tabs) > a {
+:is(.preset-links, .source-tabs, .kind-tabs) > a {
   display: inline-flex;
   align-items: center;
   height: 32px;
@@ -3400,19 +3751,19 @@ tr[data-selected] .card-name {
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
 }
-:is(.preset-links, .source-tabs) > a + a {
+:is(.preset-links, .source-tabs, .kind-tabs) > a + a {
   border-left: 1px solid var(--line-1);
 }
-:is(.preset-links, .source-tabs) > a:hover {
+:is(.preset-links, .source-tabs, .kind-tabs) > a:hover {
   background: var(--segment-hover);
   color: var(--text-2);
   text-decoration: none;
 }
-:is(.preset-links, .source-tabs) > a[aria-current="page"] {
+:is(.preset-links, .source-tabs, .kind-tabs) > a[aria-current="page"] {
   background: var(--surface-2);
   color: var(--text-1);
 }
-:is(.preset-links, .source-tabs) > a:focus-visible {
+:is(.preset-links, .source-tabs, .kind-tabs) > a:focus-visible {
   box-shadow: var(--focus-ring-inset);
 }
 .tag-accent {
@@ -3681,3 +4032,18 @@ tr:hover .compare-card .card-name {
   border-radius: var(--radius-xs);
   background: var(--legend-swatch);
 }
+
+/* Metagame: pieces the Archetypes and Decklists sections share. */
+/* end metagame-shared */
+
+/* Archetypes: index */
+/* end archetypes-index */
+
+/* Archetypes: detail */
+/* end archetype-detail */
+
+/* Decklists: index */
+/* end decklists-index */
+
+/* Decklists: detail and the average list */
+/* end decklist-detail */

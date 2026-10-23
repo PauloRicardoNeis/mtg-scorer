@@ -28,12 +28,13 @@ class RankingControllerTests {
 
   @Mock private RankingService rankings;
   @Mock private CompareService compare;
+  @Mock private CommanderService commanders;
   private MockMvc mvc;
 
   @BeforeEach
   void setUp() {
     mvc =
-        MockMvcBuilders.standaloneSetup(new RankingController(rankings, compare))
+        MockMvcBuilders.standaloneSetup(new RankingController(rankings, compare, commanders))
             .setControllerAdvice(new CatalogExceptionHandler())
             .build();
   }
@@ -121,7 +122,7 @@ class RankingControllerTests {
                 "signature-score",
                 List.of(new CompareFormat("Modern", RUN, 667, 2, 120)),
                 List.of(new CompareFormat("Modern", RUN, 667, 2, 120)),
-                List.of(new RankedFormat("Overall", "topdeck", RUN, 92506, null)),
+                List.of(new RankedFormat("Overall", "topdeck", RUN, 92506, null, 0)),
                 null,
                 0,
                 0,
@@ -145,6 +146,38 @@ class RankingControllerTests {
 
     assertThat(query.getValue().formats()).containsExactly("Modern", "Legacy");
     assertThat(query.getValue().method()).isEqualTo("signature-score");
+  }
+
+  @Test
+  void theCommanderQueryIsParsedStrictlyAndThePageIsReturned() throws Exception {
+    ArgumentCaptor<CommanderQuery> query = ArgumentCaptor.forClass(CommanderQuery.class);
+    when(commanders.commanders(query.capture()))
+        .thenReturn(
+            new CommanderPage(
+                null,
+                List.of(),
+                null,
+                0,
+                0,
+                25,
+                "win_rate",
+                "desc",
+                null,
+                0,
+                List.of(),
+                List.of()));
+
+    mvc.perform(
+            get("/api/v1/rankings/commanders")
+                .param("format", "Duel Commander")
+                .param("sort", "win_rate"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.sort").value("win_rate"));
+    mvc.perform(get("/api/v1/rankings/commanders").param("method", "max-ratio"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("invalid_query"));
+
+    assertThat(query.getValue().format()).isEqualTo("Duel Commander");
   }
 
   @Test

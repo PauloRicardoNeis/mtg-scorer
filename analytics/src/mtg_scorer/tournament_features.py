@@ -18,7 +18,9 @@ from .domain import DeckEntry, Standing, Tournament
 from .features import CardFeatures, FeatureObservation
 from .scoring.base import config_fingerprint
 
-FEATURE_PIPELINE_VERSION = "card-usage-v4"
+# v7 lists the cohort's decks and each card's; v8 adds each deck's sideboard and
+# commanders, so a deck's whole list can be read back.
+FEATURE_PIPELINE_VERSION = "card-usage-v8"
 # The trend series: twelve periods ending where the cohort window ends, each a
 # twelfth of the window but at most 30 days. Weeks would leave most periods empty in
 # formats with a few events a month.
@@ -28,6 +30,8 @@ SERIES_PERIOD_DAYS = 30
 TOP_ARCHETYPES = 3
 # A card belongs to an archetype's core when at least this share of its decks play it.
 CORE_CARD_SHARE = 0.5
+# Mainboard copies that make a playset: the most a constructed deck may play.
+PLAYSET_COPIES = 4
 # Joins partner commanders into the name of their one archetype.
 COMMANDER_SEPARATOR = " + "
 # Published fractions are rounded so reruns write identical files.
@@ -138,6 +142,9 @@ class CardUsage:
     decks, ``series`` the card's decks in each trend period, and ``record`` the match
     results of its decks. ``archetype_concentration`` is the chance that two of its
     labelled decks share an archetype, unknown below two labelled decks.
+    ``playset_deck_count`` counts its decks with at least ``PLAYSET_COPIES`` mainboard
+    copies. ``decks`` lists its decks by their position in ``published_decks``, in that
+    order, and ``deck_copies`` the mainboard copies each of them plays.
     """
 
     oracle_id: str
@@ -155,15 +162,29 @@ class CardUsage:
     archetype_count: int = 0
     series: tuple[int, ...] = ()
     archetype_concentration: float | None = None
+    playset_deck_count: int = 0
+    decks: tuple[int, ...] = ()
+    deck_copies: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class ArchetypeCore:
-    """One archetype label, its decks and the cards most of them play."""
+    """One archetype label, its decks and the cards most of them play.
+
+    ``commanders`` are the cards that name a commander archetype, in label order, and
+    empty for a source's label. The rest describe its decks the way ``CardUsage``
+    describes a card's, so an archetype compares with the field like a card does.
+    """
 
     label: str
     deck_count: int
     core_cards: tuple[str, ...]
+    commanders: tuple[str, ...] = ()
+    event_count: int = 0
+    top_cut_count: int | None = None
+    top_cut_known_decks: int = 0
+    record: Record = Record()
+    series: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,6 +315,12 @@ def deck_archetypes(cohort: Cohort) -> dict[str, str]:
     names (a double-faced card with or without its back face) stays one archetype.
     """
 
+    return {deck_id: label for deck_id, (label, _) in _deck_archetypes(cohort).items()}
+
+
+def _deck_archetypes(cohort: Cohort) -> dict[str, tuple[str, tuple[str, ...]]]:
+    """``deck_archetypes`` with the commanders that name each label, in label order."""
+
     commander_ids = {
         oracle_id
         for deck in cohort.decks
@@ -307,15 +334,34 @@ def deck_archetypes(cohort: Cohort) -> dict[str, str]:
                 if card.oracle_id in commander_ids and card.mainboard_count > 0:
                     spellings.setdefault(card.oracle_id, Counter())[card.name] += 1
     names = {oracle_id: _most_common(counts)[0] for oracle_id, counts in spellings.items()}
-    archetypes = {}
+    archetypes: dict[str, tuple[str, tuple[str, ...]]] = {}
     for deck in cohort.decks:
         if deck.archetype_label:
-            archetypes[deck.source_deck_id] = deck.archetype_label
+            archetypes[deck.source_deck_id] = (deck.archetype_label, ())
         elif deck.commanders:
-            archetypes[deck.source_deck_id] = COMMANDER_SEPARATOR.join(
-                sorted(names[oracle_id] for oracle_id in deck.commanders)
+            named = sorted((names[oracle_id], oracle_id) for oracle_id in deck.commanders)
+            archetypes[deck.source_deck_id] = (
+                COMMANDER_SEPARATOR.join(name for name, _ in named),
+                tuple(oracle_id for _, oracle_id in named),
             )
     return archetypes
+
+
+def published_decks(cohort: Cohort) -> tuple[DeckEntry, ...]:
+    """The cohort's decks as a run file lists them: the newest event first, events of one
+    day by their identifier, and each event's decks in the order its source listed them.
+    Cards name their decks by position in this order."""
+
+    occurred = {t.source_event_id: t.occurred_on.toordinal() for t in cohort.tournaments}
+    order = sorted(
+        range(len(cohort.decks)),
+        key=lambda index: (
+            -occurred[cohort.decks[index].source_event_id],
+            cohort.decks[index].source_event_id,
+            index,
+        ),
+    )
+    return tuple(cohort.decks[index] for index in order)
 
 
 def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
@@ -328,14 +374,19 @@ def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
         t.source_event_id: _series_index(t.occurred_on, cohort.rules) for t in cohort.tournaments
     }
     decks_by_card: dict[str, list[DeckEntry]] = {}
+    # Each card's decks by position in the published order, with the copies each plays.
+    listed: dict[str, list[tuple[int, int]]] = {}
     names: dict[str, Counter[str]] = {}
     copies: Counter[str] = Counter()
-    for deck in cohort.decks:
+    playsets: Counter[str] = Counter()
+    for position, deck in enumerate(published_decks(cohort)):
         for card in deck.cards:
             if card.mainboard_count > 0:
                 decks_by_card.setdefault(card.oracle_id, []).append(deck)
+                listed.setdefault(card.oracle_id, []).append((position, card.mainboard_count))
                 names.setdefault(card.oracle_id, Counter())[card.name] += 1
                 copies[card.oracle_id] += card.mainboard_count
+                playsets[card.oracle_id] += card.mainboard_count >= PLAYSET_COPIES
 
     usage = []
     for oracle_id in sorted(decks_by_card):
@@ -370,6 +421,9 @@ def card_usage(cohort: Cohort) -> tuple[CardUsage, ...]:
                 archetype_count=len(ranked),
                 series=_series(card_decks, periods),
                 archetype_concentration=_concentration(labels.values()),
+                playset_deck_count=playsets[oracle_id],
+                decks=tuple(position for position, _ in listed[oracle_id]),
+                deck_copies=tuple(count for _, count in listed[oracle_id]),
             )
         )
     return tuple(usage)
@@ -391,9 +445,10 @@ def _ranked(counts: Counter[str]) -> list[tuple[str, int]]:
     return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
 
 
-def _most_common(counts: Counter[str]) -> tuple[str | None, int]:
-    ranked = _ranked(counts)
-    return ranked[0] if ranked else (None, 0)
+def _most_common(counts: Counter[str]) -> tuple[str, int]:
+    """The leading value and its count; callers only count names they have seen."""
+
+    return _ranked(counts)[0]
 
 
 def cohort_performance(cohort: Cohort) -> CohortPerformance:
@@ -408,11 +463,15 @@ def cohort_performance(cohort: Cohort) -> CohortPerformance:
     periods = {
         t.source_event_id: _series_index(t.occurred_on, cohort.rules) for t in cohort.tournaments
     }
-    archetype_of = deck_archetypes(cohort)
+    archetype_of = _deck_archetypes(cohort)
     by_label: dict[str, list[DeckEntry]] = {}
+    named_by: dict[str, Counter[tuple[str, ...]]] = {}
     for deck in cohort.decks:
         if deck.source_deck_id in archetype_of:
-            by_label.setdefault(archetype_of[deck.source_deck_id], []).append(deck)
+            label, commanders = archetype_of[deck.source_deck_id]
+            by_label.setdefault(label, []).append(deck)
+            if commanders:
+                named_by.setdefault(label, Counter())[commanders] += 1
     archetypes = []
     for label in sorted(by_label):
         decks = by_label[label]
@@ -422,7 +481,34 @@ def cohort_performance(cohort: Cohort) -> CohortPerformance:
         core = sorted(
             oracle for oracle, count in played.items() if count >= CORE_CARD_SHARE * len(decks)
         )
-        archetypes.append(ArchetypeCore(label, len(decks), tuple(core)))
+        cuts = [
+            standing_of[deck.source_deck_id].made_top_cut
+            for deck in decks
+            if deck.source_deck_id in standing_of
+        ]
+        known = [result for result in cuts if result is not None]
+        # A source's label could also be a commander pair's name; the commanders most of
+        # its commander decks share name it.
+        named = named_by.get(label)
+        archetypes.append(
+            ArchetypeCore(
+                label,
+                len(decks),
+                tuple(core),
+                commanders=min(named.items(), key=lambda item: (-item[1], item[0]))[0]
+                if named
+                else (),
+                event_count=len({deck.source_event_id for deck in decks}),
+                top_cut_count=sum(known) if known else None,
+                top_cut_known_decks=len(known),
+                record=_record(
+                    standing_of[deck.source_deck_id]
+                    for deck in decks
+                    if deck.source_deck_id in standing_of
+                ),
+                series=_series(decks, periods),
+            )
+        )
     return CohortPerformance(
         players_per_game=cohort.rules.players_per_game,
         record=_record(
@@ -446,23 +532,33 @@ def _rounded(value: float | None) -> float | None:
 def card_performance(usage: CardUsage, field: CohortPerformance) -> CardPerformance:
     """Compare one card's decks with the field: win rate, top-cut lift and trend."""
 
-    win_rate = usage.record.win_rate(field.players_per_game)
+    return _performance(usage, field)
+
+
+def archetype_performance(archetype: ArchetypeCore, field: CohortPerformance) -> CardPerformance:
+    """Compare one archetype's decks with the field, as ``card_performance`` does a card's."""
+
+    return _performance(archetype, field)
+
+
+def _performance(decks: CardUsage | ArchetypeCore, field: CohortPerformance) -> CardPerformance:
+    win_rate = decks.record.win_rate(field.players_per_game)
     delta = None if win_rate is None or field.win_rate is None else win_rate - field.win_rate
     # The normal approximation of a proportion's 95% interval, as a half-width.
     ci95 = (
         None
         if win_rate is None
-        else 1.96 * math.sqrt(max(win_rate * (1 - win_rate), 0.0) / usage.record.games)
+        else 1.96 * math.sqrt(max(win_rate * (1 - win_rate), 0.0) / decks.record.games)
     )
     lift = None
-    if usage.top_cut_count is not None and field.top_cut_rate:
-        lift = usage.top_cut_count / usage.top_cut_known_decks / field.top_cut_rate
+    if decks.top_cut_count is not None and field.top_cut_rate:
+        lift = decks.top_cut_count / decks.top_cut_known_decks / field.top_cut_rate
     # The trend compares pooled shares of the older and the newer half of the series,
     # so one thin month cannot swing it.
     half = SERIES_PERIODS // 2
     older, newer = sum(field.series[:half]), sum(field.series[half:])
     share_delta = (
-        sum(usage.series[half:]) / newer - sum(usage.series[:half]) / older
+        sum(decks.series[half:]) / newer - sum(decks.series[:half]) / older
         if older and newer
         else None
     )
@@ -518,6 +614,11 @@ def card_features(
             )
             if home
             else FeatureObservation.unknown()
+        ),
+        playset_rate=FeatureObservation.known(
+            usage.playset_deck_count / usage.deck_count,
+            support=usage.playset_deck_count,
+            opportunity_count=usage.deck_count,
         ),
         field_win_rate=field.win_rate,
         field_top_cut_rate=field.top_cut_rate,

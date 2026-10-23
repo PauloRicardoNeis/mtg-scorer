@@ -39,7 +39,7 @@ def bulk_fixture(directory, *, extra=None, records=None):
 
 
 def test_bulk_preserves_seed_projection_reuse_versions_and_corruption(tmp_path, monkeypatch):
-    import mtg_scorer.publish.bulk as bulk
+    from mtg_scorer.publish import bulk
 
     source = bulk_fixture(tmp_path / "raw", extra=[{"id": "excluded", "name": "No oracle"}])
     output = export_bulk_catalog(source.raw_file.parent, tmp_path / "out")
@@ -60,7 +60,7 @@ def test_bulk_preserves_seed_projection_reuse_versions_and_corruption(tmp_path, 
 
 
 def test_failed_export_can_retry_without_success_directory(tmp_path, monkeypatch):
-    import mtg_scorer.publish.bulk as bulk
+    from mtg_scorer.publish import bulk
 
     source = bulk_fixture(tmp_path / "raw")
     original = bulk.project_catalog

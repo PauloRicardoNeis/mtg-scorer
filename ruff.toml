@@ -1,1 +1,5 @@
 extend = "analytics/pyproject.toml"
+
+[lint]
+# The contract checks are a unittest suite by design; they run through unittest.
+extend-per-file-ignores = { "scripts/verify_contracts.py" = ["PT"] }

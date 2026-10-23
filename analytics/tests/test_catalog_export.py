@@ -86,7 +86,7 @@ def test_missingness_layout_policy_and_conflicting_printings():
 
 
 def test_corruption_failed_export_and_concurrent_finalize(tmp_path, monkeypatch):
-    import mtg_scorer.publish.artifact as artifact
+    from mtg_scorer.publish import artifact
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: export_catalog(SEED, tmp_path), range(2)))
@@ -241,7 +241,7 @@ def finish_first(competitor_change=None):
 
 
 def test_concurrent_export_with_other_content_is_a_conflict(tmp_path, monkeypatch):
-    import mtg_scorer.publish.artifact as artifact
+    from mtg_scorer.publish import artifact
 
     def reword(payload):
         payload["cards"][0]["oracle_text"] = "Reworded by a competing exporter."
@@ -256,7 +256,7 @@ def test_concurrent_export_with_other_content_is_a_conflict(tmp_path, monkeypatc
 
 
 def test_concurrent_export_differing_only_in_creation_time_is_reused(tmp_path, monkeypatch):
-    import mtg_scorer.publish.artifact as artifact
+    from mtg_scorer.publish import artifact
 
     monkeypatch.setattr(
         artifact.os,
@@ -273,7 +273,7 @@ def test_concurrent_export_differing_only_in_creation_time_is_reused(tmp_path, m
 
 
 def test_failed_finalize_without_a_competitor_propagates_and_cleans_up(tmp_path, monkeypatch):
-    import mtg_scorer.publish.artifact as artifact
+    from mtg_scorer.publish import artifact
 
     def denied(source, destination):
         raise PermissionError(destination)

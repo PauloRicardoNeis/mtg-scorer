@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, BinaryIO, TextIO
+from typing import IO, Any, TextIO
 from urllib.request import Request, urlopen
 
 import duckdb
@@ -187,8 +187,12 @@ def normalize_snapshot(
             _insert_batch(connection, batch)
 
         _materialize_tables(connection)
-        oracle_card_count = connection.execute("SELECT count(*) FROM oracle_cards").fetchone()[0]
-        printing_count = connection.execute("SELECT count(*) FROM card_printings").fetchone()[0]
+        (oracle_card_count,) = connection.execute(
+            "SELECT count(*) FROM oracle_cards"
+        ).fetchone() or (0,)
+        (printing_count,) = connection.execute(
+            "SELECT count(*) FROM card_printings"
+        ).fetchone() or (0,)
         connection.execute(
             "COPY oracle_cards TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
             [str(staged_cards)],
@@ -247,7 +251,8 @@ def _fetch_json(url: str) -> dict[str, Any]:
     with urlopen(request, timeout=30) as response:
         payload = json.load(response)
     if not isinstance(payload, dict):
-        raise ValueError(f"expected an object from {url}")
+        # A malformed response is bad data from the source, not a programming error.
+        raise ValueError(f"expected an object from {url}")  # noqa: TRY004
     return payload
 
 
@@ -308,7 +313,7 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
 
 
 @contextmanager
-def _open_binary(path: Path) -> Iterator[BinaryIO]:
+def _open_binary(path: Path) -> Iterator[IO[bytes] | gzip.GzipFile]:
     with path.open("rb") as probe:
         compressed = probe.read(2) == b"\x1f\x8b"
     if compressed:
@@ -406,7 +411,8 @@ def _create_staging_table(connection: duckdb.DuckDBPyConnection) -> None:
 
 def _insert_batch(connection: duckdb.DuckDBPyConnection, batch: list[tuple[Any, ...]]) -> None:
     placeholders = ", ".join("?" for _ in range(16))
-    connection.executemany(f"INSERT INTO staging_cards VALUES ({placeholders})", batch)
+    # Only placeholders are interpolated; every value is bound.
+    connection.executemany(f"INSERT INTO staging_cards VALUES ({placeholders})", batch)  # noqa: S608
 
 
 def _materialize_tables(connection: duckdb.DuckDBPyConnection) -> None:

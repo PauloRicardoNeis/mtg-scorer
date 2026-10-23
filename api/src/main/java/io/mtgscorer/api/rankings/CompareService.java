@@ -42,6 +42,7 @@ public class CompareService {
                 requested.formats(),
                 requested.method(),
                 requested.q(),
+                requested.in(),
                 requested.colors(),
                 requested.every(),
                 "best",

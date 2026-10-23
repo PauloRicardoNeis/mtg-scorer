@@ -38,12 +38,13 @@ describe("useI18n", () => {
 describe("useI18n on the server", () => {
   it("reads the request's language", async () => {
     vi.mocked(getI18n).mockResolvedValue(createI18n("ja", ja));
-    await act(async () => {
+    await act(() => {
       render(
         <Suspense fallback={null}>
           <Label hook={useServerI18n} />
         </Suspense>,
       );
+      return Promise.resolve();
     });
     expect(screen.getByText(`ja: ${ja.nav.rankings}`)).toBeInTheDocument();
   });

@@ -25,6 +25,8 @@ migration/reader/publisher roles, exact environment variables, retry and rollbac
 | `/api/v1/cards` | Literal canonical/face-name search, joint printing filters, pinned keyset pagination |
 | `/api/v1/cards/{oracle_id}` | Canonical metadata with ordered faces |
 | `/api/v1/cards/{oracle_id}/printings` | Paginated printings satisfying set/rarity/game together |
+| `/api/v1/cards/{oracle_id}/decks` | Published tournament decks that played the card, one run at a time, newest event first |
+| `/api/v1/decks/{score_run_id}/{position}` | One published deck and its whole list, with each card's catalog details |
 | `/api/v1/snapshots` | Active catalog first, then up to 19 retained published catalogs |
 | `/api/v1/snapshots/{catalog_snapshot_id}` | Provenance, set vocabulary, counts and explicit unavailable tournament evidence |
 | `/api/v1/info` | Build version and implemented capabilities |

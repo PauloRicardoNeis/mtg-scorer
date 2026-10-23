@@ -105,6 +105,7 @@ def test_registry_lists_every_score_method() -> None:
     assert SCORE_METHODS.method_ids == (
         "constructed-score",
         "foundation",
+        "hidden-gem-score",
         "max-ratio",
         "signature-score",
     )
@@ -114,9 +115,8 @@ def test_registry_lists_every_score_method() -> None:
 
 
 def test_registry_lookup_names_the_available_methods() -> None:
-    with pytest.raises(
-        KeyError, match="available: constructed-score, foundation, max-ratio, signature-score"
-    ):
+    available = "constructed-score, foundation, hidden-gem-score, max-ratio, signature-score"
+    with pytest.raises(KeyError, match=f"available: {available}"):
         SCORE_METHODS.get("power-ranking")
 
 

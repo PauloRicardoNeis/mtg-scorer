@@ -9,6 +9,7 @@ import platform
 import statistics
 import time
 from pathlib import Path
+from typing import Any, LiteralString
 from urllib.request import urlopen
 
 import psycopg
@@ -17,6 +18,15 @@ from mtg_scorer.publish.postgres import publish_catalog, rollback_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = ROOT / "analytics/seeds/scryfall-layouts-v1"
+
+
+def scalar(connection: psycopg.Connection, query: LiteralString, params: tuple = ()) -> Any:
+    """The single value of a one-row query; the measured queries always return one."""
+
+    row = connection.execute(query, params).fetchone()
+    if row is None:
+        raise RuntimeError(f"no row returned for {query.split(maxsplit=1)[0]}")
+    return row[0]
 
 
 def peak_rss_bytes() -> int:
@@ -72,9 +82,7 @@ def main() -> None:
     payload, manifest = verify_artifact(args.artifact, SEED)
     dsn = os.environ["CATALOG_TEST_PUBLISH_DSN"]
     with psycopg.connect(dsn) as connection:
-        previous = connection.execute(
-            "SELECT catalog_snapshot_id FROM catalog.active_catalog"
-        ).fetchone()[0]
+        previous = scalar(connection, "SELECT catalog_snapshot_id FROM catalog.active_catalog")
     start = time.perf_counter()
     measured = export_catalog(
         SEED,
@@ -111,9 +119,10 @@ def main() -> None:
         duration = time.perf_counter() - start
         timings = sorted(elapsed for elapsed, _ in samples)
         with psycopg.connect(os.environ["CATALOG_TEST_ADMIN_DSN"]) as connection:
-            postgres = connection.execute("SELECT version()").fetchone()[0]
-            disk = connection.execute("SELECT pg_database_size(current_database())").fetchone()[0]
-            plan = connection.execute(
+            postgres = scalar(connection, "SELECT version()")
+            disk = scalar(connection, "SELECT pg_database_size(current_database())")
+            plan = scalar(
+                connection,
                 """EXPLAIN (ANALYZE,BUFFERS,FORMAT JSON)
               SELECT c.oracle_id FROM catalog.published_catalog_card c
               WHERE c.catalog_snapshot_id=%s AND EXISTS(
@@ -122,7 +131,7 @@ def main() -> None:
               AND p.set_code='m11' AND p.rarity='common') ORDER BY c.name_key,c.oracle_id LIMIT 25
               """,
                 (measured.name,),
-            ).fetchone()[0]
+            )
         evidence = {
             "scope": (
                 "8-printing bounded seed; warm integration measurements only. "

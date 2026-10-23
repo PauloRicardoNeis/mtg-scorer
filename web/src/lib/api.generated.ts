@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Search names and faces within a jointly eligible printing pool */
+        /** Search names, type lines and rules text within a jointly eligible printing pool */
         get: operations["searchCards"];
         put?: never;
         post?: never;
@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cards/{oracle_id}/decks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the published tournament decks that played a card, newest event first */
+        get: operations["listCardDecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cards/{oracle_id}/printings": {
         parameters: {
             query?: never;
@@ -98,6 +115,23 @@ export interface paths {
         };
         /** List jointly eligible printings for a card */
         get: operations["listPrintings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/decks/{score_run_id}/{position}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one published tournament deck and its list */
+        get: operations["getDeck"];
         put?: never;
         post?: never;
         delete?: never;
@@ -132,6 +166,23 @@ export interface paths {
         };
         /** Rank one format's scored cards by a published score method */
         get: operations["listRankings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rankings/commanders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rank one format's commanders and partner pairs by the decks they lead */
+        get: operations["listCommanders"];
         put?: never;
         post?: never;
         delete?: never;
@@ -209,6 +260,56 @@ export interface components {
             label: string;
             url: string;
         };
+        CardDeck: {
+            /** @description The source's label, or an unlabelled commander deck's commanders. */
+            archetype: string | null;
+            /**
+             * Format: int32
+             * @description Mainboard copies of the card the deck plays.
+             */
+            copies: number;
+            /** Format: int32 */
+            draws: number | null;
+            event: components["schemas"]["DeckEvent"];
+            /**
+             * Format: int32
+             * @description Final standing when the source states one.
+             */
+            final_rank: number | null;
+            /** Format: int32 */
+            losses: number | null;
+            /** @description Null when unknown or when the event had no top cut. */
+            made_top_cut: boolean | null;
+            /**
+             * Format: int32
+             * @description The deck's place in its run, newest event first.
+             */
+            position: number;
+            source_deck_id: string;
+            /**
+             * Format: int32
+             * @description Match wins reported in standings; with losses and draws, or null.
+             */
+            wins: number | null;
+        };
+        CardDeckPage: {
+            /** @description Active runs that list the card's decks, most decks first. */
+            formats: components["schemas"]["DeckFormat"][];
+            items: components["schemas"]["CardDeck"][];
+            /** Format: int32 */
+            limit: number;
+            /** Format: int32 */
+            offset: number;
+            /** Format: uuid */
+            oracle_id: string;
+            /** @description Null when no active run lists the card's decks. */
+            run: components["schemas"]["DeckRun"] | null;
+            /**
+             * Format: int64
+             * @description The card's decks in the run.
+             */
+            total: number;
+        };
         CardDetail: {
             catalog_snapshot_id: string;
             color_identity: string[] | null;
@@ -245,7 +346,7 @@ export interface components {
         };
         CatalogError: {
             /** @enum {string} */
-            code: "invalid_query" | "invalid_cursor" | "snapshot_not_found" | "card_not_found" | "catalog_unavailable" | "rankings_unavailable" | "score_run_not_found" | "internal_error";
+            code: "invalid_query" | "invalid_cursor" | "snapshot_not_found" | "card_not_found" | "deck_not_found" | "catalog_unavailable" | "rankings_unavailable" | "score_run_not_found" | "internal_error";
             detail: string;
             instance: string;
             request_id: string;
@@ -253,6 +354,41 @@ export interface components {
             status: number;
             title: string;
             type: string;
+        };
+        CommanderCard: {
+            color_identity: string[] | null;
+            mana_cost: string | null;
+            /** @description As the run's decks most often spell it. */
+            name: string;
+            /** Format: uuid */
+            oracle_id: string;
+            /** @description Null when the card is not in the active catalog. */
+            preview_printing: components["schemas"]["Printing"] | null;
+            type_line: string | null;
+        };
+        CommanderPage: {
+            catalog_snapshot_id: string | null;
+            formats: components["schemas"]["RankedFormat"][];
+            items: components["schemas"]["RankedCommander"][];
+            /** Format: int32 */
+            limit: number;
+            /**
+             * Format: int32
+             * @description The most decks any commander has in this run.
+             */
+            max_deck_count: number;
+            /** Format: int32 */
+            offset: number;
+            /** @enum {string} */
+            order: "asc" | "desc";
+            /** @description The run rank changes are measured against. */
+            previous_score_run_id: string | null;
+            score_run: components["schemas"]["ScoreRunSummary"];
+            sort: string;
+            /** Format: int64 */
+            total: number;
+            /** @description Every published window of this format, latest end first, one run per source and window. */
+            windows: components["schemas"]["RunWindow"][];
         };
         CompareCell: {
             /**
@@ -335,6 +471,93 @@ export interface components {
              */
             ranked_in: number;
             type_line: string | null;
+        };
+        DeckCard: {
+            /** Format: int32 */
+            copies: number;
+            /** @description Whether the catalog shown has the card, so it can be opened. */
+            in_catalog: boolean;
+            mana_cost: string | null;
+            /** Format: double */
+            mana_value: number | null;
+            name: string;
+            /** Format: uuid */
+            oracle_id: string;
+            /** @description Null when the catalog shown does not have the card. */
+            type_line: string | null;
+        };
+        DeckDetail: {
+            /** @description The source's label, or an unlabelled commander deck's commanders. */
+            archetype: string | null;
+            /** @description The catalog the cards' details come from. */
+            catalog_snapshot_id: string;
+            /** @description The cards the source listed as commanders, apart from the main deck. */
+            commanders: components["schemas"]["DeckCard"][] | null;
+            /** Format: int32 */
+            draws: number | null;
+            event: components["schemas"]["DeckEvent"];
+            /**
+             * Format: int32
+             * @description Final standing when the source states one.
+             */
+            final_rank: number | null;
+            /** Format: int32 */
+            losses: number | null;
+            /** @description Null when unknown or when the event had no top cut. */
+            made_top_cut: boolean | null;
+            /** @description The main deck, by name, without commanders. */
+            mainboard: components["schemas"]["DeckCard"][] | null;
+            /**
+             * Format: int32
+             * @description The deck's place in its run, newest event first.
+             */
+            position: number;
+            run: components["schemas"]["DeckRun"];
+            /** @description The sideboard, by name. */
+            sideboard: components["schemas"]["DeckCard"][] | null;
+            source_deck_id: string;
+            /**
+             * Format: int32
+             * @description Match wins reported in standings; with losses and draws, or null.
+             */
+            wins: number | null;
+        };
+        DeckEvent: {
+            /** @description The event as its source names it; null when it named none. */
+            name: string | null;
+            /** Format: date */
+            occurred_on: string;
+            /** Format: int32 */
+            players: number | null;
+            source_event_id: string;
+            /**
+             * Format: uri
+             * @description The source's page for the event.
+             */
+            url: string | null;
+        };
+        DeckFormat: {
+            /**
+             * Format: int32
+             * @description The card's decks in the run.
+             */
+            deck_count: number;
+            format_name: string;
+            score_run_id: string;
+            source: string;
+        };
+        DeckRun: {
+            attribution: string;
+            format_name: string;
+            score_run_id: string;
+            source: string;
+            /**
+             * Format: date
+             * @description Exclusive end of the cohort window.
+             */
+            window_ends_before: string;
+            /** Format: date */
+            window_starts_on: string;
         };
         Face: {
             colors: string[] | null;
@@ -527,7 +750,78 @@ export interface components {
              */
             win_rate_delta: number | null;
         };
+        RankedCommander: {
+            /** @description The commanders' combined color identity in WUBRG order, empty when colorless; null when no commander is in the active catalog. */
+            colors: string[] | null;
+            /** @description One card, or two for a partner pair, in label order. */
+            commanders: components["schemas"]["CommanderCard"][];
+            /**
+             * Format: int32
+             * @description Cards at least half of its decks play.
+             */
+            core_card_count: number;
+            /** Format: int32 */
+            deck_count: number;
+            /** Format: int32 */
+            event_count: number;
+            /**
+             * Format: int32
+             * @description Games behind the win rate.
+             */
+            games: number | null;
+            /** @description The commander's name, or a partner pair's joined by " + ". */
+            label: string;
+            /**
+             * Format: int64
+             * @description Position by decks among the run's commanders.
+             */
+            rank: number;
+            /**
+             * Format: int32
+             * @description Places gained since the previous run of this format; null without one or when the commander was not ranked there.
+             */
+            rank_change: number | null;
+            /** @description Its decks in each trend period, oldest first. */
+            series_decks: number[];
+            /**
+             * Format: double
+             * @description Meta share in the newer half of the trend series minus the older.
+             */
+            share_delta: number | null;
+            /**
+             * Format: int32
+             * @description Unknown when none of its decks has a known top-cut result.
+             */
+            top_cut_count: number | null;
+            /** Format: int32 */
+            top_cut_known_decks: number;
+            /**
+             * Format: double
+             * @description Top-cut conversion divided by the field's.
+             */
+            top_cut_lift: number | null;
+            /**
+             * Format: double
+             * @description Match points per game of its decks, 0-1.
+             */
+            win_rate: number | null;
+            /**
+             * Format: double
+             * @description Half-width of the 95% interval.
+             */
+            win_rate_ci95: number | null;
+            /**
+             * Format: double
+             * @description Win rate minus the field's, as a fraction.
+             */
+            win_rate_delta: number | null;
+        };
         RankedFormat: {
+            /**
+             * Format: int32
+             * @description Commanders the run ranks; 0 in formats without commanders and in runs from before commanders were ranked.
+             */
+            commanders: number;
             /** Format: int32 */
             decks: number;
             format_name: string;
@@ -585,6 +879,11 @@ export interface components {
         RunWindow: {
             /** @description Whether this is the run shown without a pinned run. */
             active: boolean;
+            /**
+             * Format: int32
+             * @description Commanders the run ranks.
+             */
+            commanders: number;
             /** Format: int32 */
             decks: number;
             score_run_id: string;
@@ -897,6 +1196,8 @@ export interface operations {
                 color_identity?: string;
                 cursor?: string;
                 game?: "arena" | "mtgo" | "paper";
+                /** @description Where q is looked for, on any face: names, type lines, rules text, or all of them. */
+                in?: "all" | "name" | "type" | "text";
                 limit?: number;
                 q?: string;
                 rarity?: ("bonus" | "common" | "mythic" | "rare" | "special" | "uncommon")[];
@@ -1018,6 +1319,71 @@ export interface operations {
             };
         };
     };
+    listCardDecks: {
+        parameters: {
+            query?: {
+                /** @description A format whose active run lists the card's decks; without one, the run with the most of them. */
+                format?: string;
+                limit?: number;
+                offset?: number;
+                /** @description Pin a published run so every page shows the same results. */
+                score_run_id?: string;
+            };
+            header?: never;
+            path: {
+                oracle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardDeckPage"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+        };
+    };
     listPrintings: {
         parameters: {
             query?: {
@@ -1043,6 +1409,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PrintingPage"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+        };
+    };
+    getDeck: {
+        parameters: {
+            query?: {
+                catalog_snapshot_id?: string;
+            };
+            header?: never;
+            path: {
+                score_run_id: string;
+                position: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeckDetail"];
                 };
             };
             /** @description Sanitized Problem Details with a stable code */
@@ -1109,6 +1536,8 @@ export interface operations {
                 /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
                 color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
                 format?: string;
+                /** @description Where q is looked for, on any face: names, type lines, rules text, or all of them. */
+                in?: "all" | "name" | "type" | "text";
                 limit?: number;
                 /** @description A score method in the run; without one, constructed-score, else max-ratio, when present. */
                 method?: string;
@@ -1178,6 +1607,77 @@ export interface operations {
             };
         };
     };
+    listCommanders: {
+        parameters: {
+            query?: {
+                /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
+                color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
+                format?: string;
+                limit?: number;
+                /** @description Keep only commanders leading at least this many decks; ranks still count every commander. */
+                min_decks?: number;
+                offset?: number;
+                /** @description Defaults to desc, except asc for name. Unknown values sort last. */
+                order?: "asc" | "desc";
+                q?: string;
+                /** @description Pin a published run so every page shows the same results. */
+                score_run_id?: string;
+                /** @description decks orders by decks led, which is also the rank; movement by places gained since the previous run. */
+                sort?: "decks" | "name" | "win_rate" | "top_cut_lift" | "trend" | "movement";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommanderPage"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+            /** @description Sanitized Problem Details with a stable code */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["CatalogError"];
+                };
+            };
+        };
+    };
     compareRankings: {
         parameters: {
             query?: {
@@ -1187,6 +1687,8 @@ export interface operations {
                 every?: boolean;
                 /** @description Formats to compare; without one, every format the method scored. */
                 format?: string[];
+                /** @description Where q is looked for, on any face: names, type lines, rules text, or all of them. */
+                in?: "all" | "name" | "type" | "text";
                 limit?: number;
                 /** @description The grading every format ranks by; a format it scored no card in is not compared. */
                 method?: "constructed-score" | "signature-score";

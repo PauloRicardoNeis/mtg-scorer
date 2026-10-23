@@ -52,8 +52,12 @@ from colors; missing is null and `[]` means known colorless. Preserve face-speci
 images per printing and whole-card images with `face_index=null`; no image binaries
 in publication JSON or the HTTP contract. Printing responses expose stored image
 URLs, face indices and artist attribution. Search results include `preview_printing`,
-selected only from jointly eligible printings: English first, newest release (null
-last), then smallest Scryfall UUID. This does not change canonical card attributes.
+the first of the jointly eligible printings in original-first order: English first,
+then paper, then oldest release (null last), lowest collector number, then smallest
+Scryfall UUID. A promo set (`p` + a set code) counts after the set it promotes when
+the card is in both, since prerelease promos are dated before their set, and a
+release dated only to its year (1 January) counts from the end of that year. This
+does not change canonical card attributes.
 Images are ordered whole-card first, then source face order. Empty image lists mean
 unavailable; the UI also handles failed loads. Search shows the first scan with its
 edition label; printing details show every scan and artist. The browser loads images
@@ -161,12 +165,18 @@ URL. The sample's manifest-based identity remains unchanged. Both paths verify
 the exact retained source manifest hash. Game metadata additionally retains
 `astral` and `sega`; existing UI/API game filters remain paper/Arena/MTGO.
 
-`GET /api/v1/cards` accepts literal name/face search, repeated set, rarity and
+`GET /api/v1/cards` accepts literal text search, repeated set, rarity and
 color filters, optional game, color identity and card type, `name_asc`, limit 1–100 (default 24),
 optional snapshot and cursor. Whitelist parameters; reject unknown parameters,
 sorts and duplicate scalar parameters with 400. Repeated set/rarity values are
 deduplicated then sorted for filter identity; enforce max 32 sets / 6 rarities.
 Unknown well-formed set code returns an empty page, not an invalid-query error.
+
+`in` says where `q` is looked for, on the card and on every face: `name` (card
+and face names, as name keys), `type` (type lines), `text` (rules text) or `all`,
+the default, any of the three. Type lines and rules text match ignoring case.
+Rankings and the comparison accept the same `in`; commanders search names only.
+`in` joins the cursor's filter hash only with `q` and off the default.
 
 Within each set/rarity list use OR; between dimensions use AND on one printing:
 
@@ -202,7 +212,7 @@ use a literal substring function.
 
 Return Oracle cards once and count only jointly eligible printings.
 Detail returns canonical fields and all faces. Printings are separately paginated
-with the same set/rarity/game predicates, ordered by Scryfall UUID ascending;
+with the same set/rarity/game predicates, in the same original-first order as the preview;
 valid card with no eligible printings returns an empty page. Unknown card or
 unknown/unpublished snapshot is 404. An explicit snapshot never falls back to active.
 Snapshot list always contains active first, then up to 19 other published snapshots

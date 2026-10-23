@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { Printing } from "./api";
-import { edition, printingParams, queryParams, rankedCardHref } from "./urls";
+import {
+  cardDecksHref,
+  deckPageHref,
+  deckParams,
+  edition,
+  printingParams,
+  queryParams,
+  rankedCardHref,
+} from "./urls";
 
 describe("queryParams", () => {
   it("returns empty params for empty input", () => {
@@ -60,6 +68,66 @@ describe("printingParams", () => {
     const query = new URLSearchParams("set=m11&q=bolt");
     printingParams(query);
     expect(query.toString()).toBe("set=m11&q=bolt");
+  });
+});
+
+describe("deckParams", () => {
+  it("asks for the pinned run from the listed offset", () => {
+    const result = deckParams(
+      new URLSearchParams(
+        "catalog_snapshot_id=snap-1&set=m11&decks_run=scores-a&decks_offset=40",
+      ),
+    );
+    expect([...result]).toEqual([
+      ["score_run_id", "scores-a"],
+      ["offset", "40"],
+    ]);
+  });
+
+  it("reads an unreadable offset as the first page", () => {
+    expect(deckParams(new URLSearchParams("decks_offset=-20")).toString()).toBe(
+      "",
+    );
+    expect(deckParams(new URLSearchParams("decks_run=")).size).toBe(0);
+  });
+});
+
+describe("deck page links", () => {
+  const run = `scores-${"a".repeat(64)}`;
+
+  it("open a deck from a card, keeping its catalog and the list's page", () => {
+    expect(
+      deckPageHref(
+        run,
+        41,
+        "bolt-id",
+        new URLSearchParams(
+          `catalog_snapshot_id=catalog-a&set=m11&decks_run=${run}&decks_offset=40`,
+        ),
+      ),
+    ).toBe(
+      `/decks/${run}/41?card=bolt-id&catalog_snapshot_id=catalog-a&decks_offset=40`,
+    );
+    expect(deckPageHref(run, 0, "bolt-id", new URLSearchParams())).toBe(
+      `/decks/${run}/0?card=bolt-id`,
+    );
+  });
+
+  it("lead back to the card's deck list in the deck's run", () => {
+    expect(
+      cardDecksHref(
+        "bolt id",
+        run,
+        new URLSearchParams(
+          "card=bolt&catalog_snapshot_id=catalog-a&decks_offset=40",
+        ),
+      ),
+    ).toBe(
+      `/cards/bolt%20id?catalog_snapshot_id=catalog-a&decks_run=${run}&decks_offset=40#decks`,
+    );
+    expect(cardDecksHref("bolt", run, new URLSearchParams())).toBe(
+      `/cards/bolt?decks_run=${run}#decks`,
+    );
   });
 });
 

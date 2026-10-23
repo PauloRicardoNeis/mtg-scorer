@@ -56,12 +56,24 @@ class RankingRepository {
         : column + " " + direction + " NULLS LAST,r.name,r.oracle_id";
   }
 
+  /** A run's ranked commanders: its archetypes that commanders name. */
+  static String commanderCount(String run) {
+    return "(SELECT count(*)::int FROM scores.published_score_run_archetype x"
+        + " WHERE x.score_run_id="
+        + run
+        + " AND cardinality(x.commanders)>0) commanders";
+  }
+
   List<RankedFormat> activeFormats() {
     return jdbc.query(
         """
         SELECT a.format_name,a.source,a.score_run_id,
           coalesce((r.summary->'cohort'->'totals'->>'decks')::int,0) decks,
-          (r.summary->'cohort'->'rules'->>'players_per_game')::int players_per_game
+          (r.summary->'cohort'->'rules'->>'players_per_game')::int players_per_game,
+        """
+            + commanderCount("a.score_run_id")
+            + """
+
         FROM scores.active_score_run a JOIN scores.published_score_run r USING(score_run_id)
         ORDER BY a.format_name,a.source
         """,
@@ -72,7 +84,8 @@ class RankingRepository {
                 row.getString("source"),
                 row.getString("score_run_id"),
                 row.getInt("decks"),
-                row.getObject("players_per_game", Integer.class)));
+                row.getObject("players_per_game", Integer.class),
+                row.getInt("commanders")));
   }
 
   Optional<ScoreRunSummary> run(String scoreRun) {
@@ -148,7 +161,11 @@ class RankingRepository {
         SELECT * FROM (SELECT DISTINCT ON (r.source,r.window_starts_on,r.window_ends_before)
             r.score_run_id,r.source,r.window_starts_on,r.window_ends_before,
             coalesce((r.summary->'cohort'->'totals'->>'decks')::int,0) decks,
-            a.score_run_id IS NOT NULL active
+            a.score_run_id IS NOT NULL active,
+        """
+            + commanderCount("r.score_run_id")
+            + """
+
           FROM scores.published_score_run r
           LEFT JOIN scores.active_score_run a USING(score_run_id)
           WHERE r.format_name=:format
@@ -164,7 +181,8 @@ class RankingRepository {
                 row.getObject("window_starts_on", java.time.LocalDate.class),
                 row.getObject("window_ends_before", java.time.LocalDate.class),
                 row.getInt("decks"),
-                row.getBoolean("active")));
+                row.getBoolean("active"),
+                row.getInt("commanders")));
   }
 
   /** The active catalog, if any; card details are optional for rankings. */
@@ -227,10 +245,10 @@ class RankingRepository {
     args.put("output", output);
     List<String> where = new ArrayList<>();
     if (query.q() != null) {
+      // A card outside the catalog has only the run's name to match.
       where.add(
-          "(strpos(lower(r.name),:q)>0 OR EXISTS(SELECT FROM catalog.published_catalog_alias a"
-              + " WHERE a.catalog_snapshot_id=c.catalog_snapshot_id AND a.oracle_id=c.oracle_id"
-              + " AND strpos(a.alias_key,:q)>0))");
+          CatalogSql.search(
+              query.in(), "(strpos(lower(r.name),:q)>0 OR " + CatalogSql.NAME_MATCH + ")"));
       args.put("q", query.q());
     }
     if (query.type() != null) {

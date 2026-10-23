@@ -1,0 +1,64 @@
+# Fast checks on the files being committed; CI runs everything. Install once with
+#   analytics/.venv/Scripts/pre-commit install      (POSIX: analytics/.venv/bin/pre-commit)
+# and run on demand with `pre-commit run --all-files`.
+# The ruff mirror's rev must match the ruff version in analytics/uv.lock.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=600]
+        exclude: ^(analytics/seeds/|web/package-lock\.json$|analytics/uv\.lock$)
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+        exclude: ^(analytics/seeds/|analytics/tests/fixtures/)
+      - id: detect-private-key
+      # Retained evidence logs are historical records: the fixers leave them alone.
+      - id: end-of-file-fixer
+        exclude: ^(analytics/seeds/|analytics/tests/fixtures/|docs/evidence/)
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^(analytics/seeds/|analytics/tests/fixtures/|docs/evidence/)
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: (\.cmd|\.bat)$|^(analytics/seeds/|analytics/tests/fixtures/|docs/evidence/)
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: python -m pyright
+        language: python
+        additional_dependencies: [pyright==1.1.414]
+        types: [python]
+        pass_filenames: false
+      - id: prettier
+        name: prettier (web)
+        entry: node web/node_modules/prettier/bin/prettier.cjs --write
+        language: system
+        files: ^web/
+        types_or: [ts, tsx, css, json, javascript]
+        exclude: ^web/(src/lib/api\.generated\.ts|package-lock\.json)$
+      - id: eslint
+        name: eslint (web)
+        # Runs from web/ so the config, its ignores and the Next.js rules resolve; from
+        # the repository root the Next plugin warns about a missing pages directory.
+        entry: python -c "import subprocess, sys; sys.exit(subprocess.call(['node', 'node_modules/eslint/bin/eslint.js', '--max-warnings', '0', '.'], cwd='web'))"
+        language: system
+        files: ^web/.*\.(ts|tsx|mjs)$
+        pass_filenames: false
+      - id: spotless
+        name: spotless (api)
+        # Maven starts slowly, so this runs only when a Java file is staged.
+        entry: python -c "import os, subprocess, sys; sys.exit(subprocess.call([os.path.join('api', 'mvnw.cmd' if os.name == 'nt' else 'mvnw'), '-f', 'api/pom.xml', '-q', 'spotless:check']))"
+        language: system
+        files: \.java$
+        pass_filenames: false

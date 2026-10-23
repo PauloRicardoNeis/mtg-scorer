@@ -25,10 +25,13 @@ from ..tournament_features import (
     CohortPerformance,
     CohortRules,
     ExcludedEvent,
+    archetype_performance,
     card_features,
     card_performance,
     card_usage,
     cohort_performance,
+    deck_archetypes,
+    published_decks,
     select_cohort,
 )
 from .artifact import canonical_bytes
@@ -142,11 +145,60 @@ def build_score_run(
                 "record": _record_dict(card.record),
                 "performance": _performance_dict(card_performance(card, field)),
                 "series": list(card.series),
+                "decks": list(card.decks),
+                "deck_copies": list(card.deck_copies),
             }
             for card in usage
         ],
+        "decks": _decks(cohort),
         "runs": [_run(method, inputs, context) for method in methods],
     }
+
+
+def _decks(cohort: Cohort) -> list[dict[str, Any]]:
+    """Each published deck with its archetype, the result its standing reported, its
+    commanders and its sideboard. Its main deck is already in the cards' deck lists; a
+    sideboard the source did not fully report is unknown, not empty."""
+
+    archetype_of = deck_archetypes(cohort)
+    standing_of = {s.source_deck_id: s for s in cohort.standings}
+    decks = []
+    for deck in published_decks(cohort):
+        standing = standing_of.get(deck.source_deck_id)
+        recorded = standing is not None and None not in (
+            standing.wins,
+            standing.losses,
+            standing.draws,
+        )
+        decks.append(
+            {
+                "source_deck_id": deck.source_deck_id,
+                "source_event_id": deck.source_event_id,
+                "archetype": archetype_of.get(deck.source_deck_id),
+                "final_rank": standing.final_rank if standing else None,
+                "made_top_cut": standing.made_top_cut if standing else None,
+                "record": (
+                    {"wins": standing.wins, "losses": standing.losses, "draws": standing.draws}
+                    if standing is not None and recorded
+                    else None
+                ),
+                "commanders": list(deck.commanders),
+                "sideboard": (
+                    [
+                        {
+                            "oracle_id": card.oracle_id,
+                            "name": card.name,
+                            "copies": card.sideboard_count,
+                        }
+                        for card in sorted(deck.cards, key=lambda card: card.oracle_id)
+                        if card.sideboard_count > 0
+                    ]
+                    if deck.sideboard_observed
+                    else None
+                ),
+            }
+        )
+    return decks
 
 
 def _record_dict(record: Any) -> dict[str, int]:
@@ -183,6 +235,8 @@ def _cohort_summary(
         "events": [
             {
                 "source_event_id": event.source_event_id,
+                "name": event.name,
+                "url": event.source_url,
                 "occurred_on": event.occurred_on.isoformat(),
                 "players": event.player_count,
                 "decklists": event.coverage.decklists.observed_count,
@@ -226,6 +280,13 @@ def _cohort_summary(
                 "label": archetype.label,
                 "deck_count": archetype.deck_count,
                 "core_cards": list(archetype.core_cards),
+                "commanders": list(archetype.commanders),
+                "event_count": archetype.event_count,
+                "top_cut_count": archetype.top_cut_count,
+                "top_cut_known_decks": archetype.top_cut_known_decks,
+                "record": _record_dict(archetype.record),
+                "performance": _performance_dict(archetype_performance(archetype, field)),
+                "series": list(archetype.series),
             }
             for archetype in field.archetypes
         ],

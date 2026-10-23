@@ -4,7 +4,12 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [["list"], ["html", { open: "never" }]],
+  // JUnit beside the list and HTML reports, for the CI annotations.
+  reporter: [
+    ["list"],
+    ["html", { open: "never" }],
+    ["junit", { outputFile: "test-results/junit.xml" }],
+  ],
   use: {
     baseURL: process.env.WEB_TEST_URL ?? "http://127.0.0.1:3300",
     trace: "retain-on-failure",

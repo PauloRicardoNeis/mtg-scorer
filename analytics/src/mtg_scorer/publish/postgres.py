@@ -88,7 +88,7 @@ def publish_catalog(
     header = {key: value for key, value in payload.items() if key not in TABLES}
     with (
         nullcontext(connection) if connection else psycopg.connect(dsn, autocommit=True)
-    ) as connection:
+    ) as connection:  # noqa: PLR1704 -- the context yields the connection it was given
         connection.execute("SELECT pg_advisory_lock(%s)", (LOCK_ID,))
         try:
             previous = connection.execute(
@@ -96,10 +96,10 @@ def publish_catalog(
             ).fetchone()
             expected = previous[0] if previous else None
             with connection.transaction():
-                started = connection.execute(
+                (started,) = connection.execute(
                     "SELECT catalog.begin_publication(%s,%s,%s,%s)",
                     (Jsonb(header), Jsonb(manifest), attempt, expected),
-                ).fetchone()[0]
+                ).fetchone() or (False,)
             if not started:
                 return {"catalog_snapshot_id": snapshot, "state": "already_published"}
             LOGGER.info("catalog publication started snapshot=%s attempt=%s", snapshot, attempt)
@@ -108,7 +108,9 @@ def publish_catalog(
                     _load_rows(connection, payload, directory / "catalog.json")
                     with (directory / "catalog.json").open("rb") as source:
                         if file_digest(source, "sha256").hexdigest() != manifest["export_sha256"]:
-                            raise ValueError("export changed while loading")
+                            # Raised inside the loading transaction so it rolls back and is
+                            # recorded as a failed attempt like any other load error.
+                            raise ValueError("export changed while loading")  # noqa: TRY301
                     if before_promote is not None:
                         before_promote(snapshot)
                     connection.execute("SELECT catalog.promote_publication(%s)", (attempt,))

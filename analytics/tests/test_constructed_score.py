@@ -77,9 +77,13 @@ def test_top_cut_conversion_is_compared_with_the_field() -> None:
 
 
 @pytest.mark.parametrize(
-    "changes",
-    [{"win_rate_weight": 0.7}, {"share_weight": -0.1, "win_rate_weight": 0.75}, {"version": " "}],
+    ("changes", "message"),
+    [
+        ({"win_rate_weight": 0.7}, "weights must be non-negative and sum to 1"),
+        ({"share_weight": -0.1, "win_rate_weight": 0.75}, "weights must be non-negative"),
+        ({"version": " "}, "version cannot be blank"),
+    ],
 )
-def test_the_config_rejects_unusable_settings(changes) -> None:
-    with pytest.raises(ValueError):
+def test_the_config_rejects_unusable_settings(changes, message) -> None:
+    with pytest.raises(ValueError, match=message):
         ConstructedConfig(**changes)

@@ -35,10 +35,10 @@ def main() -> None:
         result = publish_catalog(directory, seed, publisher)
         # A retained, already published test refresh may need explicit reactivation on rerun.
         with psycopg.connect(publisher) as connection:
-            previous = connection.execute(
+            (previous,) = connection.execute(
                 "SELECT catalog_snapshot_id FROM catalog.active_catalog"
-            ).fetchone()[0]
-        if previous != directory.name:
+            ).fetchone() or (None,)
+        if previous is not None and previous != directory.name:
             rollback_catalog(publisher, directory.name, previous)
         print(json.dumps(result))
     elif args.action == "rollback":

@@ -87,24 +87,24 @@ class ConstructedMethod:
         share: dict[str, float] = {}
         for card in cards:
             features = card.features
-            field_win = features.field_win_rate
-            if features.win_rate.is_known and field_win is not None:
+            field_win, win_rate = features.field_win_rate, features.win_rate.value
+            if win_rate is not None and field_win is not None:
                 games = features.win_rate.support
-                points = features.win_rate.value * games
+                points = win_rate * games
                 shrunk = (points + config.win_rate_prior_games * field_win) / (
                     games + config.win_rate_prior_games
                 )
                 win_delta[card.card_id] = shrunk - field_win
-            field_cut = features.field_top_cut_rate
-            if features.top_cut_rate.is_known and field_cut:
+            field_cut, cut_rate = features.field_top_cut_rate, features.top_cut_rate.value
+            if cut_rate is not None and field_cut:
                 known = features.top_cut_rate.support
-                made = features.top_cut_rate.value * known
+                made = cut_rate * known
                 shrunk = (made + config.top_cut_prior_decks * field_cut) / (
                     known + config.top_cut_prior_decks
                 )
                 cut_lift[card.card_id] = shrunk / field_cut
-            if features.incidence.is_known:
-                share[card.card_id] = features.incidence.value
+            if (incidence := features.incidence.value) is not None:
+                share[card.card_id] = incidence
 
         components = (
             (config.win_rate_weight, percentiles(win_delta)),

@@ -1,3 +1,7 @@
+# The pull-request lane. Three layer jobs run in parallel through `demo.py check`, the
+# integration job reuses their jar, web build and offline coverage to run `demo.py verify`
+# against real PostgreSQL and Chromium, and `gate` is the one status branch protection
+# requires. Every test run writes JUnit XML, annotated inline on the pull request.
 name: CI
 
 on:
@@ -5,10 +9,137 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+# A new push to the same branch supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  PYTHON_VERSION: "3.12.10"
+  NODE_VERSION: "24.14.1"
+  NPM_VERSION: "11.11.0"
+  UV_VERSION: "0.8.22"
+
 jobs:
-  catalog:
+  python:
+    name: Python checks, offline tests, contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install the locked environment
+        run: |
+          python -m pip install uv==${{ env.UV_VERSION }}
+          python -m uv sync --project analytics --locked --extra dev
+      - name: Ruff, pyright, pytest with the coverage floor, contracts and boundaries
+        run: python scripts/demo.py check --only python contracts
+      - name: Annotate test results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: .local/junit/pytest-offline.xml
+          check_name: pytest (offline)
+          annotate_only: true
+          detailed_summary: true
+      # The data file travels to the integration job, which appends the database stages.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-coverage
+          path: .local/coverage/python/
+          include-hidden-files: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-python
+          path: .local/junit/
+          include-hidden-files: true
+
+  java:
+    name: Java build, tests, coverage floors
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: api/pom.xml
+      - name: Spotless, Enforcer, tests, JaCoCo floors and the jar
+        run: python3 scripts/demo.py check --only java
+      - name: Annotate test results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: api/target/surefire-reports/TEST-*.xml
+          check_name: JUnit (api)
+          annotate_only: true
+          detailed_summary: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-jar
+          path: api/target/mtg-scorer-api-0.1.0-SNAPSHOT.jar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: java-reports
+          path: |
+            api/target/surefire-reports/
+            api/target/site/jacoco/
+
+  web:
+    name: Web checks, unit tests, production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install the locked dependencies
+        run: |
+          npm install --global npm@${{ env.NPM_VERSION }}
+          npm --prefix web ci --no-audit --no-fund
+      - name: Prettier, ESLint, vitest with its thresholds, next build and tsc
+        run: python3 scripts/demo.py check --only web
+      - name: Annotate test results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: web/reports/junit/vitest.xml
+          check_name: vitest (web)
+          annotate_only: true
+          detailed_summary: true
+      # .next is a dot-directory: hidden files are excluded unless asked for.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: |
+            web/.next/
+            !web/.next/cache/
+          include-hidden-files: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-coverage
+          path: web/coverage/
+
+  integration:
     name: Verified Python -> PostgreSQL -> Java -> browser
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [python, java, web]
     services:
       postgres:
         image: postgres:17.11
@@ -20,30 +151,55 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       CATALOG_ADMIN_DSN: postgresql://postgres:local-ci-only@127.0.0.1:5432/postgres
-      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12.10"
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
-          cache: maven
-          cache-dependency-path: api/pom.xml
       - uses: actions/setup-node@v4
         with:
-          node-version: "24.14.1"
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Pin package manager and install browser system libraries
+      - name: Install the locked environments and Chromium
         run: |
-          npm install --global npm@11.11.0
-          python scripts/demo.py install
-          node web/node_modules/playwright/cli.js install-deps chromium
-      - name: Build, check contracts, publish, query and exercise guest browser
-        run: python scripts/demo.py verify --skip-install
+          python -m pip install uv==${{ env.UV_VERSION }}
+          python -m uv sync --project analytics --locked --extra dev
+          npm install --global npm@${{ env.NPM_VERSION }}
+          npm --prefix web ci --no-audit --no-fund
+          node web/node_modules/playwright/cli.js install --with-deps chromium
+      # The build outputs come from the layer jobs, where their floors already passed.
+      - name: Reuse the jar
+        uses: actions/download-artifact@v4
+        with:
+          name: api-jar
+          path: api/target
+      - name: Reuse the web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web/.next
+      - name: Reuse the offline coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: python-coverage
+          path: .local/coverage/python
+      - name: Publish, query and exercise the guest browser; merge the Python coverage
+        run: python scripts/demo.py verify --skip-install --skip-build
+      - name: Annotate test results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: |
+            .local/junit/pytest-*.xml
+            web/test-results/junit.xml
+          check_name: integration (pytest, Playwright)
+          annotate_only: true
+          detailed_summary: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -52,14 +208,33 @@ jobs:
             .local/mtg_verify_*/api.log
             .local/mtg_verify_*/web.log
             .local/mtg_verify_*/measurements.json
+            .local/junit/
             web/playwright-report/
             web/test-results/
-            api/target/surefire-reports/
+          include-hidden-files: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage
-          path: |
-            .local/coverage/python/
-            api/target/site/jacoco/
-            web/coverage/
+          name: python-coverage-merged
+          path: .local/coverage/python/
+          include-hidden-files: true
+
+  # The one status to require on main: green only when every job above succeeded.
+  gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [python, java, web, integration]
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Every job must have succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+          results = {name: job["result"] for name, job in json.loads(os.environ["RESULTS"]).items()}
+          for name, result in results.items():
+              print(f"{name}: {result}")
+          sys.exit(0 if all(result == "success" for result in results.values()) else 1)
+          EOF

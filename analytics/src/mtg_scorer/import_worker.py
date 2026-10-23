@@ -5,12 +5,13 @@ import json
 import logging
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import psycopg
 from psycopg.types.json import Jsonb
 
-from mtg_scorer.ingest.scryfall import download_default_cards_snapshot
+from mtg_scorer.ingest.scryfall import ScryfallSnapshot, download_default_cards_snapshot
 from mtg_scorer.normalize.catalog import SCHEMA_VERSION
 from mtg_scorer.publish.bulk import PARSER_VERSION, bulk_identity, export_bulk_catalog
 from mtg_scorer.publish.postgres import publish_catalog
@@ -26,7 +27,8 @@ def run_once(dsn: str, data_dir: Path, *, download=download_default_cards_snapsh
     A dead connection cannot continue promotion after another worker recovers it.
     """
     with psycopg.connect(dsn, autocommit=True) as connection:
-        if not connection.execute("SELECT pg_try_advisory_lock(%s)", (WORKER_LOCK,)).fetchone()[0]:
+        locked = connection.execute("SELECT pg_try_advisory_lock(%s)", (WORKER_LOCK,)).fetchone()
+        if not (locked and locked[0]):
             return False
         try:
             connection.execute("SELECT catalog.recover_catalog_import()")
@@ -43,7 +45,10 @@ def run_once(dsn: str, data_dir: Path, *, download=download_default_cards_snapsh
             def update(stage, **fields):
                 from psycopg import sql
 
-                assignments = [sql.SQL("stage=%s"), sql.SQL("updated_at=clock_timestamp()")]
+                assignments: list[sql.Composable] = [
+                    sql.SQL("stage=%s"),
+                    sql.SQL("updated_at=clock_timestamp()"),
+                ]
                 values = [stage]
                 for key, value in fields.items():
                     assignments.append(sql.SQL("{}=%s").format(sql.Identifier(key)))
@@ -136,17 +141,19 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
     dsn = os.environ["CATALOG_PUBLISH_DSN"]
-    download = download_default_cards_snapshot
+    download: Callable[[Path], ScryfallSnapshot] = download_default_cards_snapshot
     if args.source_dir:
         from mtg_scorer.ingest.scryfall import _snapshot_from_manifest
         from mtg_scorer.publish.bulk import bulk_source
 
-        def download(_):
+        def rebuild_from_source(_raw_root: Path) -> ScryfallSnapshot:
             source_bytes, _ = bulk_source(args.source_dir)
             manifest = json.loads(source_bytes)
             return _snapshot_from_manifest(
                 manifest, args.source_dir / manifest["raw_file"], args.source_dir / "manifest.json"
             )
+
+        download = rebuild_from_source
 
     while True:
         run_once(dsn, args.data_dir, download=download)

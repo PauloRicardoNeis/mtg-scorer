@@ -11,6 +11,7 @@ from .base import (
 )
 from .constructed import ConstructedConfig, ConstructedMethod
 from .foundation import DEFAULT_CONFIG, FoundationMethod, ScoreBreakdown, ScoreConfig, score_card
+from .hidden_gem import HiddenGemConfig, HiddenGemMethod
 from .max_ratio import COUNT_MEASURES, MaxRatioConfig, MaxRatioMethod
 from .overall import FormatGrades, OverallConfig, OverallMethod
 from .registry import SCORE_METHODS, ScoreMethodRegistry
@@ -25,6 +26,8 @@ __all__ = [
     "ConstructedMethod",
     "FormatGrades",
     "FoundationMethod",
+    "HiddenGemConfig",
+    "HiddenGemMethod",
     "MaxRatioConfig",
     "MaxRatioMethod",
     "OverallConfig",

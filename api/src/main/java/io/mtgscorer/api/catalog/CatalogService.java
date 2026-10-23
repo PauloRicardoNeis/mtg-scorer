@@ -64,7 +64,8 @@ public class CatalogService {
     return new PrintingPage(snapshot, id, visible, next);
   }
 
-  private UUID oracleId(String value) {
+  /** A card's Oracle ID from a path segment; anything but a UUID is an invalid query. */
+  public static UUID oracleId(String value) {
     if (!value.matches(
         "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))
       throw CatalogProblem.query("Invalid Oracle ID.");

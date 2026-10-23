@@ -18,6 +18,7 @@ import time
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -77,7 +78,7 @@ class Client:
     def redact(self, text: str) -> str:
         return text.replace(self.key, "[REDACTED]")
 
-    def call(self, method: str, path: str, body: dict | None, filename: str, limit: int) -> object:
+    def call(self, method: str, path: str, body: dict | None, filename: str, limit: int) -> Any:
         saved = self.output / filename
         if saved.exists():
             # A resumed run reuses responses already saved for this request.
@@ -102,6 +103,7 @@ class Client:
         }
         if data is not None:
             headers["Content-Type"] = "application/json"
+        payload, status = b"", 0
         for attempt in range(4):
             time.sleep(1)
             try:
@@ -437,7 +439,14 @@ def main() -> None:
         summary = {
             "probe_version": "tournament-volume-v1",
             "format": args.format,
-            **survey(client, args.format, *args.survey, args.catalog_dsn, args.window_days),
+            **survey(
+                client,
+                args.format,
+                args.survey[0],
+                args.survey[1],
+                args.catalog_dsn,
+                args.window_days,
+            ),
         }
         manifest = {"probe_version": summary["probe_version"], "requests": client.records}
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")

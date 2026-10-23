@@ -40,6 +40,8 @@ public final class CursorCodec {
     // Added later: hashed only when set, so earlier cursors keep their fingerprint.
     if (!query.colors().isEmpty()) filters.put("colors", query.colors());
     if (query.type() != null) filters.put("type", query.type());
+    // Where the text is searched matters only with text, and only off the default.
+    if (query.q() != null && !query.in().equals("all")) filters.put("in", query.in());
     try {
       return HexFormat.of()
           .formatHex(

@@ -53,8 +53,7 @@ class CatalogRepository {
     String predicate = printingPredicate(query, args);
     String where = "c.catalog_snapshot_id=:snapshot";
     if (query.q() != null) {
-      where +=
-          " AND EXISTS(SELECT FROM catalog.published_catalog_alias a WHERE a.catalog_snapshot_id=c.catalog_snapshot_id AND a.oracle_id=c.oracle_id AND strpos(a.alias_key,:q)>0)";
+      where += " AND " + CatalogSql.search(query.in(), CatalogSql.NAME_MATCH);
       args.put("q", query.q());
     }
     if (query.colorIdentity() != null) {
@@ -151,7 +150,13 @@ class CatalogRepository {
     args.put("limit", query.limit() + 1);
     String predicate = printingPredicate(query, args);
     if (cursor != null) {
-      predicate += " AND p.scryfall_id>CAST(:lastId AS uuid)";
+      // The cursor names the last printing; continue after its sort key.
+      predicate +=
+          " AND ("
+              + CatalogSql.ORIGINAL_FIRST
+              + ")>(SELECT "
+              + CatalogSql.ORIGINAL_FIRST
+              + " FROM catalog.published_catalog_printing p WHERE p.catalog_snapshot_id=:snapshot AND p.scryfall_id=CAST(:lastId AS uuid))";
       args.put("lastId", cursor.last_key().getFirst());
     }
     return jdbc.query(
@@ -159,7 +164,9 @@ class CatalogRepository {
             + PRINTING_JSON
             + ")::text FROM catalog.published_catalog_printing p JOIN catalog.published_catalog_card c ON c.catalog_snapshot_id=p.catalog_snapshot_id AND c.oracle_id=p.oracle_id WHERE c.oracle_id=:oracle AND "
             + predicate
-            + " ORDER BY p.scryfall_id LIMIT :limit",
+            + " ORDER BY "
+            + CatalogSql.ORIGINAL_FIRST
+            + " LIMIT :limit",
         args,
         (row, index) -> mapper.readValue(row.getString(1), Printing.class));
   }

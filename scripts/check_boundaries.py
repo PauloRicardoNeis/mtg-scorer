@@ -34,12 +34,13 @@ def main() -> None:
                 for name in names
             ):
                 failures.append(f"{file.name}: domain/analytical core imports an I/O adapter")
-    for file in (package / "normalize").glob("*.py"):
+    failures.extend(
+        f"{file.name}: normalization depends on I/O orchestration"
+        for file in (package / "normalize").glob("*.py")
         if re.search(
-            r"(?:from|import) mtg_scorer\.(publish|ingest)",
-            file.read_text(encoding="utf-8"),
-        ):
-            failures.append(f"{file.name}: normalization depends on I/O orchestration")
+            r"(?:from|import) mtg_scorer\.(publish|ingest)", file.read_text(encoding="utf-8")
+        )
+    )
     java_root = ROOT / "api/src/main/java/io/mtgscorer/api"
     dependencies: dict[str, set[str]] = {}
     for file in java_root.rglob("*.java"):

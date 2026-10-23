@@ -24,6 +24,8 @@ SEED = ROOT / "analytics/seeds/scryfall-layouts-v1"
 SPEC = json.loads((ROOT / "contracts/catalog-api.openapi.json").read_bytes())
 BOLT = "4457ed35-7c10-48c8-9776-456485fdf070"
 DELVER = "edd531b9-f615-4399-8c8c-1c5e18c4acbf"
+BRUNA = "bce7e45d-b2c5-43aa-91a6-3a3c24f30850"
+ERAYO = "d83bb32d-f409-421a-9d93-bd7ea3240b47"
 
 
 def get(path, **query):
@@ -57,17 +59,21 @@ def test_real_contract_faces_filters_literal_search_and_dataset():
     assert all(f["oracle_text"] for f in detail["faces"])
     for query in ({"set": "2x2", "rarity": "common"}, {"q": "%"}, {"q": "_"}, {"set": "zzzzzz"}):
         status, empty = get("/api/v1/cards", **query)
-        assert status == 200 and empty["items"] == []
+        assert status == 200
+        assert empty["items"] == []
     status, eligible = get("/api/v1/cards", set="m11", rarity="common", game="paper")
-    assert status == 200 and eligible["items"][0]["oracle_id"] == BOLT
+    assert status == 200
+    assert eligible["items"][0]["oracle_id"] == BOLT
     assert eligible["items"][0]["eligible_printing_count"] == 1
     status, prints = get(f"/api/v1/cards/{BOLT}/printings", set="2x2", rarity="common")
     validate(prints, "PrintingPage")
-    assert status == 200 and prints["items"] == []
+    assert status == 200
+    assert prints["items"] == []
     status, dataset = get("/api/v1/snapshots/" + snapshot)
     assert status == 200
     validate(dataset, "Snapshot")
-    assert dataset["card_count"] == 7 and dataset["printing_count"] == 8
+    assert dataset["card_count"] == 7
+    assert dataset["printing_count"] == 8
     assert dataset["tournament_evidence"] == {
         "state": "not_available",
         "reason_codes": ["no_tournament_dataset"],
@@ -114,6 +120,23 @@ def test_summary_cost_type_line_and_color_and_type_filters():
     assert names(color="U", type="instant", set="dmr") == {"Fire // Ice"}
 
 
+def test_search_looks_in_names_type_lines_and_rules_text_of_every_face():
+    delver = "Delver of Secrets // Insectile Aberration"
+    bruna = "Bruna, the Fading Light"
+    erayo = "Erayo, Soratami Ascendant // Erayo's Essence"
+    # The whole card by default: Delver's type lines and Bruna's rules text name Humans.
+    assert names(q="Human") == {delver, bruna}
+    assert names(q="human", **{"in": "type"}) == {delver}
+    assert names(q="human", **{"in": "text"}) == {bruna}
+    assert names(q="human", **{"in": "name"}) == set()
+    # A back face's rules text counts, as its name does.
+    assert names(q="FLYING", **{"in": "text"}) == {delver, bruna, erayo}
+    assert names(q="insectile", **{"in": "name"}) == {delver}
+    status, problem = get("/api/v1/cards", q="human", **{"in": "flavor"})
+    assert status == 400
+    assert problem["code"] == "invalid_query"
+
+
 def test_invalid_queries_cursor_tampering_and_unknown_resources():
     for query in (
         {"q": ["one", "two"]},
@@ -126,13 +149,15 @@ def test_invalid_queries_cursor_tampering_and_unknown_resources():
         {"sort": "power"},
     ):
         status, body = get("/api/v1/cards", **query)
-        assert status == 400 and body["code"] == "invalid_query"
+        assert status == 400
+        assert body["code"] == "invalid_query"
     for path, code in (
         ("/api/v1/cards/00000000-0000-4000-8000-000000000000", "card_not_found"),
         ("/api/v1/snapshots/unknown", "snapshot_not_found"),
     ):
         status, body = get(path)
-        assert status == 404 and body["code"] == code
+        assert status == 404
+        assert body["code"] == code
     _, page = get("/api/v1/cards", limit=2)
     cursor = page["next_cursor"]
     decoded = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
@@ -144,7 +169,8 @@ def test_invalid_queries_cursor_tampering_and_unknown_resources():
         {"cursor": cursor, "limit": 2, "q": "bolt"},
     ):
         status, body = get("/api/v1/cards", **query)
-        assert status == 400 and body["code"] == "invalid_cursor"
+        assert status == 400
+        assert body["code"] == "invalid_cursor"
 
 
 def test_images_match_retained_printings_faces_and_filtered_previews():
@@ -178,9 +204,13 @@ def test_images_match_retained_printings_faces_and_filtered_previews():
         assert preview["set_code"] == set_code
         _, printings = get(f"/api/v1/cards/{BOLT}/printings", set=set_code, game="paper")
         assert preview == printings["items"][0]
-    # With no pool restriction, the newest English printing supplies the preview.
+    # With no pool restriction, the original English printing supplies the preview and leads
+    # the printing list.
     _, result = get("/api/v1/cards", q="Lightning Bolt")
-    assert result["items"][0]["preview_printing"]["set_code"] == "2x2"
+    assert result["items"][0]["preview_printing"]["set_code"] == "m11"
+    _, printings = get(f"/api/v1/cards/{BOLT}/printings")
+    assert [p["set_code"] for p in printings["items"]] == ["m11", "2x2"]
+    assert printings["items"][0] == result["items"][0]["preview_printing"]
 
 
 def test_pagination_and_printings_remain_pinned_across_real_python_refresh(tmp_path):
@@ -202,14 +232,16 @@ def test_pagination_and_printings_remain_pinned_across_real_python_refresh(tmp_p
         cursor = first["next_cursor"]
         while cursor:
             status, page = get("/api/v1/cards", limit=2, cursor=cursor)
-            assert status == 200 and page["catalog_snapshot_id"] == old
+            assert status == 200
+            assert page["catalog_snapshot_id"] == old
             items.extend(page["items"])
             cursor = page["next_cursor"]
         assert len(items) == len({c["oracle_id"] for c in items}) == 7
         status, printing_next = get(
             f"/api/v1/cards/{BOLT}/printings", limit=1, cursor=printing_first["next_cursor"]
         )
-        assert status == 200 and printing_next["catalog_snapshot_id"] == old
+        assert status == 200
+        assert printing_next["catalog_snapshot_id"] == old
         assert printing_next["items"][0]["scryfall_id"] != printing_first["items"][0]["scryfall_id"]
         validate(printing_next, "PrintingPage")
     finally:
@@ -284,6 +316,7 @@ def test_synthetic_unknown_colorless_and_ambiguous_literal_aliases(tmp_path):
 )
 def test_initial_catalog_is_unavailable_not_an_empty_success():
     status, body = get("/api/v1/cards")
-    assert status == 503 and body["code"] == "catalog_unavailable"
+    assert status == 503
+    assert body["code"] == "catalog_unavailable"
     assert get("/actuator/health/liveness")[0] == 200
     assert get("/actuator/health/readiness")[0] == 503

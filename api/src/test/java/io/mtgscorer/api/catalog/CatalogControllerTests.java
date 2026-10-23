@@ -146,7 +146,7 @@ class CatalogControllerTests {
         .andExpect(jsonPath("$.items").isEmpty());
     assertThat(query.getValue().sets()).containsExactly("m11");
     assertThat(query.getValue().game()).isEqualTo("arena");
-    assertThat(query.getValue().sort()).isEqualTo("scryfall_id_asc");
+    assertThat(query.getValue().sort()).isEqualTo("original_first");
 
     mvc.perform(get("/api/v1/cards/{oracle_id}/printings", CARD).queryParam("type", "land"))
         .andExpect(status().isBadRequest())

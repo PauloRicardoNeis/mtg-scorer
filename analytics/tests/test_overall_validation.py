@@ -190,9 +190,12 @@ def test_at_least_one_component_must_have_graded_cards(tmp_path) -> None:
         build_overall_run([empty])
 
 
-@pytest.mark.parametrize(("name", "decks"), [(" ", 10), ("Modern", -1)])
-def test_format_grades_need_a_name_and_a_deck_count(name, decks) -> None:
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("name", "decks", "message"),
+    [(" ", 10, "format_name cannot be blank"), ("Modern", -1, "decks cannot be negative")],
+)
+def test_format_grades_need_a_name_and_a_deck_count(name, decks, message) -> None:
+    with pytest.raises(ValueError, match=message):
         FormatGrades(name, decks, {})
 
 
@@ -229,5 +232,5 @@ def test_active_run_files_are_every_active_format_run_but_the_overall(
 def test_an_active_run_without_its_file_is_reported(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr("psycopg.connect", lambda dsn: FakeConnection(["scores-missing"]))
 
-    with pytest.raises(FileNotFoundError, match="scores-missing.json"):
+    with pytest.raises(FileNotFoundError, match=r"scores-missing\.json"):
         active_run_files("dsn", tmp_path)
