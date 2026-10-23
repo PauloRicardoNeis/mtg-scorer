@@ -24,8 +24,8 @@ jobs:
       run:
         working-directory: analytics
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12.10"
       - name: Install the locked environment
@@ -33,7 +33,7 @@ jobs:
           python -m pip install uv==0.8.22
           python -m uv sync --locked --extra dev
       - name: Restore mutmut state
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: analytics/mutants
           key: mutmut-${{ github.ref_name }}-${{ hashFiles('analytics/uv.lock', 'analytics/pyproject.toml') }}
@@ -48,7 +48,7 @@ jobs:
       - name: Job summary
         run: |
           python ../scripts/mutation_summary.py --mutmut mutants/mutmut-cicd-stats.json >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mutmut
@@ -62,15 +62,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
           cache-dependency-path: api/pom.xml
       - name: Restore PIT history
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: api/.pit-history
           key: pit-${{ github.ref_name }}-${{ hashFiles('api/pom.xml') }}
@@ -82,7 +82,7 @@ jobs:
             test-compile org.pitest:pitest-maven:mutationCoverage
       - name: Job summary
         run: python3 scripts/mutation_summary.py --pit api/target/pit-reports/mutations.xml >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: pit-reports
@@ -95,8 +95,8 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24.14.1"
           cache: npm
@@ -106,7 +106,7 @@ jobs:
           npm install --global npm@11.11.0
           npm --prefix web ci --no-audit --no-fund
       - name: Restore Stryker incremental state
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: web/reports/stryker-incremental.json
           key: stryker-${{ github.ref_name }}-${{ hashFiles('web/package-lock.json') }}
@@ -115,7 +115,7 @@ jobs:
         run: npm --prefix web run mutation
       - name: Job summary
         run: python3 scripts/mutation_summary.py --stryker web/reports/mutation/mutation.json >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: stryker-reports
