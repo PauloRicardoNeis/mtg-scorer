@@ -30,8 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install the locked environment
@@ -42,20 +42,20 @@ jobs:
         run: python scripts/demo.py check --only python contracts
       - name: Annotate test results
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: .local/junit/pytest-offline.xml
           check_name: pytest (offline)
           annotate_only: true
           detailed_summary: true
       # The data file travels to the integration job, which appends the database stages.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: python-coverage
           path: .local/coverage/python/
           include-hidden-files: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: junit-python
@@ -67,8 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -78,17 +78,17 @@ jobs:
         run: python3 scripts/demo.py check --only java
       - name: Annotate test results
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: api/target/surefire-reports/TEST-*.xml
           check_name: JUnit (api)
           annotate_only: true
           detailed_summary: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: api-jar
           path: api/target/mtg-scorer-api-0.1.0-SNAPSHOT.jar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: java-reports
@@ -101,8 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -115,21 +115,21 @@ jobs:
         run: python3 scripts/demo.py check --only web
       - name: Annotate test results
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: web/reports/junit/vitest.xml
           check_name: vitest (web)
           annotate_only: true
           detailed_summary: true
       # .next is a dot-directory: hidden files are excluded unless asked for.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: |
             web/.next/
             !web/.next/cache/
           include-hidden-files: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: web-coverage
@@ -152,15 +152,15 @@ jobs:
     env:
       CATALOG_ADMIN_DSN: postgresql://postgres:local-ci-only@127.0.0.1:5432/postgres
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -174,17 +174,17 @@ jobs:
           node web/node_modules/playwright/cli.js install --with-deps chromium
       # The build outputs come from the layer jobs, where their floors already passed.
       - name: Reuse the jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api-jar
           path: api/target
       - name: Reuse the web build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: web-build
           path: web/.next
       - name: Reuse the offline coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-coverage
           path: .local/coverage/python
@@ -192,7 +192,7 @@ jobs:
         run: python scripts/demo.py verify --skip-install --skip-build
       - name: Annotate test results
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: |
             .local/junit/pytest-*.xml
@@ -200,7 +200,7 @@ jobs:
           check_name: integration (pytest, Playwright)
           annotate_only: true
           detailed_summary: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: catalog-verification
@@ -212,7 +212,7 @@ jobs:
             web/playwright-report/
             web/test-results/
           include-hidden-files: true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: python-coverage-merged
