@@ -2,6 +2,8 @@
 
 `demo.py verify` publishes `fixtures/topdeck-synthetic` over the seed catalog's cards before
 these tests run, so they only read: two events, seven decks, Lightning Bolt in four of them.
+The API opens on the Overall run built from that run; the tests that read the Modern run's
+own numbers ask for its format.
 """
 
 import json
@@ -31,6 +33,11 @@ def get(**query):
         return error.code, json.load(error)
 
 
+def modern(**query):
+    """The synthetic run's format; without a format the API serves the Overall run."""
+    return get(format="Modern", **query)
+
+
 def validate(body, model):
     Draft202012Validator(
         {"$ref": "#/components/schemas/" + model, "components": SPEC["components"]},
@@ -43,7 +50,7 @@ def names(page):
 
 
 def test_modern_rankings_follow_the_published_constructed_scores():
-    status, page = get()
+    status, page = modern()
     assert status == 200
     validate(page, "RankingPage")
     run = page["score_run"]
@@ -81,8 +88,16 @@ def test_modern_rankings_follow_the_published_constructed_scores():
     assert "Island" not in names(page)
 
 
+def test_without_a_format_the_overall_run_opens():
+    status, page = get()
+    assert status == 200
+    validate(page, "RankingPage")
+    assert (page["score_run"]["format_name"], page["method_id"]) == ("Overall", "overall-grade")
+    assert any(entry["format_name"] == "Modern" for entry in page["formats"])
+
+
 def test_cards_carry_usage_and_catalog_details_or_explicit_nulls():
-    _, page = get()
+    _, page = modern()
     cards = {card["oracle_id"]: card for card in page["items"]}
     bolt = cards[BOLT]
     assert (bolt["deck_count"], bolt["event_count"]) == (4, 2)
@@ -126,27 +141,27 @@ def test_filters_keep_each_cards_overall_rank():
 
 
 def test_sorting_and_paging_use_stored_values():
-    _, by_name = get(sort="name", limit=3)
+    _, by_name = modern(sort="name", limit=3)
     assert names(by_name) == sorted(names(by_name))
     assert (by_name["total"], by_name["limit"], len(by_name["items"])) == (8, 3, 3)
-    _, rest = get(sort="name", limit=3, offset=6)
+    _, rest = modern(sort="name", limit=3, offset=6)
     assert len(rest["items"]) == 2
-    _, by_decks = get(sort="decks")
+    _, by_decks = modern(sort="decks")
     counts = [card["deck_count"] for card in by_decks["items"]]
     assert counts == sorted(counts, reverse=True)
-    _, by_cuts = get(sort="top_cuts")
+    _, by_cuts = modern(sort="top_cuts")
     assert by_cuts["items"][0]["name"] == "Lightning Bolt"
-    _, by_win = get(sort="win_rate")
+    _, by_win = modern(sort="win_rate")
     rates = [card["win_rate"] for card in by_win["items"]]
     assert rates == sorted(rates, reverse=True)
-    _, reverse = get(sort="name", order="desc")
+    _, reverse = modern(sort="name", order="desc")
     assert names(reverse) == sorted(names(reverse), reverse=True)
-    _, risers = get(view="risers")
+    _, risers = modern(view="risers")
     assert (risers["total"], risers["view"]) == (0, "risers")
 
 
 def test_a_pinned_run_and_another_method_are_served():
-    _, page = get()
+    _, page = modern()
     run_id = page["score_run"]["score_run_id"]
     status, pinned = get(score_run_id=run_id, method="max-ratio")
     assert status == 200
@@ -160,7 +175,7 @@ def test_a_pinned_run_and_another_method_are_served():
 
 
 def test_the_signature_score_ranks_single_archetype_cards_above_shared_staples():
-    status, page = get(method="signature-score")
+    status, page = modern(method="signature-score")
     assert status == 200
     validate(page, "RankingPage")
     assert (page["method_id"], page["output"]) == ("signature-score", "score")

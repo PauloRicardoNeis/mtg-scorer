@@ -76,6 +76,11 @@ describe("finishKey", () => {
     expect(finishKey("4-1-2")).toBeNull();
   });
 
+  it("is null for a name every object answers to", () => {
+    expect(finishKey("constructor")).toBeNull();
+    expect(finishKey("toString")).toBeNull();
+  });
+
   it("is null for a finish the site has no words for", () => {
     expect(finishKey("9th")).toBeNull();
     expect(finishKey("Top 32")).toBeNull();
