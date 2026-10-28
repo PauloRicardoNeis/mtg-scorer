@@ -307,5 +307,6 @@ const finishKeys: Record<string, keyof Messages["metagame"]["finishes"]> = {
 export function finishKey(
   finish: string,
 ): keyof Messages["metagame"]["finishes"] | null {
-  return finishKeys[finish] ?? null;
+  // A plain object also answers to prototype names, so only its own keys count.
+  return Object.hasOwn(finishKeys, finish) ? finishKeys[finish] : null;
 }

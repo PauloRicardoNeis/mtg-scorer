@@ -96,8 +96,11 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
     page.getByRole("heading", { name: "Eligible printings" }),
   ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // A card with published decks shows them where the method note used to be, so the
+  // site navigation leads to the dataset page; /datasets redirects to the active snapshot.
   await page
-    .getByRole("link", { name: "Inspect source and methodology" })
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Methodology" })
     .click();
   await expect(page).toHaveURL(new RegExp(`/datasets/${snapshot}$`));
   await expect(page.getByText("7 / 8", { exact: true })).toBeVisible();
@@ -253,9 +256,8 @@ test("responsive discovery, loading feedback and database failure retry", async 
     path: "test-results/detail-mobile.png",
     fullPage: true,
   });
-  await page
-    .getByRole("link", { name: "Inspect source and methodology" })
-    .click();
+  // The dataset route redirects to the active snapshot's page.
+  await page.goto("/datasets");
   await expect(page.getByText("7 / 8", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(

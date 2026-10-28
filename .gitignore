@@ -23,15 +23,14 @@ api/target/
 .idea/
 *.iml
 .vscode/
+.claude/
 .DS_Store
 Thumbs.db
 
 # Local data and secrets
 .env
 .env.*
-analytics/data/raw/
-analytics/data/local/
-analytics/data/silver/
+analytics/data/
 
 # Local catalog runtime and web build artifacts
 .local/

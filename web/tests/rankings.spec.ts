@@ -116,7 +116,9 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   page,
 }) => {
   await page.goto("/rankings?format=Modern");
-  const type = page.getByLabel("Card type");
+  // The filter menu repeats the toolbar's controls while hidden, so scope to the toolbar.
+  const toolbar = page.getByRole("form", { name: "Ranking filters" });
+  const type = toolbar.getByLabel("Card type");
   await type.focus();
   await type.selectOption("instant");
   await expect(page).toHaveURL(/type=instant/);
@@ -150,7 +152,9 @@ test("the grading menu re-ranks by signature score and the choice follows every 
   page,
 }) => {
   await page.goto("/rankings?format=Modern");
-  const grading = page.getByLabel("Grading");
+  const grading = page
+    .getByRole("form", { name: "Ranking filters" })
+    .getByLabel("Grading");
   await expect(grading).toHaveValue("");
   await expect(grading.getByRole("option")).toHaveText([
     "Constructed score",

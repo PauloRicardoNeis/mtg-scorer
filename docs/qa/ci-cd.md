@@ -2,8 +2,8 @@
 
 Until 2026-10-21 one GitHub Actions job ran the whole verification chain in about
 4 minutes and had been green on the last 15 runs; nothing protects `main` from
-merging without it. The pull-request lane was restructured on 2026-10-21 (in the
-working tree; the first GitHub run is pending): three layer jobs run in parallel
+merging without it. The pull-request lane was restructured on 2026-10-21 (first run on
+GitHub on 2026-10-22, pull request 15, merged to main the same day): three layer jobs run in parallel
 through `demo.py check`, an integration job reuses their build outputs, and a
 `gate` job is the one status branch protection needs. `python scripts/demo.py
 verify` stays the single local entry point; the weekly lane for the slow signals
@@ -12,7 +12,7 @@ that cost nothing but a settings change remain to be switched on.
 
 ## Today
 
-Since 2026-10-21 (working tree; the first GitHub run is pending):
+Since 2026-10-21 (on main since 2026-10-22; first run on GitHub the same day):
 
 ```text
 push to main / pull_request          concurrency: ci-<ref>, cancel-in-progress

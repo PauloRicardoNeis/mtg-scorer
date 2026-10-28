@@ -22,6 +22,7 @@ what the system is *allowed* to infer. These documents describe what it *does*.
 | [6. Publication and ranking](06-publication-and-ranking.md) | The run file and its identity, validation, PostgreSQL publication, how the API ranks and sorts, movement against the previous run, the compare and commander pages, letter grades, tones, prices |
 | [7. Worked example](07-worked-example.md) | A tiny synthetic cohort followed end to end, every intermediate value recomputed by hand |
 | [8. Limitations and open questions](08-limitations-and-future-work.md) | What the numbers cannot say, known statistical weaknesses, and the research the measurement contract still defers |
+| [Research: Constructed score v2 prototype](research/constructed-v2-prototype.md) | 2026-10-28. Fitted prior strengths and a within-archetype delta tried against the published runs; what moved, what the data support, and a recommendation. Not a registered method |
 
 ## One-paragraph summary
 
