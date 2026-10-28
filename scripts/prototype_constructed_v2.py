@@ -196,14 +196,13 @@ class Cohort:
     labelled_decks: int
 
 
-def deck_record(raw: Mapping[str, object] | None, players_per_game: int) -> Record | None:
+def deck_record(raw: Mapping[str, int | None] | None, players_per_game: int) -> Record | None:
     if not raw:
         return None
     wins, losses, draws = (raw.get(key) for key in ("wins", "losses", "draws"))
     if wins is None or losses is None or draws is None:
         return None
-    counts = (int(wins), int(losses), int(draws))
-    return Record(counts[0] + counts[2] / players_per_game, sum(counts))
+    return Record(wins + draws / players_per_game, wins + losses + draws)
 
 
 def load_cohort(path: Path) -> Cohort:
