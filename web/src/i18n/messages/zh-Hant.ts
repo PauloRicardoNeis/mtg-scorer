@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const zhHant: Messages = {
   meta: {
     title: "MTG Scorer · 卡牌探索",
+    page: "MTG Scorer · {name}",
     description:
-      "探索有版本控管的魔法風雲會卡牌目錄及其來源資料集。以訪客身分存取；不含賽事分數。",
+      "依據公開賽事套牌列表評分的魔法風雲會卡牌排名（分賽制及綜合），以及可供瀏覽的版本控管卡牌目錄。",
     rankings: "MTG Scorer · 卡牌排名",
     compare: "MTG Scorer · 比較賽制",
     commanders: "MTG Scorer · 指揮官排名",
@@ -120,6 +121,9 @@ export const zhHant: Messages = {
     genericEyebrow: "無法開啟此畫面",
     genericTitle: "無法完成此要求。",
     notFoundBody: "找不到這張卡牌、資料集或評分批次。",
+    pageNotFoundEyebrow: "找不到頁面",
+    pageNotFoundTitle: "此網址下沒有內容。",
+    pageNotFoundBody: "連結可能輸入錯誤或已過期。請開啟排名，或搜尋卡牌目錄。",
     archetypeNotFound: "這個套牌原型不在此賽制的環境中。",
     decklistNotFound: "找不到這份牌表。",
     backToArchetypes: "返回套牌原型",

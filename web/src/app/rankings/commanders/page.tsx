@@ -94,6 +94,7 @@ function Place({
             <CardImage
               src={card.preview_printing.images[0]?.source_uri ?? null}
               alt={card.name}
+              priority
               featured={first && !pair}
               interactive
             />
@@ -230,7 +231,10 @@ export default async function Commanders({
             ? fill(t.rankingTable.trendOver, { period: trend })
             : t.rankingTable.trend,
         ],
-        ["movement", t.rankings.sortMovement],
+        // Places moved need an earlier run to measure against.
+        ...(page.previous_score_run_id === null
+          ? []
+          : [["movement", t.rankings.sortMovement]]),
       ] as [string, string][]
     ).map(([key, name]) => ({
       value: key === "decks" ? "" : key,
@@ -402,6 +406,7 @@ export default async function Commanders({
               maxDeckCount={page.max_deck_count}
               catalogSnapshotId={page.catalog_snapshot_id}
               clearHref={link(page)}
+              moves={page.previous_score_run_id !== null}
               footer={
                 <>
                   <p role="status">

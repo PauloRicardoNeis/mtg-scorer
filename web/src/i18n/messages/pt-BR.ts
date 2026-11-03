@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ptBR: Messages = {
   meta: {
     title: "MTG Scorer · Descoberta de cards",
+    page: "MTG Scorer · {name}",
     description:
-      "Explore um catálogo versionado de cards de Magic e o conjunto de dados de origem. Acesso de visitante; sem pontuações de torneio.",
+      "Ranking de cards de Magic avaliado a partir de listas de decks de torneios publicadas, por formato e no geral, com um catálogo versionado de cards para explorar.",
     rankings: "MTG Scorer · Ranking de cards",
     compare: "MTG Scorer · Comparar formatos",
     commanders: "MTG Scorer · Ranking de comandantes",
@@ -125,6 +126,10 @@ export const ptBR: Messages = {
     genericTitle: "Não foi possível concluir esta solicitação.",
     notFoundBody:
       "Este card, conjunto de dados ou cálculo de pontuação não foi encontrado.",
+    pageNotFoundEyebrow: "Página não encontrada",
+    pageNotFoundTitle: "Não há nada neste endereço.",
+    pageNotFoundBody:
+      "O link pode estar digitado errado ou desatualizado. Abra o ranking ou pesquise no catálogo de cards.",
     archetypeNotFound: "Este arquétipo não está no metagame do formato.",
     decklistNotFound: "Esta decklist não foi encontrada.",
     backToArchetypes: "Voltar aos arquétipos",

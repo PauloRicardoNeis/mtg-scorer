@@ -29,6 +29,28 @@ describe("HeaderSearch", () => {
     expect(input).toHaveAttribute("autocomplete", "off");
   });
 
+  it("opens from its button on phones and closes on Escape or a search", async () => {
+    const user = userEvent.setup();
+    render(<HeaderSearch />);
+    const toggle = screen.getByRole("button", { name: "Search cards" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAttribute("aria-controls", "site-search-field");
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("search")).toHaveClass("open");
+    expect(searchBox()).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveFocus();
+
+    await user.click(toggle);
+    await user.type(searchBox(), "bolt{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("search")).not.toHaveClass("open");
+  });
+
   describe("the / shortcut", () => {
     it("focuses the search and selects its text from anywhere on the page", async () => {
       const user = userEvent.setup();

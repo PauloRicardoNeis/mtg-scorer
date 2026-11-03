@@ -33,8 +33,39 @@ import {
 } from "@/components/ranking-data";
 import { RankingTable, type SortLink } from "@/components/ranking-table";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: (await getI18n()).t.meta.rankings };
+/**
+ * The rankings request for the page's address. Without JavaScript the filters
+ * submit as a GET form, so unset fields arrive as empty values; the API accepts
+ * only set ones.
+ */
+async function rankingQuery(
+  searchParams: Promise<SearchParams>,
+): Promise<URLSearchParams> {
+  return new URLSearchParams(
+    [...queryParams(await searchParams)].filter(([, value]) => value !== ""),
+  );
+}
+
+/** Titled by the format shown, which the address may leave to the default run. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { t, fill } = await getI18n();
+  try {
+    // The page makes the same request, so it is sent once.
+    const run = (await api.rankings(await rankingQuery(searchParams)))
+      .score_run;
+    const format = run.components ? t.formats.overall : label(run.format_name);
+    return {
+      title: fill(t.meta.page, {
+        name: fill(t.rankings.heading, { format }),
+      }),
+    };
+  } catch {
+    return { title: t.meta.rankings };
+  }
 }
 
 /** Sorts a header can apply, and the direction a first click uses. */
@@ -115,6 +146,7 @@ function Place({
     <CardImage
       src={card.preview_printing.images[0]?.source_uri ?? null}
       alt={card.name}
+      priority
       featured={first}
       interactive
     />
@@ -170,11 +202,7 @@ export default async function Rankings({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // Without JavaScript the filters submit as a GET form, so unset fields arrive
-  // as empty values; the API accepts only set ones.
-  const query = new URLSearchParams(
-    [...queryParams(await searchParams)].filter(([, value]) => value !== ""),
-  );
+  const query = await rankingQuery(searchParams);
   const i18n = await getI18n();
   const { t, fill, plural, rich, count } = i18n;
   try {
@@ -187,6 +215,8 @@ export default async function Rankings({
     const signature = method.method_id === "signature-score";
     // The overall run combines every format's run, which its components name.
     const overall = Boolean(run.components);
+    // An earlier run of the format, which rank changes are measured against.
+    const previous = page.previous_score_run_id !== null;
     // A method that scored no card here, e.g. signature without archetype labels.
     const unscored = method.scored_cards === 0;
     const fallback = defaultMethod(run);
@@ -294,7 +324,8 @@ export default async function Rankings({
                   ? fill(t.rankingTable.trendOver, { period: labels.trend })
                   : t.rankingTable.trend,
               ],
-              ["movement", t.rankings.sortMovement],
+              // Places moved need an earlier run to measure against.
+              ...(previous ? [["movement", t.rankings.sortMovement]] : []),
             ]),
       ] as [string, string][]
     ).map(([key, name]) => ({
@@ -302,13 +333,17 @@ export default async function Rankings({
       label: name,
       order: sortable[key] ?? "desc",
     }));
-    const viewTabs: ViewTab[] = views.map(([view, name]) => ({
-      view,
-      label: t.rankings[name],
-      count: page.view_counts[view as keyof typeof page.view_counts],
-      href: relink(page, kept, { view: view === "all" ? null : view }),
-      current: page.view === view,
-    }));
+    // Risers and fallers need an earlier run to measure against; without one only
+    // "All" remains, with its count.
+    const viewTabs: ViewTab[] = views
+      .filter(([view]) => previous || view === "all")
+      .map(([view, name]) => ({
+        view,
+        label: t.rankings[name],
+        count: page.view_counts[view as keyof typeof page.view_counts],
+        href: relink(page, kept, { view: view === "all" ? null : view }),
+        current: page.view === view,
+      }));
     // A run whose decks name commanders ranks them too, on their own page; the
     // switch keeps the run and the colors, which apply to both.
     const commanderCount =
@@ -567,6 +602,7 @@ export default async function Rankings({
               maxDeckCount={page.max_deck_count}
               catalogSnapshotId={page.catalog_snapshot_id}
               pricesUpdatedAt={page.prices_updated_at}
+              moves={previous}
               clearHref={link(page)}
               footer={
                 <>

@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ko: Messages = {
   meta: {
     title: "MTG Scorer · 카드 탐색",
+    page: "MTG Scorer · {name}",
     description:
-      "버전이 관리되는 매직 카드 카탈로그와 그 원본 데이터셋을 살펴보세요. 게스트로 이용할 수 있으며 토너먼트 점수는 없습니다.",
+      "공개된 토너먼트 덱리스트로 평가한 매직 카드 랭킹(포맷별·종합)과 살펴볼 수 있는 버전 관리 카드 카탈로그.",
     rankings: "MTG Scorer · 카드 랭킹",
     compare: "MTG Scorer · 포맷 비교",
     commanders: "MTG Scorer · 사령관 랭킹",
@@ -121,6 +122,10 @@ export const ko: Messages = {
     genericEyebrow: "이 화면을 열 수 없음",
     genericTitle: "요청을 완료하지 못했습니다.",
     notFoundBody: "카드, 데이터셋 또는 점수 산출 결과를 찾을 수 없습니다.",
+    pageNotFoundEyebrow: "페이지를 찾을 수 없음",
+    pageNotFoundTitle: "이 주소에는 아무것도 없습니다.",
+    pageNotFoundBody:
+      "링크가 잘못 입력되었거나 오래되었을 수 있습니다. 랭킹을 열거나 카드 카탈로그를 검색하세요.",
     archetypeNotFound: "이 아키타입은 이 포맷의 메타게임에 없습니다.",
     decklistNotFound: "이 덱리스트를 찾을 수 없습니다.",
     backToArchetypes: "아키타입으로 돌아가기",

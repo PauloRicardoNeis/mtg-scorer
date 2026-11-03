@@ -15,10 +15,12 @@ function Scan({
   src,
   alt,
   eager = false,
+  priority = false,
 }: {
   src: string;
   alt: string;
   eager?: boolean;
+  priority?: boolean;
 }) {
   const { t, fill } = useI18n();
   const [failed, setFailed] = useState(false);
@@ -47,7 +49,7 @@ function Scan({
       width={488}
       height={680}
       loading={eager ? "eager" : "lazy"}
-      fetchPriority={eager ? "high" : undefined}
+      fetchPriority={eager || priority ? "high" : undefined}
       decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
@@ -59,11 +61,14 @@ function Scan({
  * One card image with the design's variants: `featured` adds the sigil edge and
  * glow, `interactive` lifts on hover or focus, `tilt` rotates by degrees, `count`
  * shows an "n×" chip and `action` appears over the card on hover or focus.
+ * `priority` fetches the scan ahead of others once it is laid out, but unlike
+ * `eager` never for a card a narrow screen hides.
  */
 export function CardImage({
   src,
   alt,
   eager = false,
+  priority = false,
   featured = false,
   interactive = false,
   selected = false,
@@ -75,6 +80,7 @@ export function CardImage({
   src: string | null;
   alt: string;
   eager?: boolean;
+  priority?: boolean;
   featured?: boolean;
   interactive?: boolean;
   selected?: boolean;
@@ -94,7 +100,7 @@ export function CardImage({
       style={tilt ? ({ "--tilt": `${tilt}deg` } as CSSProperties) : undefined}
     >
       {src ? (
-        <Scan src={src} alt={alt} eager={eager} />
+        <Scan src={src} alt={alt} eager={eager} priority={priority} />
       ) : (
         <div
           className="card-image-fallback"

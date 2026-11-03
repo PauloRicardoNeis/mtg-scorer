@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { getI18n } from "@/i18n/server";
@@ -12,6 +13,37 @@ import { DeckZone } from "@/components/deck-list";
 import { Icon } from "@/components/icon";
 import { Problem } from "@/components/problem";
 
+/** The deck request's query: only the catalog its cards join, when the address pins one. */
+function deckQuery(query: URLSearchParams): URLSearchParams {
+  const result = new URLSearchParams();
+  if (query.get("catalog_snapshot_id"))
+    result.set("catalog_snapshot_id", query.get("catalog_snapshot_id")!);
+  return result;
+}
+
+/** Titled by the deck's archetype and its event. */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ score_run_id: string; position: string }>;
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { score_run_id, position } = await params;
+  const query = queryParams(await searchParams);
+  const { t, fill } = await getI18n();
+  try {
+    // The page makes the same request, so it is sent once.
+    const deck = await api.deck(score_run_id, position, deckQuery(query));
+    const title = deck.archetype ?? t.rankingData.unlabelled;
+    const event = deck.event.name ?? deck.event.source_event_id;
+    return { title: fill(t.meta.page, { name: `${title} · ${event}` }) };
+  } catch {
+    // The page shows the problem; the site's title stands in.
+    return {};
+  }
+}
+
 export default async function Deck({
   params,
   searchParams,
@@ -22,11 +54,8 @@ export default async function Deck({
   const { score_run_id, position } = await params;
   const query = queryParams(await searchParams);
   const { t, fill, plural, dateWithYear, dateWindow } = await getI18n();
-  const deckQuery = new URLSearchParams();
-  if (query.get("catalog_snapshot_id"))
-    deckQuery.set("catalog_snapshot_id", query.get("catalog_snapshot_id")!);
   try {
-    const deck = await api.deck(score_run_id, position, deckQuery);
+    const deck = await api.deck(score_run_id, position, deckQuery(query));
     const catalog = deck.catalog_snapshot_id;
     const fromCard = query.get(FROM_CARD);
     const lists = [

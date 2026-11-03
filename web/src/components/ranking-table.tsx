@@ -7,7 +7,7 @@ import { useI18n } from "#i18n";
 import type { I18n } from "@/i18n/translator";
 import type { RankedCard, RankingPage } from "@/lib/api";
 import { deltaTone } from "@/lib/format";
-import { edition, rankedCardHref } from "@/lib/urls";
+import { edition, rankedCardHref, thumbnail } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { FormatGradeRows, FormatGrades } from "./format-grades";
 import { Icon } from "./icon";
@@ -47,7 +47,7 @@ function Thumb({ card }: { card: RankedCard }) {
     <span className="thumb" aria-hidden="true">
       {src && (
         <img
-          src={src}
+          src={thumbnail(src)}
           alt=""
           width={30}
           height={42}
@@ -129,6 +129,7 @@ function Preview({
   method,
   labels,
   href,
+  moves,
 }: {
   card: RankedCard;
   run: Run;
@@ -136,6 +137,7 @@ function Preview({
   method: Method;
   labels: ColumnLabels;
   href: string | null;
+  moves: boolean;
 }) {
   const i18n = useI18n();
   const { t, fill, count, percent, signed, share, lift, decimal } = i18n;
@@ -148,7 +150,7 @@ function Preview({
     <aside className="ranking-preview" aria-label={t.rankingTable.selectedCard}>
       <p className="preview-rank">
         <span>{fill(t.rankingTable.rank, { rank: card.rank })}</span>
-        <RankMove change={card.rank_change} />
+        {moves && <RankMove change={card.rank_change} />}
       </p>
       <div className="preview-art">
         {printing ? (
@@ -308,6 +310,7 @@ export function RankingTable({
   pricesUpdatedAt,
   clearHref,
   footer,
+  moves = true,
 }: {
   items: RankedCard[];
   run: Run;
@@ -320,6 +323,8 @@ export function RankingTable({
   pricesUpdatedAt: string | null;
   clearHref: string;
   footer: ReactNode;
+  /** Whether an earlier run of the format measures each card's change of rank. */
+  moves?: boolean;
 }) {
   const router = useRouter();
   const i18n = useI18n();
@@ -446,7 +451,7 @@ export function RankingTable({
                     <td className="rank-cell">
                       <span className="stacked">
                         <span className="rank">{card.rank}</span>
-                        <RankMove change={card.rank_change} />
+                        {moves && <RankMove change={card.rank_change} />}
                       </span>
                     </td>
                     <th scope="row" className="card-cell">
@@ -550,6 +555,7 @@ export function RankingTable({
           method={method}
           labels={labels}
           href={rankedCardHref(selected, catalogSnapshotId)}
+          moves={moves}
         />
       )}
     </div>

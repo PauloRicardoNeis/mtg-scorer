@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, type RefObject } from "react";
+import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "#i18n";
 import { Icon } from "./icon";
@@ -75,7 +75,8 @@ function rankingSearch(text: string | undefined, field: string): string {
 /**
  * Card search: within the shown run's rankings on /rankings, catalog-wide
  * elsewhere, in the whole card or the part its select names. Commanders are
- * searched by name. "/" focuses it from anywhere outside a field.
+ * searched by name. "/" focuses it from anywhere outside a field. Phones show
+ * a button that opens the field below the header instead.
  */
 export function HeaderSearch() {
   const router = useRouter();
@@ -84,6 +85,8 @@ export function HeaderSearch() {
   const commanders = pathname.startsWith("/rankings/commanders");
   const input = useRef<HTMLInputElement>(null);
   const scope = useRef<HTMLSelectElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
   const { t } = useI18n();
   const label = commanders
     ? t.search.commanders
@@ -110,13 +113,18 @@ export function HeaderSearch() {
     document.addEventListener("keydown", focus);
     return () => document.removeEventListener("keydown", focus);
   }, []);
+  // Opening the field on a phone puts the cursor in it.
+  useEffect(() => {
+    if (open) input.current?.focus();
+  }, [open]);
   return (
     <form
       role="search"
-      className="header-search"
+      className={open ? "header-search open" : "header-search"}
       action={rankings ? "/rankings" : "/cards"}
       onSubmit={(event) => {
         event.preventDefault();
+        setOpen(false);
         const text = input.current?.value.trim();
         const field = scope.current?.value ?? "";
         if (rankings) {
@@ -131,10 +139,21 @@ export function HeaderSearch() {
         router.push(query.size ? `/cards?${query}` : "/cards");
       }}
     >
+      <button
+        ref={toggle}
+        type="button"
+        className="icon-button header-search-toggle"
+        aria-label={label}
+        aria-expanded={open}
+        aria-controls="site-search-field"
+        onClick={() => setOpen((shown) => !shown)}
+      >
+        <Icon name="search" size={16} />
+      </button>
       <label className="sr-only" htmlFor="site-search">
         {label}
       </label>
-      <div className="field">
+      <div className="field" id="site-search-field">
         {!commanders && <SearchIn ref={scope} />}
         <Icon name="search" size={15} />
         <input
@@ -146,6 +165,11 @@ export function HeaderSearch() {
           placeholder={label}
           autoComplete="off"
           aria-keyshortcuts="/"
+          onKeyDown={(event) => {
+            if (event.key !== "Escape" || !open) return;
+            setOpen(false);
+            toggle.current?.focus();
+          }}
         />
         <kbd className="key" aria-hidden="true">
           /

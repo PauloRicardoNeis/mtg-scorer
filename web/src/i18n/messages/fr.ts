@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const fr: Messages = {
   meta: {
     title: "MTG Scorer · Découverte de cartes",
+    page: "MTG Scorer · {name}",
     description:
-      "Explorez un catalogue versionné de cartes Magic et son jeu de données source. Accès invité ; aucun score de tournoi.",
+      "Classements des cartes Magic notés d'après les listes de decks de tournoi publiées, par format et au global, avec un catalogue de cartes versionné à explorer.",
     rankings: "MTG Scorer · Classements des cartes",
     compare: "MTG Scorer · Comparer les formats",
     commanders: "MTG Scorer · Classements des commandants",
@@ -125,6 +126,10 @@ export const fr: Messages = {
     genericTitle: "Cette requête n’a pas pu aboutir.",
     notFoundBody:
       "Cette carte, ce jeu de données ou ce calcul de score est introuvable.",
+    pageNotFoundEyebrow: "Page introuvable",
+    pageNotFoundTitle: "Rien ne se trouve à cette adresse.",
+    pageNotFoundBody:
+      "Le lien est peut-être mal saisi ou périmé. Ouvrez les classements ou cherchez dans le catalogue de cartes.",
     archetypeNotFound:
       "Cet archétype ne fait pas partie du métagame de ce format.",
     decklistNotFound: "Cette decklist est introuvable.",

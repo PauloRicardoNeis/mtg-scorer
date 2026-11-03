@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ja: Messages = {
   meta: {
     title: "MTG Scorer · カード探索",
+    page: "MTG Scorer · {name}",
     description:
-      "バージョン管理されたマジックのカードカタログと、その元データセットを探索できます。ゲストとして利用でき、大会スコアは含みません。",
+      "公開された大会デッキリストから評価したマジックのカードランキング（フォーマット別・総合）と、探索できるバージョン管理されたカードカタログ。",
     rankings: "MTG Scorer · カードランキング",
     compare: "MTG Scorer · フォーマット比較",
     commanders: "MTG Scorer · 統率者ランキング",
@@ -122,6 +123,10 @@ export const ja: Messages = {
     genericTitle: "このリクエストを完了できませんでした。",
     notFoundBody:
       "このカード、データセット、またはスコア算出結果が見つかりませんでした。",
+    pageNotFoundEyebrow: "ページが見つかりません",
+    pageNotFoundTitle: "このアドレスには何もありません。",
+    pageNotFoundBody:
+      "リンクの入力ミスか、古いリンクかもしれません。ランキングを開くか、カードカタログを検索してください。",
     archetypeNotFound:
       "このアーキタイプは、このフォーマットのメタゲームにはありません。",
     decklistNotFound: "このデッキリストは見つかりませんでした。",

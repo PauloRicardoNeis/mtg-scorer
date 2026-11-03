@@ -256,16 +256,14 @@ test("loading more and paging stay on the pinned run", async ({ page }) => {
   await expect(results(page)).toHaveText("4–6 of 8 ranked cards");
 });
 
-test("column headers sort and the view tabs count risers and fallers", async ({
+test("column headers sort, and a run without an earlier one has no risers or fallers", async ({
   page,
 }) => {
   await page.goto("/rankings?format=Modern");
   const views = page.getByRole("navigation", { name: "Views" });
-  await expect(views.getByRole("link")).toHaveText([
-    "All8",
-    "Risers0",
-    "Fallers0",
-  ]);
+  // The fixture's Modern run is its first, so no card can rise or fall yet.
+  await expect(views.getByRole("link")).toHaveText(["All8"]);
+  await expect(page.getByText("No earlier rank")).toHaveCount(0);
   const header = page.getByRole("columnheader", { name: /Win rate vs field/ });
   await header.getByRole("link").click();
   await expect(page).toHaveURL(/sort=win_rate/);
@@ -276,8 +274,8 @@ test("column headers sort and the view tabs count risers and fallers", async ({
   await expect(page).toHaveURL(/order=asc/);
   await expect(header).toHaveAttribute("aria-sort", "ascending");
   await expect(rows.nth(1)).toContainText("Bruna, the Fading Light");
-  await views.getByRole("link", { name: /Risers/ }).click();
-  await expect(page).toHaveURL(/view=risers/);
+  // An old link to the risers still answers, with nothing in it.
+  await page.goto("/rankings?format=Modern&view=risers");
   await expect(results(page)).toHaveText("No ranked cards match");
 });
 

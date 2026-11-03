@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
@@ -9,6 +10,10 @@ import { Problem } from "@/components/problem";
 import { CardImages } from "@/components/card-image";
 import { Icon } from "@/components/icon";
 import { ColorPips, ManaCost } from "@/components/mana";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getI18n()).t.meta.title };
+}
 
 export default async function Cards({
   searchParams,

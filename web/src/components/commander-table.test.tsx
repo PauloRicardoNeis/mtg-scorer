@@ -124,10 +124,12 @@ function table(
     catalog = "snap-1",
     sorts: sortLinks = sorts,
     trendLabel = "12 mo",
+    moves = true,
   }: {
     catalog?: string | null;
     sorts?: Record<string, SortLink>;
     trendLabel?: string | null;
+    moves?: boolean;
   } = {},
 ) {
   return (
@@ -141,6 +143,7 @@ function table(
       catalogSnapshotId={catalog}
       clearHref="/rankings/commanders?format=EDH"
       footer={<p role="status">1–2 of 2 commanders</p>}
+      moves={moves}
     />
   );
 }
@@ -236,6 +239,17 @@ describe("CommanderTable", () => {
         .map((link) => link.textContent),
     ).toEqual(["Kraum, Ludevic's Opus"]);
     expect(preview().getByText("Tymna the Weaver")).toBeInTheDocument();
+  });
+
+  it("leaves rank changes out when no earlier run measures them", () => {
+    render(table([kinnan, pair], { moves: false }));
+    expect(
+      within(screen.getByRole("row", { name: /Kinnan/ })).getAllByRole(
+        "cell",
+      )[0],
+    ).toHaveTextContent(/^1$/);
+    expect(screen.queryByText(/Up 2 places|No earlier rank/)).toBeNull();
+    expect(preview().getByText("Rank 1")).toBeInTheDocument();
   });
 
   it("selects the row a keyboard reader focuses", () => {

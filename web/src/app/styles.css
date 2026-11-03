@@ -157,6 +157,10 @@ body {
 .header-search input:not(:placeholder-shown) + .key {
   display: none;
 }
+/* Phones open the search from this button instead (see the 640px rules). */
+.header-search-toggle {
+  display: none;
+}
 /* Page frame: bands run full width, everything else sits in the content column. */
 main {
   flex: 1;
@@ -2448,10 +2452,48 @@ fieldset.gallery-stack {
     display: none;
   }
 }
-/* Phones keep the existing flow: no header search and no sticky toolbar. */
+/* Phones: the links scroll sideways instead of wrapping out of sight, the search
+   opens from a button as a field under the header, and the toolbar does not stick. */
 @media (max-width: 640px) {
-  .header-search {
+  .site-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* The padding lets the last link scroll clear of the faded edge. */
+    padding-inline-end: 24px;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 calc(100% - 24px),
+      transparent
+    );
+    mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+    scrollbar-width: none;
+  }
+  .site-nav::-webkit-scrollbar {
     display: none;
+  }
+  .header-search {
+    flex: none;
+    min-width: 0;
+  }
+  .header-search-toggle {
+    display: inline-flex;
+  }
+  .header-search .field {
+    display: none;
+  }
+  .header-search.open .header-search-toggle {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .header-search.open .field {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: var(--page-pad);
+    left: var(--page-pad);
+    display: flex;
+    height: 42px;
+    box-shadow: var(--shadow-pop);
   }
   .toolbar {
     position: static;

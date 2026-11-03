@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ru: Messages = {
   meta: {
     title: "MTG Scorer · Поиск карт",
+    page: "MTG Scorer · {name}",
     description:
-      "Изучайте версионированный каталог карт Magic и его исходный набор данных. Гостевой доступ, без турнирных баллов.",
+      "Рейтинг карт Magic по опубликованным турнирным декам, по форматам и общий, а также версионированный каталог карт для изучения.",
     rankings: "MTG Scorer · Рейтинг карт",
     compare: "MTG Scorer · Сравнение форматов",
     commanders: "MTG Scorer · Рейтинг командиров",
@@ -125,6 +126,10 @@ export const ru: Messages = {
     genericEyebrow: "Не удалось открыть страницу",
     genericTitle: "Не удалось выполнить запрос.",
     notFoundBody: "Карта, набор данных или расчет баллов не найдены.",
+    pageNotFoundEyebrow: "Страница не найдена",
+    pageNotFoundTitle: "По этому адресу ничего нет.",
+    pageNotFoundBody:
+      "Возможно, ссылка набрана с ошибкой или устарела. Откройте рейтинг или поищите в каталоге карт.",
     archetypeNotFound: "Этого архетипа нет в метагейме формата.",
     decklistNotFound: "Этот список колоды не найден.",
     backToArchetypes: "Назад к архетипам",

@@ -4,8 +4,9 @@
 export const en = {
   meta: {
     title: "MTG Scorer · Card discovery",
+    page: "MTG Scorer · {name}",
     description:
-      "Explore a versioned Magic card catalog and its source dataset. Guest access; no tournament scores.",
+      "Magic card rankings graded from published tournament decklists, by format and overall, with a versioned card catalog to explore.",
     rankings: "MTG Scorer · Card rankings",
     compare: "MTG Scorer · Compare formats",
     commanders: "MTG Scorer · Commander rankings",
@@ -121,6 +122,10 @@ export const en = {
     genericEyebrow: "Unable to open this view",
     genericTitle: "This request could not be completed.",
     notFoundBody: "This card, dataset or score run could not be found.",
+    pageNotFoundEyebrow: "Page not found",
+    pageNotFoundTitle: "Nothing lives at this address.",
+    pageNotFoundBody:
+      "The link may be mistyped or out of date. Open the rankings or search the card catalog.",
     archetypeNotFound: "This archetype isn't in the format's metagame.",
     decklistNotFound: "This decklist could not be found.",
     backToArchetypes: "Back to archetypes",

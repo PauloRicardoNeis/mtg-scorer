@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, type CardDetail } from "@/lib/api";
+import { openGraph } from "@/lib/metadata";
 import { useI18n } from "#i18n";
 import { getI18n } from "@/i18n/server";
 import {
@@ -47,6 +49,56 @@ function KnownText({ value }: { value: string | null }) {
   );
 }
 
+/** The card's type line, or its faces' joined; null when none is supplied. */
+function typeLineOf(card: CardDetail): string | null {
+  return (
+    card.type_line ??
+    (card.faces
+      .map((face) => face.type_line)
+      .filter(Boolean)
+      .join(" // ") ||
+      null)
+  );
+}
+
+/** Titled by the card, and previewed with its first eligible printing's scan. */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ oracle_id: string }>;
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { oracle_id } = await params;
+  const query = queryParams(await searchParams);
+  const snapshot = query.get("catalog_snapshot_id");
+  // Without a dataset the page redirects to its pinned address, which names itself.
+  if (!snapshot) return {};
+  const { t, fill } = await getI18n();
+  try {
+    // The page makes the same requests, so each is sent once.
+    const [card, printings] = await Promise.all([
+      api.card(oracle_id, snapshot),
+      api.printings(oracle_id, printingParams(query)),
+    ]);
+    const description = typeLineOf(card) ?? card.name;
+    const image = printings.items[0]?.images[0]?.source_uri;
+    return {
+      title: fill(t.meta.page, { name: card.name }),
+      description,
+      openGraph: {
+        ...openGraph,
+        title: card.name,
+        description,
+        ...(image ? { images: [image] } : {}),
+      },
+    };
+  } catch {
+    // The page shows the problem; the site's title stands in.
+    return {};
+  }
+}
+
 export default async function Card({
   params,
   searchParams,
@@ -83,13 +135,7 @@ export default async function Card({
     ]);
     const featured = (first ?? printings).items[0] ?? null;
     const manaCost = card.mana_cost ?? card.faces[0]?.mana_cost ?? null;
-    const typeLine =
-      card.type_line ??
-      (card.faces
-        .map((face) => face.type_line)
-        .filter(Boolean)
-        .join(" // ") ||
-        null);
+    const typeLine = typeLineOf(card);
     const back = new URLSearchParams(query);
     back.delete("printing_cursor");
     back.delete("cursor");
