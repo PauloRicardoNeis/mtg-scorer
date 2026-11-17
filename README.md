@@ -469,7 +469,9 @@ To run one layer's checks without the database stage, as each CI job does:
 python scripts/demo.py check --only web
 ```
 
-`--only` takes any of `python`, `contracts`, `java` and `web`.
+`--only` takes any of `python`, `contracts`, `java` and `web`. A weekly workflow,
+`.github/workflows/windows.yml`, runs `install` and then `check` with every layer on
+`windows-latest`, so this Windows setup is exercised in CI as well.
 
 ### Test coverage
 

@@ -48,7 +48,9 @@ On POSIX, use the same Python entry point after exporting `JAVA_HOME`. The scrip
 uses `bash api/mvnw` and platform-specific Python/Node paths automatically. Supply
 a local PostgreSQL connection or put native PostgreSQL binaries on PATH. Windows
 execution has been verified here; the Linux path is configured in CI, whose remote
-execution is not claimed by local results.
+execution is not claimed by local results. CI runs `verify` on Linux for every pull
+request; `.github/workflows/windows.yml` runs `demo.py install` and `demo.py check`
+on Windows weekly and on demand, without the PostgreSQL and browser stage.
 
 ## PostgreSQL choices and credentials
 

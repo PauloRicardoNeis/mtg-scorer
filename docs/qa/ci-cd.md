@@ -50,7 +50,7 @@ push to main / pull_request          concurrency: ci-<ref>, cancel-in-progress
 | Dependency updates | `.github/dependabot.yml` committed 2026-10-21 (active once on `main`); alerts and security updates still off in the settings | unchanged |
 | Security scanning | GitHub secret scanning; `.github/workflows/codeql.yml` committed 2026-10-21 | unchanged |
 | Scheduled jobs | `.github/workflows/weekly.yml` committed 2026-10-21: mutation testing in three layers, Mondays 06:00 UTC and on demand, scores in the job summary | unchanged |
-| Platforms | Linux only | unchanged |
+| Platforms | Linux only | Linux on every pull request; `.github/workflows/windows.yml` (committed 2026-11-16, not yet run on GitHub) runs `demo.py install` and `demo.py check` on `windows-latest` on Mondays and on demand |
 | Deployment | none; nothing is deployed | unchanged |
 
 What works well: one command locally and in CI, real PostgreSQL and Chromium on
@@ -77,7 +77,7 @@ WEEKLY LANE (schedule + workflow_dispatch; never blocks a merge)
 
   mutation      mutmut · PIT · Stryker → per-module table in the job summary   [done]
   property-long Hypothesis max_examples=2000 · Schemathesis 500 examples
-  windows       windows-latest: demo.py install + offline suites
+  windows       windows-latest: demo.py install + demo.py check (windows.yml) [done]
   audit         pip-audit · npm audit · dependency-check · knip · SBOM
   scale         generated realistic dataset → pagination walk · EXPLAIN asserts · k6 budget
   flake         pytest -p randomly ×5 · playwright --repeat-each 3 on one commit
@@ -141,9 +141,18 @@ is added only once a baseline exists.
 - **Mutation** (see [mutation-testing.md](mutation-testing.md)): three jobs in
   parallel, incremental history restored from the previous run's artifact, scores
   written with `$GITHUB_STEP_SUMMARY`.
-- **Windows**: `windows-latest`, `demo.py install`, then the offline suites of all
-  three layers. Covers the documented developer platform and the portable
-  PostgreSQL download path when `verify` is added later.
+- **Windows** (done 2026-11-16, its own file `.github/workflows/windows.yml`):
+  `windows-latest`, the same toolchain versions as `ci.yml`, `demo.py install`, then
+  `demo.py check` with every layer: Ruff, pyright, the offline pytest suite with its
+  floor, contracts and boundaries, `mvnw.cmd verify` with the JaCoCo floors, and
+  Prettier, ESLint, vitest, `next build` and tsc through `npm.cmd`. JUnit from pytest,
+  Surefire and vitest is annotated like the pull-request lane; `PYTHONUTF8=1` because
+  the runner's pipes use the ANSI code page. The database and browser stage is not
+  run there yet: the runner ships PostgreSQL, and `POSTGRES_BIN` pointed at its `bin`
+  directory should replace the portable download, but that has not been proved on a
+  run. Add `demo.py verify --skip-install --skip-build` with that variable once a
+  manual dispatch shows it works; until then the portable download path is covered
+  only by local runs.
 - **Audit**: `pip-audit`, `npm audit --audit-level=high`, OWASP dependency-check
   with a cached NVD database, `knip`, CycloneDX SBOMs uploaded as artifacts.
 - **Scale and performance**: generate the realistic dataset, publish it into the

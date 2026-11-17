@@ -59,7 +59,7 @@ failures annotated inline; a weekly lane that has run four times.
 | Two-lane workflow: unit jobs in parallel, integration reusing build outputs, `concurrency`, `timeout-minutes`, JUnit annotations | M | G16 | done 2026-10-21 (`ci.yml`, `demo.py check --only`); first run on GitHub 2026-10-22 |
 | Python coverage merged across stages; patch coverage comment; coverage floors raised to achieved values | S | G9 | merged coverage done 2026-10-21; comment and floors not started |
 | Browser hardening: `toHaveScreenshot`, `page.clock`, `toBeInViewport`; weekly Firefox, WebKit and mobile projects | S | G12, G13 | not started |
-| Weekly lane: mutation, audit and SBOM, Windows, flake repeat, knip | M | G4, G15, G14 | not started |
+| Weekly lane: mutation, audit and SBOM, Windows, flake repeat, knip | M | G4, G15, G14 | partly: mutation done 2026-10-21 (`weekly.yml`); Windows committed 2026-11-16 (`windows.yml`, install and every layer's checks, no database stage), first run pending; audit, SBOM, flake repeat and knip not started |
 | sqlfluff, actionlint, markdownlint, lychee in a `lint-files` job | S | G21 | not started |
 | `demo.py` dry-run plan and tests of stage ordering | S | G20 | partly: `test_demo_runner.py` (8 tests) covers layer selection and order and the coverage stages; dry-run plan not started |
 

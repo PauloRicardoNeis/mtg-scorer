@@ -29,7 +29,7 @@ from other sessions; see [Working-tree observations](#working-tree-observations)
 | Secret scanning | enabled, with push protection | GitHub settings |
 | Dependabot | alerts and security updates disabled in the settings; `.github/dependabot.yml` committed 2026-10-21 for uv, npm, Maven and Actions | GitHub settings, repository |
 | Code scanning (CodeQL) | `.github/workflows/codeql.yml` committed 2026-10-21 (Java, JavaScript/TypeScript, Python; weekly and on pull requests) | repository |
-| Workflows | `ci.yml` on push to `main` and on pull requests (five jobs since 2026-10-21: `python`, `java`, `web`, `integration`, `gate`); `codeql.yml`; `weekly.yml` (mutation testing, Mondays and on demand) | repository |
+| Workflows | `ci.yml` on push to `main` and on pull requests (five jobs since 2026-10-21: `python`, `java`, `web`, `integration`, `gate`); `codeql.yml`; `weekly.yml` (mutation testing, Mondays and on demand); `windows.yml` (since 2026-11-16: install and every layer's checks on `windows-latest`, Mondays and on demand) | repository |
 | Line endings | `* text=auto eol=lf`, CRLF only for `*.cmd`/`*.bat`, byte-exact seeds and fixtures; `.editorconfig` matches (since 2026-10-21) | `.gitattributes`, `.editorconfig` |
 | Pre-commit | `.pre-commit-config.yaml` (ruff, pyright, Prettier, ESLint, Spotless, standard hooks); installed per clone with `pre-commit install` | repository |
 | CODEOWNERS, PR template | none | repository |

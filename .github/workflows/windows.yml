@@ -1,0 +1,75 @@
+# The Windows lane: the documented developer platform, weekly and on demand. It runs the
+# same entry points a contributor runs, `demo.py install` and then `demo.py check`, so the
+# Windows-only paths (`npm.cmd`, `mvnw.cmd`, the `.venv/Scripts` interpreter and the
+# re-exec into it) stay exercised. The database and browser stage is not run here: the
+# runner's preinstalled PostgreSQL through POSTGRES_BIN has not been proved yet, and
+# without it `demo.py` would download the portable archive on every run.
+name: Windows
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # A runner's pipes default to the ANSI code page; a developer's console does not.
+  PYTHONUTF8: "1"
+
+jobs:
+  check:
+    name: Install and every layer's checks (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: api/pom.xml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.14.1"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Pin npm
+        run: npm install --global npm@11.11.0
+      - name: Install through the runner (uv, the locked environments, Chromium)
+        run: python scripts/demo.py install
+      - name: Ruff, pyright, pytest, contracts, Maven verify, Prettier, ESLint, vitest, next build, tsc
+        run: python scripts/demo.py check
+      - name: Annotate test results
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: |
+            .local/junit/pytest-offline.xml
+            api/target/surefire-reports/TEST-*.xml
+            web/reports/junit/vitest.xml
+          check_name: Windows (pytest, JUnit, vitest)
+          annotate_only: true
+          detailed_summary: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-reports
+          path: |
+            .local/junit/
+            .local/coverage/python/
+            api/target/surefire-reports/
+            api/target/site/jacoco/
+            web/reports/junit/
+            web/coverage/
+          include-hidden-files: true
