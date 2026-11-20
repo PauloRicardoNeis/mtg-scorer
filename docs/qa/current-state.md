@@ -19,7 +19,7 @@ from other sessions; see [Working-tree observations](#working-tree-observations)
 
 | Item | Value | Where it is pinned |
 | --- | --- | --- |
-| Python | 3.12.10, dependencies locked with uv 0.8.22 | `.python-version`, `analytics/uv.lock`, `scripts/demo.py` |
+| Python | 3.12.16, dependencies locked with uv 0.8.22 | `.python-version`, `analytics/uv.lock`, `scripts/demo.py` |
 | Java | 21 (Temurin in CI), Spring Boot 4.1.1, Maven 3.9.16 through Maven Wrapper 3.3.4 | `api/pom.xml` (enforcer `[21,22)`), `api/.mvn/wrapper/maven-wrapper.properties` |
 | Node | 24.14.1, npm 11.11.0 | `.node-version`, `web/package.json` engines, `web/package-lock.json` |
 | Web stack | Next.js 16.3.4, React 19.2.8, TypeScript 5.9.3 | `web/package.json` |
