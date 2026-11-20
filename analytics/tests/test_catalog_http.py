@@ -144,8 +144,9 @@ def test_invalid_queries_cursor_tampering_and_unknown_resources():
         {"unknown": "x"},
         {"color_identity": "RR"},
         {"color": "X"},
-        {"type": "battle"},
-        {"type": ["land", "creature"]},
+        {"type": "tribal"},
+        {"type_match": "both"},
+        {"color_match": "none"},
         {"sort": "power"},
     ):
         status, body = get("/api/v1/cards", **query)
