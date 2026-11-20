@@ -5,12 +5,14 @@ import { HeaderSearch } from "@/components/header-search";
 import { LanguageSelect } from "@/components/language-select";
 import { I18nProvider } from "@/i18n/context";
 import { getI18n } from "@/i18n/server";
+import { openGraph } from "@/lib/metadata";
 import "./tokens.css";
 import "./styles.css";
 
+// Each page names itself; the site's name alone titles the rest, such as the 404 page.
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
-  return { title: t.meta.title, description: t.meta.description };
+  return { title: "MTG Scorer", description: t.meta.description, openGraph };
 }
 
 export default async function Layout({

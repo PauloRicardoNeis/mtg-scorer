@@ -148,6 +148,42 @@ class CursorCodecTests {
   }
 
   @Test
+  void oneTypeKeepsItsEarlierFingerprintWhileSeveralTypesOrAMatchBindTheCursor() throws Exception {
+    List<String> key = List.of("bolt", CARD);
+    String oneType = codec.encode("cards", "catalog-abc", cards("type", "instant"), key);
+
+    // A single type hashes as it did before several could be chosen, and the default
+    // match ("any") adds nothing, so cursors from before those filters still continue.
+    String legacy =
+        "{\"color_identity\":null,\"game\":null,\"q\":null,\"rarities\":null,\"sets\":null,"
+            + "\"type\":\"instant\"}";
+    assertThat(cursorJson(oneType).path("filter_hash").asString()).isEqualTo(sha256(legacy));
+    assertThat(
+            codec.decode(
+                "cards",
+                cardsAfter(oneType, "type", "instant", "type_match", "any", "color_match", "any")))
+        .isNotNull();
+
+    // Several types bind the cursor in the filter's order, whatever order they were sent in.
+    String twoTypes =
+        codec.encode("cards", "catalog-abc", cards("type", "land", "type", "instant"), key);
+    assertThat(codec.decode("cards", cardsAfter(twoTypes, "type", "instant", "type", "land")))
+        .isNotNull();
+    assertInvalidCursor(() -> codec.decode("cards", cardsAfter(twoTypes, "type", "instant")));
+    assertInvalidCursor(
+        () -> codec.decode("cards", cardsAfter(oneType, "type", "instant", "type", "land")));
+
+    // A match off its default is part of the query the cursor continues.
+    assertInvalidCursor(
+        () -> codec.decode("cards", cardsAfter(oneType, "type", "instant", "type_match", "all")));
+    assertInvalidCursor(
+        () ->
+            codec.decode(
+                "cards",
+                cardsAfter(oneType, "type", "instant", "color", "R", "color_match", "all")));
+  }
+
+  @Test
   void whereTextIsSearchedBindsTheCursorOnlyWithTextAndOffTheDefault() {
     List<String> key = List.of("bolt", CARD);
     String all = codec.encode("cards", "catalog-abc", cards("q", "elf"), key);

@@ -5,6 +5,7 @@ import { queryParams, rankedCardHref, type SearchParams } from "@/lib/urls";
 import { useI18n } from "#i18n";
 import { getI18n } from "@/i18n/server";
 import type { Messages } from "@/i18n/types";
+import type { I18n } from "@/i18n/translator";
 import { Problem } from "@/components/problem";
 import { CardImage } from "@/components/card-image";
 import { Icon } from "@/components/icon";
@@ -31,10 +32,45 @@ import {
   isGraded,
   trendLabel,
 } from "@/components/ranking-data";
-import { RankingTable, type SortLink } from "@/components/ranking-table";
+import {
+  RankingTable,
+  type EmptyHints,
+  type SortLink,
+} from "@/components/ranking-table";
 
-export async function generateMetadata(): Promise<Metadata> {
-  return { title: (await getI18n()).t.meta.rankings };
+/**
+ * The rankings request for the page's address. Without JavaScript the filters
+ * submit as a GET form, so unset fields arrive as empty values; the API accepts
+ * only set ones.
+ */
+async function rankingQuery(
+  searchParams: Promise<SearchParams>,
+): Promise<URLSearchParams> {
+  return new URLSearchParams(
+    [...queryParams(await searchParams)].filter(([, value]) => value !== ""),
+  );
+}
+
+/** Titled by the format shown, which the address may leave to the default run. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const { t, fill } = await getI18n();
+  try {
+    // The page makes the same request, so it is sent once.
+    const run = (await api.rankings(await rankingQuery(searchParams)))
+      .score_run;
+    const format = run.components ? t.formats.overall : label(run.format_name);
+    return {
+      title: fill(t.meta.page, {
+        name: fill(t.rankings.heading, { format }),
+      }),
+    };
+  } catch {
+    return { title: t.meta.rankings };
+  }
 }
 
 /** Sorts a header can apply, and the direction a first click uses. */
@@ -81,6 +117,84 @@ function relink(
   return link(page, [...rest, ...set]);
 }
 
+/** Drops one value of a filter, or every value without one, and the page offset. */
+function unlink(
+  page: RankingPage,
+  kept: [string, string][],
+  keys: string[],
+  value?: string,
+) {
+  return link(
+    page,
+    kept.filter(
+      ([key, set]) =>
+        key !== "offset" &&
+        !(keys.includes(key) && (value === undefined || set === value)),
+    ),
+  );
+}
+
+/**
+ * What an empty page says about its filters: each one as a link that drops it,
+ * and, when every selected type or color must match, a way to match any instead.
+ */
+function emptyHints(
+  page: RankingPage,
+  kept: [string, string][],
+  { t, fill }: I18n,
+): EmptyHints {
+  const values = (key: string) =>
+    kept.filter(([set]) => set === key).map(([, value]) => value);
+  const types = values("type");
+  const colors = values("color");
+  const q = values("q")[0];
+  const everyType = types.length > 1 && values("type_match")[0] === "all";
+  const everyColor = colors.length > 1 && values("color_match")[0] === "all";
+  return {
+    reason: everyType
+      ? t.rankingTable.emptyEveryType
+      : everyColor
+        ? t.rankingTable.emptyEveryColor
+        : undefined,
+    filters: [
+      ...(q
+        ? [
+            {
+              label: fill(t.rankingTable.searchFor, { query: q }),
+              href: unlink(page, kept, ["q", "in"]),
+            },
+          ]
+        : []),
+      ...types.map((type) => ({
+        label: t.cardTypes[type as keyof Messages["cardTypes"]] ?? type,
+        href: unlink(page, kept, ["type"], type),
+      })),
+      ...colors.map((color) => ({
+        label: t.colors[color as keyof Messages["colors"]] ?? color,
+        href: unlink(page, kept, ["color"], color),
+      })),
+    ],
+    loosen: [
+      ...(everyType
+        ? [
+            {
+              label: t.rankingTable.matchAnyType,
+              href: relink(page, kept, { type_match: null }),
+            },
+          ]
+        : []),
+      ...(everyColor
+        ? [
+            {
+              label: t.rankingTable.matchAnyColor,
+              href: relink(page, kept, { color_match: null }),
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
 /** Why a method could not score a run, shown beside it in the grading menu. */
 const unavailable: Record<string, "needsArchetypeLabels" | "needsPlaysets"> = {
   "signature-score": "needsArchetypeLabels",
@@ -115,6 +229,7 @@ function Place({
     <CardImage
       src={card.preview_printing.images[0]?.source_uri ?? null}
       alt={card.name}
+      priority
       featured={first}
       interactive
     />
@@ -170,11 +285,7 @@ export default async function Rankings({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  // Without JavaScript the filters submit as a GET form, so unset fields arrive
-  // as empty values; the API accepts only set ones.
-  const query = new URLSearchParams(
-    [...queryParams(await searchParams)].filter(([, value]) => value !== ""),
-  );
+  const query = await rankingQuery(searchParams);
   const i18n = await getI18n();
   const { t, fill, plural, rich, count } = i18n;
   try {
@@ -187,6 +298,8 @@ export default async function Rankings({
     const signature = method.method_id === "signature-score";
     // The overall run combines every format's run, which its components name.
     const overall = Boolean(run.components);
+    // An earlier run of the format, which rank changes are measured against.
+    const previous = page.previous_score_run_id !== null;
     // A method that scored no card here, e.g. signature without archetype labels.
     const unscored = method.scored_cards === 0;
     const fallback = defaultMethod(run);
@@ -239,9 +352,18 @@ export default async function Rankings({
     const kept = [
       ...chosen,
       ...[...query].filter(([key]) =>
-        ["q", "in", "type", "color", "sort", "order", "view", "limit"].includes(
-          key,
-        ),
+        [
+          "q",
+          "in",
+          "type",
+          "type_match",
+          "color",
+          "color_match",
+          "sort",
+          "order",
+          "view",
+          "limit",
+        ].includes(key),
       ),
     ];
     const filtered = kept.some(([key]) => ["q", "type", "color"].includes(key));
@@ -294,7 +416,8 @@ export default async function Rankings({
                   ? fill(t.rankingTable.trendOver, { period: labels.trend })
                   : t.rankingTable.trend,
               ],
-              ["movement", t.rankings.sortMovement],
+              // Places moved need an earlier run to measure against.
+              ...(previous ? [["movement", t.rankings.sortMovement]] : []),
             ]),
       ] as [string, string][]
     ).map(([key, name]) => ({
@@ -302,13 +425,17 @@ export default async function Rankings({
       label: name,
       order: sortable[key] ?? "desc",
     }));
-    const viewTabs: ViewTab[] = views.map(([view, name]) => ({
-      view,
-      label: t.rankings[name],
-      count: page.view_counts[view as keyof typeof page.view_counts],
-      href: relink(page, kept, { view: view === "all" ? null : view }),
-      current: page.view === view,
-    }));
+    // Risers and fallers need an earlier run to measure against; without one only
+    // "All" remains, with its count.
+    const viewTabs: ViewTab[] = views
+      .filter(([view]) => previous || view === "all")
+      .map(([view, name]) => ({
+        view,
+        label: t.rankings[name],
+        count: page.view_counts[view as keyof typeof page.view_counts],
+        href: relink(page, kept, { view: view === "all" ? null : view }),
+        current: page.view === view,
+      }));
     // A run whose decks name commanders ranks them too, on their own page; the
     // switch keeps the run and the colors, which apply to both.
     const commanderCount =
@@ -567,7 +694,9 @@ export default async function Rankings({
               maxDeckCount={page.max_deck_count}
               catalogSnapshotId={page.catalog_snapshot_id}
               pricesUpdatedAt={page.prices_updated_at}
+              moves={previous}
               clearHref={link(page)}
+              emptyHints={emptyHints(page, kept, i18n)}
               footer={
                 <>
                   <p role="status">

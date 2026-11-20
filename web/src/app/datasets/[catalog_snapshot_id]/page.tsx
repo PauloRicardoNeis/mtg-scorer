@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api";
 import { Problem } from "@/components/problem";
 import { Icon } from "@/components/icon";
 import { getI18n } from "@/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t, fill } = await getI18n();
+  return { title: fill(t.meta.page, { name: t.dataset.eyebrow }) };
+}
 
 export default async function Dataset({
   params,

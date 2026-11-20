@@ -7,7 +7,7 @@ import { useI18n } from "#i18n";
 import type { I18n } from "@/i18n/translator";
 import type { RankedCard, RankingPage } from "@/lib/api";
 import { deltaTone } from "@/lib/format";
-import { edition, rankedCardHref } from "@/lib/urls";
+import { edition, rankedCardHref, thumbnail } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { FormatGradeRows, FormatGrades } from "./format-grades";
 import { Icon } from "./icon";
@@ -36,6 +36,69 @@ export type ColumnLabels = {
   value: string;
 };
 
+export type FilterLink = { label: string; href: string };
+
+/** What an empty page tells the reader about the filters that emptied it. */
+export type EmptyHints = {
+  /** Why no card matched, when one filter explains it. */
+  reason?: string | undefined;
+  /** The applied filters, each a link that drops it. */
+  filters: FilterLink[];
+  /** Ways to loosen the filters short of clearing them all. */
+  loosen: FilterLink[];
+};
+
+/** No card on the page: why, which filters apply, and how to widen them. */
+function NoMatches({
+  hints,
+  clearHref,
+}: {
+  hints: EmptyHints;
+  clearHref: string;
+}) {
+  const { t, fill } = useI18n();
+  return (
+    <div className="ranking-empty">
+      <span className="ranking-empty-icon" aria-hidden="true">
+        <Icon name="search" size={18} />
+      </span>
+      <h3>{t.rankingTable.emptyTitle}</h3>
+      <p>{hints.reason ?? t.rankingTable.emptyBody}</p>
+      {hints.filters.length > 0 && (
+        <ul
+          className="ranking-empty-filters"
+          aria-label={t.rankingTable.appliedFilters}
+        >
+          {hints.filters.map((filter) => (
+            <li key={filter.href}>
+              <Link
+                className="chip"
+                href={filter.href}
+                aria-label={fill(t.rankingTable.removeFilter, {
+                  filter: filter.label,
+                })}
+              >
+                {filter.label}
+                <Icon name="x" size={12} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="ranking-empty-actions">
+        {hints.loosen.map((action) => (
+          <Link key={action.href} className="button" href={action.href}>
+            {action.label}
+          </Link>
+        ))}
+        <Link className="button secondary" href={clearHref}>
+          {t.common.clearFilters}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function score(card: RankedCard, { decimal }: I18n): string | null {
   return card.score === null ? null : decimal(card.score, 1);
 }
@@ -47,7 +110,7 @@ function Thumb({ card }: { card: RankedCard }) {
     <span className="thumb" aria-hidden="true">
       {src && (
         <img
-          src={src}
+          src={thumbnail(src)}
           alt=""
           width={30}
           height={42}
@@ -129,6 +192,7 @@ function Preview({
   method,
   labels,
   href,
+  moves,
 }: {
   card: RankedCard;
   run: Run;
@@ -136,6 +200,7 @@ function Preview({
   method: Method;
   labels: ColumnLabels;
   href: string | null;
+  moves: boolean;
 }) {
   const i18n = useI18n();
   const { t, fill, count, percent, signed, share, lift, decimal } = i18n;
@@ -148,7 +213,7 @@ function Preview({
     <aside className="ranking-preview" aria-label={t.rankingTable.selectedCard}>
       <p className="preview-rank">
         <span>{fill(t.rankingTable.rank, { rank: card.rank })}</span>
-        <RankMove change={card.rank_change} />
+        {moves && <RankMove change={card.rank_change} />}
       </p>
       <div className="preview-art">
         {printing ? (
@@ -307,7 +372,9 @@ export function RankingTable({
   catalogSnapshotId,
   pricesUpdatedAt,
   clearHref,
+  emptyHints = { filters: [], loosen: [] },
   footer,
+  moves = true,
 }: {
   items: RankedCard[];
   run: Run;
@@ -319,7 +386,10 @@ export function RankingTable({
   catalogSnapshotId: string | null;
   pricesUpdatedAt: string | null;
   clearHref: string;
+  emptyHints?: EmptyHints;
   footer: ReactNode;
+  /** Whether an earlier run of the format measures each card's change of rank. */
+  moves?: boolean;
 }) {
   const router = useRouter();
   const i18n = useI18n();
@@ -446,7 +516,7 @@ export function RankingTable({
                     <td className="rank-cell">
                       <span className="stacked">
                         <span className="rank">{card.rank}</span>
-                        <RankMove change={card.rank_change} />
+                        {moves && <RankMove change={card.rank_change} />}
                       </span>
                     </td>
                     <th scope="row" className="card-cell">
@@ -532,13 +602,7 @@ export function RankingTable({
           </table>
         </div>
         {items.length === 0 && (
-          <div className="ranking-empty">
-            <h3>{t.rankingTable.emptyTitle}</h3>
-            <p>{t.rankingTable.emptyBody}</p>
-            <Link className="button secondary" href={clearHref}>
-              {t.common.clearFilters}
-            </Link>
-          </div>
+          <NoMatches hints={emptyHints} clearHref={clearHref} />
         )}
         <div className="ranking-footer">{footer}</div>
       </div>
@@ -550,6 +614,7 @@ export function RankingTable({
           method={method}
           labels={labels}
           href={rankedCardHref(selected, catalogSnapshotId)}
+          moves={moves}
         />
       )}
     </div>

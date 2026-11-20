@@ -14,7 +14,9 @@ public record CatalogQuery(
     String game,
     String colorIdentity,
     List<String> colors,
-    String type,
+    String colorMatch,
+    List<String> types,
+    String typeMatch,
     String sort,
     int limit,
     String snapshot,
@@ -27,14 +29,26 @@ public record CatalogQuery(
   public static final List<String> COLORS = List.of("W", "U", "B", "R", "G", "C");
 
   /** Card types matched on any face's type line, before its subtypes. */
-  public static final Set<String> TYPES =
-      Set.of("creature", "planeswalker", "instant", "sorcery", "artifact", "enchantment", "land");
+  public static final List<String> TYPES =
+      List.of(
+          "creature",
+          "planeswalker",
+          "instant",
+          "sorcery",
+          "artifact",
+          "enchantment",
+          "battle",
+          "kindred",
+          "land");
 
   /**
    * Where the search text is looked for, on any face: names, type lines, rules text, or all of
    * them, the default.
    */
   public static final List<String> SEARCH_IN = List.of("all", "name", "type", "text");
+
+  /** How several selected colors or types combine: a card has any of them, or all of them. */
+  public static final List<String> MATCHES = List.of("any", "all");
 
   public static final Set<String> CARD_PARAMETERS =
       Set.of(
@@ -45,7 +59,9 @@ public record CatalogQuery(
           "game",
           "color_identity",
           "color",
+          "color_match",
           "type",
+          "type_match",
           "sort",
           "limit",
           "catalog_snapshot_id",
@@ -86,8 +102,9 @@ public record CatalogQuery(
     List<String> selected = repeated(input, "color", COLORS.size());
     if (!COLORS.containsAll(selected)) throw CatalogProblem.query("Invalid color.");
     List<String> anyColors = COLORS.stream().filter(selected::contains).toList();
-    String type = scalar(input, "type");
-    if (type != null && !TYPES.contains(type)) throw CatalogProblem.query("Invalid card type.");
+    String colorMatch = match(input, "color_match");
+    List<String> types = types(input);
+    String typeMatch = match(input, "type_match");
     String sort = scalar(input, "sort");
     if (sort != null && !sort.equals("name_asc")) throw CatalogProblem.query("Invalid sort.");
     String size = scalar(input, "limit");
@@ -109,7 +126,9 @@ public record CatalogQuery(
         game,
         colors,
         anyColors,
-        type,
+        colorMatch,
+        types,
+        typeMatch,
         printings ? "original_first" : "name_asc",
         limit,
         snapshot,
@@ -120,8 +139,7 @@ public record CatalogQuery(
     if (!allowed.containsAll(input.keySet()))
       throw CatalogProblem.query("Unknown query parameter.");
     for (var entry : input.entrySet()) {
-      if (!Set.of("set", "rarity", "color").contains(entry.getKey())
-          && entry.getValue().size() != 1)
+      if (!REPEATED.contains(entry.getKey()) && entry.getValue().size() != 1)
         throw CatalogProblem.query("Duplicate scalar parameter.");
     }
   }
@@ -132,6 +150,25 @@ public record CatalogQuery(
     if (in == null) return SEARCH_IN.getFirst();
     if (!SEARCH_IN.contains(in)) throw CatalogProblem.query("Invalid search field.");
     return in;
+  }
+
+  /** The parameters that may repeat; every other one is a scalar. */
+  public static final Set<String> REPEATED = Set.of("set", "rarity", "color", "type");
+
+  /** Card types in the filter's order; a card matches them as {@code type_match} says. */
+  public static List<String> types(Map<String, List<String>> input) {
+    List<String> selected = input.getOrDefault("type", List.of());
+    if (selected.size() > TYPES.size()) throw CatalogProblem.query("Too many type filters.");
+    if (!TYPES.containsAll(selected)) throw CatalogProblem.query("Invalid card type.");
+    return TYPES.stream().filter(selected::contains).toList();
+  }
+
+  /** "any" when absent: a card has at least one selected color or type. */
+  public static String match(Map<String, List<String>> input, String key) {
+    String match = scalar(input, key);
+    if (match == null) return MATCHES.getFirst();
+    if (!MATCHES.contains(match)) throw CatalogProblem.query("Invalid match.");
+    return match;
   }
 
   private static String scalar(Map<String, List<String>> input, String key) {

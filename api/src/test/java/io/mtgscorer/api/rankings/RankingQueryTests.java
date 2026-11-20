@@ -19,7 +19,9 @@ class RankingQueryTests {
     assertThat(query.method()).isNull();
     assertThat(query.q()).isNull();
     assertThat(query.in()).isEqualTo("all");
-    assertThat(query.type()).isNull();
+    assertThat(query.types()).isEmpty();
+    assertThat(query.typeMatch()).isEqualTo("any");
+    assertThat(query.colorMatch()).isEqualTo("any");
     assertThat(query.colors()).isEmpty();
     assertThat(query.sort()).isEqualTo("score");
     assertThat(query.order()).isEqualTo("desc");
@@ -53,8 +55,10 @@ class RankingQueryTests {
                 "max-ratio",
                 "bolt",
                 "text",
-                "instant",
+                List.of("instant"),
+                "any",
                 List.of("W", "R", "C"),
+                "any",
                 "top_cuts",
                 "asc",
                 "all",
@@ -98,7 +102,7 @@ class RankingQueryTests {
             Map.of("method", List.of("Max-Ratio")),
             Map.of("q", List.of("x".repeat(101))),
             Map.of("in", List.of("flavor")),
-            Map.of("type", List.of("battle")),
+            Map.of("type", List.of("tribal")),
             Map.of("color", List.of("X")),
             Map.of("color", List.of("W", "U", "B", "R", "G", "C", "W")),
             Map.of("sort", List.of("grade")),

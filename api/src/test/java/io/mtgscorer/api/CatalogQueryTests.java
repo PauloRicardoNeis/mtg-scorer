@@ -25,18 +25,26 @@ class CatalogQueryTests {
         CatalogQuery.parse(
             Map.of("color", List.of("C", "R", "W", "R"), "type", List.of("land")), false);
     assertThat(colors.colors()).containsExactly("W", "R", "C");
-    assertThat(colors.type()).isEqualTo("land");
+    assertThat(colors.types()).containsExactly("land");
+    assertThat(colors.colorMatch()).isEqualTo("any");
+    assertThat(colors.typeMatch()).isEqualTo("any");
+    var all =
+        CatalogQuery.parse(
+            Map.of("color_match", List.of("all"), "type_match", List.of("all")), false);
+    assertThat(all.colorMatch()).isEqualTo("all");
+    assertThat(all.typeMatch()).isEqualTo("all");
   }
 
   @Test
-  void rejectsUnknownColorsTypesAndTypeLists() {
+  void rejectsUnknownColorsTypesAndMatches() {
     for (var input :
         List.of(
             Map.of("color", List.of("X")),
             Map.of("color", List.of("WU")),
-            Map.of("type", List.of("battle")),
+            Map.of("type", List.of("tribal")),
             Map.of("type", List.of("Creature")),
-            Map.of("type", List.of("land", "creature")))) {
+            Map.of("color_match", List.of("both")),
+            Map.of("type_match", List.of("any", "all")))) {
       assertThatThrownBy(() -> CatalogQuery.parse(input, false)).isInstanceOf(CatalogProblem.class);
     }
     assertThatThrownBy(() -> CatalogQuery.parse(Map.of("type", List.of("land")), true))

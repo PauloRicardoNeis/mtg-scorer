@@ -251,21 +251,11 @@ class RankingRepository {
               query.in(), "(strpos(lower(r.name),:q)>0 OR " + CatalogSql.NAME_MATCH + ")"));
       args.put("q", query.q());
     }
-    if (query.type() != null) {
-      where.add("shown.type_line ~ :typePattern");
-      args.put("typePattern", CatalogSql.typePattern(query.type()));
-    }
-    if (!query.colors().isEmpty()) {
-      // Any selected color matches; cards outside the catalog have unknown colors and never do.
-      List<String> any = new ArrayList<>();
-      List<String> chromatic = query.colors().stream().filter(c -> !c.equals("C")).toList();
-      if (!chromatic.isEmpty()) {
-        any.add("c.colors && string_to_array(:anyColors,',')");
-        args.put("anyColors", String.join(",", chromatic));
-      }
-      if (query.colors().contains("C")) any.add("c.colors='{}'");
-      where.add("(" + String.join(" OR ", any) + ")");
-    }
+    if (!query.types().isEmpty())
+      where.add(CatalogSql.typeFilter(query.types(), query.typeMatch(), args));
+    // Cards outside the catalog have unknown colors and never match one.
+    if (!query.colors().isEmpty())
+      where.add(CatalogSql.colorFilter("c.colors", query.colors(), query.colorMatch(), args));
     if (byView && query.view().equals("risers")) where.add("prev.ranking>r.ranking");
     if (byView && query.view().equals("fallers")) where.add("prev.ranking<r.ranking");
     // Ranks are computed over every scored card before filters, so a filtered row keeps its place.

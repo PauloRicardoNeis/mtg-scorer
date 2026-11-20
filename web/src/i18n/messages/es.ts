@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const es: Messages = {
   meta: {
     title: "MTG Scorer · Explorar cartas",
+    page: "MTG Scorer · {name}",
     description:
-      "Explora un catálogo versionado de cartas de Magic y su conjunto de datos de origen. Acceso de invitado; sin puntuaciones de torneo.",
+      "Ranking de cartas de Magic calificado a partir de listas de mazos de torneos publicadas, por formato y en general, con un catálogo versionado de cartas para explorar.",
     rankings: "MTG Scorer · Ranking de cartas",
     compare: "MTG Scorer · Comparar formatos",
     commanders: "MTG Scorer · Ranking de comandantes",
@@ -51,7 +52,12 @@ export const es: Messages = {
     apply: "Aplicar",
     card: "Carta",
     cardType: "Tipo de carta",
-    allCardTypes: "Todos los tipos de carta",
+    cardTypes: "Tipos de carta",
+    // How several selected colors or types combine.
+    matchAny: "Alguno",
+    matchAll: "Todos",
+    matchAllColors: "Solo cartas con todos los colores elegidos",
+    matchAllTypes: "Solo cartas con todos los tipos elegidos",
     clearFilters: "Borrar filtros",
     colors: "Colores",
     dismiss: "Cerrar",
@@ -69,6 +75,8 @@ export const es: Messages = {
     sorcery: "Conjuros",
     artifact: "Artefactos",
     enchantment: "Encantamientos",
+    battle: "Batallas",
+    kindred: "Afines",
     land: "Tierras",
   },
   colors: {
@@ -125,6 +133,10 @@ export const es: Messages = {
     genericTitle: "No se pudo completar esta solicitud.",
     notFoundBody:
       "No se encontró esta carta, conjunto de datos o cálculo de puntuaciones.",
+    pageNotFoundEyebrow: "Página no encontrada",
+    pageNotFoundTitle: "No hay nada en esta dirección.",
+    pageNotFoundBody:
+      "Puede que el enlace esté mal escrito o desactualizado. Abre el ranking o busca en el catálogo de cartas.",
     archetypeNotFound: "Este arquetipo no está en el metagame del formato.",
     decklistNotFound: "No se encontró esta lista.",
     backToArchetypes: "Volver a los arquetipos",
@@ -477,6 +489,15 @@ export const es: Messages = {
     mostPlayedIn: "Más jugada en",
     emptyTitle: "Ninguna carta clasificada coincide.",
     emptyBody: "Relaja algún filtro o busca otro nombre.",
+    emptyEveryType:
+      "Ninguna carta tiene a la vez todos los tipos elegidos. Acepta cualquiera de ellos o quita uno.",
+    emptyEveryColor:
+      "Ninguna carta tiene a la vez todos los colores elegidos. Acepta cualquiera de ellos o quita uno.",
+    appliedFilters: "Filtros aplicados",
+    removeFilter: "Quitar {filter}",
+    searchFor: "Búsqueda: {query}",
+    matchAnyType: "Cualquier tipo",
+    matchAnyColor: "Cualquier color",
     selectedCard: "Carta seleccionada",
     rank: "Puesto {rank}",
     winRate: "% de victorias",

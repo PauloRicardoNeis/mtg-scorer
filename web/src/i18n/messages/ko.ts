@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ko: Messages = {
   meta: {
     title: "MTG Scorer · 카드 탐색",
+    page: "MTG Scorer · {name}",
     description:
-      "버전이 관리되는 매직 카드 카탈로그와 그 원본 데이터셋을 살펴보세요. 게스트로 이용할 수 있으며 토너먼트 점수는 없습니다.",
+      "공개된 토너먼트 덱리스트로 평가한 매직 카드 랭킹(포맷별·종합)과 살펴볼 수 있는 버전 관리 카드 카탈로그.",
     rankings: "MTG Scorer · 카드 랭킹",
     compare: "MTG Scorer · 포맷 비교",
     commanders: "MTG Scorer · 사령관 랭킹",
@@ -50,7 +51,12 @@ export const ko: Messages = {
     apply: "적용",
     card: "카드",
     cardType: "카드 유형",
-    allCardTypes: "모든 카드 유형",
+    cardTypes: "카드 유형",
+    // How several selected colors or types combine.
+    matchAny: "하나 이상",
+    matchAll: "모두",
+    matchAllColors: "선택한 색을 모두 가진 카드만",
+    matchAllTypes: "선택한 유형을 모두 가진 카드만",
     clearFilters: "필터 초기화",
     colors: "색",
     dismiss: "닫기",
@@ -68,6 +74,8 @@ export const ko: Messages = {
     sorcery: "집중마법",
     artifact: "마법물체",
     enchantment: "부여마법",
+    battle: "전투",
+    kindred: "동족",
     land: "대지",
   },
   colors: {
@@ -121,6 +129,10 @@ export const ko: Messages = {
     genericEyebrow: "이 화면을 열 수 없음",
     genericTitle: "요청을 완료하지 못했습니다.",
     notFoundBody: "카드, 데이터셋 또는 점수 산출 결과를 찾을 수 없습니다.",
+    pageNotFoundEyebrow: "페이지를 찾을 수 없음",
+    pageNotFoundTitle: "이 주소에는 아무것도 없습니다.",
+    pageNotFoundBody:
+      "링크가 잘못 입력되었거나 오래되었을 수 있습니다. 랭킹을 열거나 카드 카탈로그를 검색하세요.",
     archetypeNotFound: "이 아키타입은 이 포맷의 메타게임에 없습니다.",
     decklistNotFound: "이 덱리스트를 찾을 수 없습니다.",
     backToArchetypes: "아키타입으로 돌아가기",
@@ -446,6 +458,15 @@ export const ko: Messages = {
     mostPlayedIn: "주요 아키타입",
     emptyTitle: "일치하는 랭킹 카드가 없습니다.",
     emptyBody: "필터를 완화하거나 다른 이름으로 검색하세요.",
+    emptyEveryType:
+      "선택한 유형을 모두 가진 카드가 없습니다. 하나라도 일치하게 바꾸거나 하나를 빼 보세요.",
+    emptyEveryColor:
+      "선택한 색을 모두 가진 카드가 없습니다. 하나라도 일치하게 바꾸거나 하나를 빼 보세요.",
+    appliedFilters: "적용된 필터",
+    removeFilter: "{filter} 제거",
+    searchFor: "검색: {query}",
+    matchAnyType: "아무 유형",
+    matchAnyColor: "아무 색",
     selectedCard: "선택한 카드",
     rank: "{rank}위",
     winRate: "승률",

@@ -161,11 +161,13 @@ function table(
     catalog = "snap-1",
     method = constructed,
     scored = run.scored_cards,
+    moves = true,
   }: {
     // null is what the page passes when no catalog is joined.
     catalog?: string | null;
     method?: typeof constructed;
     scored?: typeof run.scored_cards;
+    moves?: boolean;
   } = {},
 ) {
   return (
@@ -186,6 +188,7 @@ function table(
       pricesUpdatedAt="2026-09-27T21:05:46.301Z"
       clearHref="/rankings?format=Modern"
       footer={<p role="status">1–3 of 3 ranked cards</p>}
+      moves={moves}
     />
   );
 }
@@ -327,6 +330,17 @@ describe("RankingTable", () => {
       within(cells(/Unlisted/)[1]).getByLabelText("No grade"),
     ).toBeInTheDocument();
     expect(row(/Unlisted/)).toHaveTextContent("Not in this catalog");
+  });
+
+  it("leaves rank changes out when no earlier run measures them", () => {
+    render(table([fire, unlisted], { moves: false }));
+    expect(cells(/Fire/)[0]).toHaveTextContent(/^2$/);
+    expect(cells(/Unlisted/)[0]).toHaveTextContent(/^3$/);
+    const preview = screen.getByRole("complementary", {
+      name: "Selected card",
+    });
+    expect(preview).not.toHaveTextContent("Down 1 place");
+    expect(preview).not.toHaveTextContent("▼");
   });
 
   it("reads a price the API omits as unknown, never NaN", () => {
@@ -634,5 +648,42 @@ describe("RankingTable", () => {
     );
     expect(screen.queryByRole("complementary")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("1–3 of 3");
+  });
+
+  it("names the filters that emptied the page and how to widen them", () => {
+    render(
+      <RankingTable
+        {...table([]).props}
+        emptyHints={{
+          reason: "No card has every selected type at once.",
+          filters: [
+            { label: "Planeswalkers", href: "/rankings?type=sorcery" },
+            { label: "Sorceries", href: "/rankings?type=planeswalker" },
+          ],
+          loosen: [
+            {
+              label: "Match any type",
+              href: "/rankings?type=planeswalker&type=sorcery",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("No card has every selected type at once."),
+    ).toBeInTheDocument();
+    const filters = within(
+      screen.getByRole("list", { name: "Applied filters" }),
+    );
+    expect(
+      filters.getByRole("link", { name: "Remove Planeswalkers" }),
+    ).toHaveAttribute("href", "/rankings?type=sorcery");
+    expect(filters.getAllByRole("link")).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: "Match any type" }),
+    ).toHaveAttribute("href", "/rankings?type=planeswalker&type=sorcery");
+    expect(
+      screen.getByRole("link", { name: "Clear filters" }),
+    ).toBeInTheDocument();
   });
 });

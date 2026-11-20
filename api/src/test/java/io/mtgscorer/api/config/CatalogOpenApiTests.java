@@ -67,9 +67,16 @@ class CatalogOpenApiTests {
     assertThat(cards.get("sort").getSchema().getDefault()).isEqualTo("name_asc");
     assertThat(cards.get("game").getSchema().getEnum())
         .containsExactlyElementsOf(CatalogQuery.GAMES.stream().sorted().toList());
-    assertThat(cards.get("type").getSchema().getEnum())
+    assertThat(cards.get("type").getSchema().getItems().getEnum())
         .containsExactlyElementsOf(CatalogQuery.TYPES.stream().sorted().toList());
+    assertThat(cards.get("type").getSchema().getMaxItems()).isEqualTo(CatalogQuery.TYPES.size());
+    assertThat(cards.get("type").getExplode()).isTrue();
     assertThat(cards.get("type").getDescription()).isNotBlank();
+    for (String match : List.of("color_match", "type_match")) {
+      assertThat(cards.get(match).getSchema().getEnum())
+          .containsExactlyElementsOf(CatalogQuery.MATCHES);
+      assertThat(cards.get(match).getSchema().getDefault()).isEqualTo("any");
+    }
     assertThat(cards.get("color_identity").getSchema().getPattern())
         .isEqualTo("^(C|[WUBRG]{1,5})$");
   }

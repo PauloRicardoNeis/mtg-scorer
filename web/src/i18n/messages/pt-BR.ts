@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ptBR: Messages = {
   meta: {
     title: "MTG Scorer · Descoberta de cards",
+    page: "MTG Scorer · {name}",
     description:
-      "Explore um catálogo versionado de cards de Magic e o conjunto de dados de origem. Acesso de visitante; sem pontuações de torneio.",
+      "Ranking de cards de Magic avaliado a partir de listas de decks de torneios publicadas, por formato e no geral, com um catálogo versionado de cards para explorar.",
     rankings: "MTG Scorer · Ranking de cards",
     compare: "MTG Scorer · Comparar formatos",
     commanders: "MTG Scorer · Ranking de comandantes",
@@ -51,7 +52,12 @@ export const ptBR: Messages = {
     apply: "Aplicar",
     card: "Card",
     cardType: "Tipo de card",
-    allCardTypes: "Todos os tipos de card",
+    cardTypes: "Tipos de card",
+    // How several selected colors or types combine.
+    matchAny: "Qualquer",
+    matchAll: "Todos",
+    matchAllColors: "Só cards com todas as cores escolhidas",
+    matchAllTypes: "Só cards com todos os tipos escolhidos",
     clearFilters: "Limpar filtros",
     colors: "Cores",
     dismiss: "Dispensar",
@@ -69,6 +75,8 @@ export const ptBR: Messages = {
     sorcery: "Feitiços",
     artifact: "Artefatos",
     enchantment: "Encantamentos",
+    battle: "Batalhas",
+    kindred: "Afins",
     land: "Terrenos",
   },
   colors: {
@@ -125,6 +133,10 @@ export const ptBR: Messages = {
     genericTitle: "Não foi possível concluir esta solicitação.",
     notFoundBody:
       "Este card, conjunto de dados ou cálculo de pontuação não foi encontrado.",
+    pageNotFoundEyebrow: "Página não encontrada",
+    pageNotFoundTitle: "Não há nada neste endereço.",
+    pageNotFoundBody:
+      "O link pode estar digitado errado ou desatualizado. Abra o ranking ou pesquise no catálogo de cards.",
     archetypeNotFound: "Este arquétipo não está no metagame do formato.",
     decklistNotFound: "Esta decklist não foi encontrada.",
     backToArchetypes: "Voltar aos arquétipos",
@@ -478,6 +490,15 @@ export const ptBR: Messages = {
     mostPlayedIn: "Mais jogado em",
     emptyTitle: "Nenhum card ranqueado corresponde.",
     emptyBody: "Afrouxe um filtro ou busque outro nome.",
+    emptyEveryType:
+      "Nenhum card tem todos os tipos selecionados ao mesmo tempo. Aceite qualquer um deles ou remova um.",
+    emptyEveryColor:
+      "Nenhum card tem todas as cores selecionadas ao mesmo tempo. Aceite qualquer uma delas ou remova uma.",
+    appliedFilters: "Filtros aplicados",
+    removeFilter: "Remover {filter}",
+    searchFor: "Busca: {query}",
+    matchAnyType: "Qualquer tipo",
+    matchAnyColor: "Qualquer cor",
     selectedCard: "Card selecionado",
     rank: "Posição {rank}",
     winRate: "Taxa de vitória",

@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const ru: Messages = {
   meta: {
     title: "MTG Scorer · Поиск карт",
+    page: "MTG Scorer · {name}",
     description:
-      "Изучайте версионированный каталог карт Magic и его исходный набор данных. Гостевой доступ, без турнирных баллов.",
+      "Рейтинг карт Magic по опубликованным турнирным декам, по форматам и общий, а также версионированный каталог карт для изучения.",
     rankings: "MTG Scorer · Рейтинг карт",
     compare: "MTG Scorer · Сравнение форматов",
     commanders: "MTG Scorer · Рейтинг командиров",
@@ -51,7 +52,12 @@ export const ru: Messages = {
     apply: "Применить",
     card: "Карта",
     cardType: "Тип карты",
-    allCardTypes: "Все типы карт",
+    cardTypes: "Типы карт",
+    // How several selected colors or types combine.
+    matchAny: "Любой",
+    matchAll: "Все",
+    matchAllColors: "Только карты со всеми выбранными цветами",
+    matchAllTypes: "Только карты со всеми выбранными типами",
     clearFilters: "Сбросить фильтры",
     colors: "Цвета",
     dismiss: "Закрыть",
@@ -69,6 +75,8 @@ export const ru: Messages = {
     sorcery: "Волшебства",
     artifact: "Артефакты",
     enchantment: "Чары",
+    battle: "Сражения",
+    kindred: "Родственные",
     land: "Земли",
   },
   colors: {
@@ -125,6 +133,10 @@ export const ru: Messages = {
     genericEyebrow: "Не удалось открыть страницу",
     genericTitle: "Не удалось выполнить запрос.",
     notFoundBody: "Карта, набор данных или расчет баллов не найдены.",
+    pageNotFoundEyebrow: "Страница не найдена",
+    pageNotFoundTitle: "По этому адресу ничего нет.",
+    pageNotFoundBody:
+      "Возможно, ссылка набрана с ошибкой или устарела. Откройте рейтинг или поищите в каталоге карт.",
     archetypeNotFound: "Этого архетипа нет в метагейме формата.",
     decklistNotFound: "Этот список колоды не найден.",
     backToArchetypes: "Назад к архетипам",
@@ -487,6 +499,15 @@ export const ru: Messages = {
     mostPlayedIn: "Чаще всего в",
     emptyTitle: "Нет подходящих карт в рейтинге.",
     emptyBody: "Ослабьте фильтр или поищите другое название.",
+    emptyEveryType:
+      "Ни у одной карты нет сразу всех выбранных типов. Допустите любой из них или уберите один.",
+    emptyEveryColor:
+      "Ни у одной карты нет сразу всех выбранных цветов. Допустите любой из них или уберите один.",
+    appliedFilters: "Применённые фильтры",
+    removeFilter: "Убрать {filter}",
+    searchFor: "Поиск: {query}",
+    matchAnyType: "Любой тип",
+    matchAnyColor: "Любой цвет",
     selectedCard: "Выбранная карта",
     rank: "Место {rank}",
     winRate: "Доля побед",

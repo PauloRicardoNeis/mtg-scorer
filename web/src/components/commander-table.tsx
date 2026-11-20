@@ -5,7 +5,7 @@ import { Fragment, useState, type ReactNode } from "react";
 import { useI18n } from "#i18n";
 import type { CommanderPage, RankedCommander } from "@/lib/api";
 import { deltaTone } from "@/lib/format";
-import { edition, rankedCardHref } from "@/lib/urls";
+import { edition, rankedCardHref, thumbnail } from "@/lib/urls";
 import { CardImage } from "./card-image";
 import { Icon } from "./icon";
 import { ColorPips } from "./mana";
@@ -59,7 +59,7 @@ function Thumbs({ commanders }: { commanders: Commander[] }) {
           <span className="thumb" key={commander.oracle_id}>
             {src && (
               <img
-                src={src}
+                src={thumbnail(src)}
                 alt=""
                 width={30}
                 height={42}
@@ -110,11 +110,13 @@ function Preview({
   run,
   shareLabel,
   catalogSnapshotId,
+  moves,
 }: {
   commander: RankedCommander;
   run: Run;
   shareLabel: string;
   catalogSnapshotId: string | null;
+  moves: boolean;
 }) {
   const { t, fill, plural, count, percent, signed, share, lift } = useI18n();
   const pair = commander.commanders.length > 1;
@@ -122,7 +124,7 @@ function Preview({
     <aside className="ranking-preview" aria-label={t.commanders.selected}>
       <p className="preview-rank">
         <span>{fill(t.rankingTable.rank, { rank: commander.rank })}</span>
-        <RankMove change={commander.rank_change} />
+        {moves && <RankMove change={commander.rank_change} />}
       </p>
       <div className={pair ? "preview-art preview-art-pair" : "preview-art"}>
         {commander.commanders.map((card) =>
@@ -237,6 +239,7 @@ export function CommanderTable({
   catalogSnapshotId,
   clearHref,
   footer,
+  moves = true,
 }: {
   items: RankedCommander[];
   run: Run;
@@ -247,6 +250,8 @@ export function CommanderTable({
   catalogSnapshotId: string | null;
   clearHref: string;
   footer: ReactNode;
+  /** Whether an earlier run of the format measures each commander's change of rank. */
+  moves?: boolean;
 }) {
   const { t, fill, count } = useI18n();
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
@@ -304,7 +309,7 @@ export function CommanderTable({
                     <td className="rank-cell">
                       <span className="stacked">
                         <span className="rank">{commander.rank}</span>
-                        <RankMove change={commander.rank_change} />
+                        {moves && <RankMove change={commander.rank_change} />}
                       </span>
                     </td>
                     <th scope="row" className="card-cell">
@@ -366,6 +371,7 @@ export function CommanderTable({
           run={run}
           shareLabel={shareLabel}
           catalogSnapshotId={catalogSnapshotId}
+          moves={moves}
         />
       )}
     </div>

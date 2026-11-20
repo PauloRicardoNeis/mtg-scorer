@@ -19,7 +19,7 @@ from other sessions; see [Working-tree observations](#working-tree-observations)
 
 | Item | Value | Where it is pinned |
 | --- | --- | --- |
-| Python | 3.12.10, dependencies locked with uv 0.8.22 | `.python-version`, `analytics/uv.lock`, `scripts/demo.py` |
+| Python | 3.12.16, dependencies locked with uv 0.8.22 | `.python-version`, `analytics/uv.lock`, `scripts/demo.py` |
 | Java | 21 (Temurin in CI), Spring Boot 4.1.1, Maven 3.9.16 through Maven Wrapper 3.3.4 | `api/pom.xml` (enforcer `[21,22)`), `api/.mvn/wrapper/maven-wrapper.properties` |
 | Node | 24.14.1, npm 11.11.0 | `.node-version`, `web/package.json` engines, `web/package-lock.json` |
 | Web stack | Next.js 16.3.4, React 19.2.8, TypeScript 5.9.3 | `web/package.json` |
@@ -72,7 +72,7 @@ and 3300 without the stage-3 tests.
 
 ### CI
 
-Since 2026-10-21 (`ci.yml` in the working tree; the first GitHub run is pending)
+Since 2026-10-21 (`ci.yml` on main since 2026-10-22; first run on GitHub the same day)
 the lane has five jobs on `ubuntu-latest`. `python`, `java` and `web` run in
 parallel, each installing only its toolchain and running `demo.py check --only` for
 its layer; `integration` starts the `postgres:17.11` service, installs the Python
@@ -263,6 +263,13 @@ four other sessions editing the same checkout.
 - JaCoCo report generated at 22:37 shows 4 of 633 branches missed (99.4%), below
   the 100% branch floor, from the same in-progress API work. Fixed on 2026-10-22 with two
   CommanderRepository tests.
+- Database and browser stage (2026-10-22, first CI run of the integration job): 5
+  rankings HTTP tests expected the Modern run where the API now opens on the
+  Overall one, and 5 browser steps looked for a method-note link that a card with
+  published decks no longer shows, or for filter controls the hidden filter menu
+  duplicates. Fixed on 2026-10-23 in the tests: format=Modern where the Modern
+  numbers are read, a test for the Overall default, navigation to the dataset page,
+  locators scoped to the Ranking filters toolbar. verify passes locally.
 - A `.coverage` data file at the repository root from a partial run reports 87%;
   it is not the gated number. The gated run writes to `.local/coverage/python`.
 - Parallel sessions in one checkout make local suites fail on each other's

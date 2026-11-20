@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const zhHant: Messages = {
   meta: {
     title: "MTG Scorer · 卡牌探索",
+    page: "MTG Scorer · {name}",
     description:
-      "探索有版本控管的魔法風雲會卡牌目錄及其來源資料集。以訪客身分存取；不含賽事分數。",
+      "依據公開賽事套牌列表評分的魔法風雲會卡牌排名（分賽制及綜合），以及可供瀏覽的版本控管卡牌目錄。",
     rankings: "MTG Scorer · 卡牌排名",
     compare: "MTG Scorer · 比較賽制",
     commanders: "MTG Scorer · 指揮官排名",
@@ -49,7 +50,12 @@ export const zhHant: Messages = {
     apply: "套用",
     card: "卡牌",
     cardType: "卡牌類別",
-    allCardTypes: "所有卡牌類別",
+    cardTypes: "卡牌類別",
+    // How several selected colors or types combine.
+    matchAny: "任一",
+    matchAll: "全部",
+    matchAllColors: "僅顯示具有所有所選顏色的牌",
+    matchAllTypes: "僅顯示具有所有所選類別的牌",
     clearFilters: "清除篩選",
     colors: "顏色",
     dismiss: "關閉",
@@ -67,6 +73,8 @@ export const zhHant: Messages = {
     sorcery: "法術",
     artifact: "神器",
     enchantment: "結界",
+    battle: "戰役",
+    kindred: "親族",
     land: "地",
   },
   colors: {
@@ -120,6 +128,9 @@ export const zhHant: Messages = {
     genericEyebrow: "無法開啟此畫面",
     genericTitle: "無法完成此要求。",
     notFoundBody: "找不到這張卡牌、資料集或評分批次。",
+    pageNotFoundEyebrow: "找不到頁面",
+    pageNotFoundTitle: "此網址下沒有內容。",
+    pageNotFoundBody: "連結可能輸入錯誤或已過期。請開啟排名，或搜尋卡牌目錄。",
     archetypeNotFound: "這個套牌原型不在此賽制的環境中。",
     decklistNotFound: "找不到這份牌表。",
     backToArchetypes: "返回套牌原型",
@@ -439,6 +450,15 @@ export const zhHant: Messages = {
     mostPlayedIn: "最常用於",
     emptyTitle: "沒有符合的已排名卡牌。",
     emptyBody: "放寬篩選條件，或搜尋其他名稱。",
+    emptyEveryType:
+      "沒有卡牌同時具備所選的全部類別。改為符合任一類別，或移除一個。",
+    emptyEveryColor:
+      "沒有卡牌同時具備所選的全部顏色。改為符合任一顏色，或移除一個。",
+    appliedFilters: "已套用的篩選",
+    removeFilter: "移除{filter}",
+    searchFor: "搜尋：{query}",
+    matchAnyType: "任一類別",
+    matchAnyColor: "任一顏色",
     selectedCard: "已選卡牌",
     rank: "第{rank}名",
     winRate: "勝率",

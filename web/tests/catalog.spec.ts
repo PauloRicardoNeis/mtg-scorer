@@ -96,8 +96,11 @@ test("guest filters, faces, source dataset, shareable URL and keyboard access", 
     page.getByRole("heading", { name: "Eligible printings" }),
   ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  // A card with published decks shows them where the method note used to be, so the
+  // site navigation leads to the dataset page; /datasets redirects to the active snapshot.
   await page
-    .getByRole("link", { name: "Inspect source and methodology" })
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: "Methodology" })
     .click();
   await expect(page).toHaveURL(new RegExp(`/datasets/${snapshot}$`));
   await expect(page.getByText("7 / 8", { exact: true })).toBeVisible();
@@ -155,8 +158,10 @@ test("color and card type filters, with cost and type on tiles", async ({
   // Labels toggle the visually hidden checkboxes, as a pointer user would.
   await page.getByTitle("Red", { exact: true }).click();
   await page.getByTitle("Blue", { exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Red" })).toBeChecked();
-  await page.getByLabel("Card type").selectOption("instant");
+  await expect(
+    page.getByRole("checkbox", { name: "Red", exact: true }),
+  ).toBeChecked();
+  await page.getByTitle("Instants", { exact: true }).click();
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(page).toHaveURL(/color=U&color=R&type=instant/);
   for (const name of [
@@ -170,9 +175,10 @@ test("color and card type filters, with cost and type on tiles", async ({
   // The selection survives a reload of the shareable URL.
   await page.reload();
   await expect(page.getByRole("checkbox", { name: "Blue" })).toBeChecked();
-  await expect(page.getByLabel("Card type")).toHaveValue("instant");
+  await expect(page.getByRole("checkbox", { name: "Instants" })).toBeChecked();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByLabel("Card type").selectOption("land");
+  await page.getByTitle("Instants", { exact: true }).click();
+  await page.getByTitle("Lands", { exact: true }).click();
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(
     page.getByRole("link", {
@@ -253,9 +259,8 @@ test("responsive discovery, loading feedback and database failure retry", async 
     path: "test-results/detail-mobile.png",
     fullPage: true,
   });
-  await page
-    .getByRole("link", { name: "Inspect source and methodology" })
-    .click();
+  // The dataset route redirects to the active snapshot's page.
+  await page.goto("/datasets");
   await expect(page.getByText("7 / 8", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(

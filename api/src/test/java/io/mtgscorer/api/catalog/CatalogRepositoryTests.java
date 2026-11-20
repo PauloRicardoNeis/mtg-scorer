@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -200,6 +201,40 @@ class CatalogRepositoryTests {
     assertThat(typeMatches("land", "Sorcery // Land")).isTrue();
     assertThat(typeMatches("land", "Snow Creature — Island Spirit")).isFalse();
     assertThat(typeMatches("planeswalker", "Legendary Planeswalker — Jace")).isTrue();
+    assertThat(typeMatches("battle", "Battle — Siege")).isTrue();
+    assertThat(typeMatches("kindred", "Kindred Instant — Faerie")).isTrue();
+    assertThat(typeMatches("kindred", "Creature — Kindred Spirit")).isFalse();
+  }
+
+  @Test
+  void severalTypesMatchAnyOneOfThemOrEveryOne() {
+    repository.search("catalog-a", cards("type", "artifact", "type", "creature"), null);
+    verify(jdbc).query(sql.capture(), args.capture(), cardRows.capture());
+    assertThat(sql.getValue()).contains("shown.type_line ~ :typePattern");
+    assertThat(args.getValue())
+        .containsEntry("typePattern", "(^|//)[^—/]*\\m(Creature|Artifact)\\M");
+
+    repository.search(
+        "catalog-a", cards("type", "artifact", "type", "creature", "type_match", "all"), null);
+    verify(jdbc, times(2)).query(sql.capture(), args.capture(), cardRows.capture());
+    assertThat(sql.getValue())
+        .contains("(shown.type_line ~ :typePattern0 AND shown.type_line ~ :typePattern1)");
+    assertThat(args.getValue())
+        .containsEntry("typePattern0", "(^|//)[^—/]*\\mCreature\\M")
+        .containsEntry("typePattern1", "(^|//)[^—/]*\\mArtifact\\M");
+  }
+
+  @Test
+  void severalColorsMatchAnyOneOfThemOrEveryOne() {
+    repository.search("catalog-a", cards("color", "W", "color", "U"), null);
+    verify(jdbc).query(sql.capture(), args.capture(), cardRows.capture());
+    assertThat(sql.getValue()).contains("(c.colors && string_to_array(:anyColors,','))");
+    assertThat(args.getValue()).containsEntry("anyColors", "W,U");
+
+    repository.search("catalog-a", cards("color", "W", "color", "U", "color_match", "all"), null);
+    verify(jdbc, times(2)).query(sql.capture(), args.capture(), cardRows.capture());
+    assertThat(sql.getValue()).contains("(c.colors @> string_to_array(:allColors,','))");
+    assertThat(args.getValue()).containsEntry("allColors", "W,U");
   }
 
   @Test

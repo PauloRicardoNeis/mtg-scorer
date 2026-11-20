@@ -75,6 +75,14 @@ export function edition(printing: Printing): string {
   return `${printing.set_name} #${printing.collector_number} (${printing.language.toUpperCase()})`;
 }
 
+/**
+ * A Scryfall scan at its small size (146×204) for row thumbnails, instead of the 488×680
+ * normal one; any other address is returned as it is.
+ */
+export function thumbnail(uri: string): string {
+  return uri.replace(/^(https:\/\/cards\.scryfall\.io\/)normal\//, "$1small/");
+}
+
 /** A ranked card's catalog page, pinned to the catalog the ranking joined; null when it is not in it. */
 export function rankedCardHref(
   card: Pick<RankedCard, "oracle_id" | "preview_printing">,

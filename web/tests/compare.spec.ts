@@ -119,7 +119,9 @@ test("the comparison grades by the reader's grading and carries it back to ranki
   await expect(page).toHaveURL(
     /\/rankings\?format=Modern&method=signature-score$/,
   );
-  await expect(page.getByLabel("Grading")).toHaveValue("signature-score");
+  await expect(
+    page.getByRole("form", { name: "Ranking filters" }).getByLabel("Grading"),
+  ).toHaveValue("signature-score");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 

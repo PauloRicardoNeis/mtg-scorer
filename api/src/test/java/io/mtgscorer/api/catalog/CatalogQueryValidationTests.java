@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.mtgscorer.api.error.CatalogProblem;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +30,9 @@ class CatalogQueryValidationTests {
                 null,
                 null,
                 List.of(),
-                null,
+                "any",
+                List.of(),
+                "any",
                 "name_asc",
                 24,
                 null,
@@ -61,7 +64,9 @@ class CatalogQueryValidationTests {
                 "arena",
                 null,
                 List.of(),
-                null,
+                "any",
+                List.of(),
+                "any",
                 "original_first",
                 10,
                 "catalog-abc",
@@ -140,8 +145,14 @@ class CatalogQueryValidationTests {
 
   @Test
   void typeIsOneOfTheSupportedCardTypes() {
-    for (String type : CatalogQuery.TYPES) assertThat(cards("type", type).type()).isEqualTo(type);
+    for (String type : CatalogQuery.TYPES)
+      assertThat(cards("type", type).types()).containsExactly(type);
+    assertThat(cards("type", "land", "type", "creature").types())
+        .containsExactly("creature", "land");
     assertInvalidQuery(() -> cards("type", "tribal"), "Invalid card type.");
+    List<String> tooMany = new ArrayList<>(CatalogQuery.TYPES);
+    tooMany.add("creature");
+    assertInvalidQuery(() -> cards(repeated("type", tooMany)), "Too many type filters.");
   }
 
   @Test
@@ -177,7 +188,8 @@ class CatalogQueryValidationTests {
             "in",
             "game",
             "color_identity",
-            "type",
+            "color_match",
+            "type_match",
             "sort",
             "limit",
             "catalog_snapshot_id",

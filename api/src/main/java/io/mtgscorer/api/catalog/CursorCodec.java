@@ -39,7 +39,11 @@ public final class CursorCodec {
     filters.put("color_identity", query.colorIdentity());
     // Added later: hashed only when set, so earlier cursors keep their fingerprint.
     if (!query.colors().isEmpty()) filters.put("colors", query.colors());
-    if (query.type() != null) filters.put("type", query.type());
+    // One type hashes as it did before several could be chosen; the match only off its default.
+    if (query.types().size() == 1) filters.put("type", query.types().getFirst());
+    if (query.types().size() > 1) filters.put("type", query.types());
+    if (!query.colorMatch().equals("any")) filters.put("color_match", query.colorMatch());
+    if (!query.typeMatch().equals("any")) filters.put("type_match", query.typeMatch());
     // Where the text is searched matters only with text, and only off the default.
     if (query.q() != null && !query.in().equals("all")) filters.put("in", query.in());
     try {

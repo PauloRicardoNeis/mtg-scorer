@@ -157,6 +157,10 @@ body {
 .header-search input:not(:placeholder-shown) + .key {
   display: none;
 }
+/* Phones open the search from this button instead (see the 640px rules). */
+.header-search-toggle {
+  display: none;
+}
 /* Page frame: bands run full width, everything else sits in the content column. */
 main {
   flex: 1;
@@ -898,6 +902,82 @@ select[multiple] option:checked {
 .color-filter > label:has(:checked) .filter-symbol {
   opacity: 1;
   filter: drop-shadow(0 0 4px var(--glow));
+}
+/* Type filter: the card type symbols, drawn in the text color. */
+.type-filter > label {
+  padding: 0 var(--space-2);
+}
+.type-symbol {
+  fill: currentColor;
+  filter: none;
+}
+.type-filter > label:hover .type-symbol {
+  opacity: 0.8;
+}
+.type-filter > label:has(:checked) .type-symbol {
+  opacity: 1;
+}
+/* The color and type filters share a row, each followed by its any/all toggle. */
+.symbol-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px var(--space-4);
+}
+.symbol-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1_5);
+}
+.match-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 32px;
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-md);
+  color: var(--text-3);
+  font-family: var(--font-sans);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  letter-spacing: normal;
+  line-height: 1;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.match-toggle:hover {
+  background: var(--segment-hover);
+  color: var(--text-2);
+}
+.match-toggle:has(:checked) {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+.match-toggle:has(:focus-visible) {
+  box-shadow: var(--focus-ring-inset);
+}
+.match-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.match-toggle .match-all,
+.match-toggle:has(:checked) .match-any {
+  display: none;
+}
+.match-toggle:has(:checked) .match-all {
+  display: inline;
 }
 
 /* Primitives: underline tabs. Each tab is a link; the current one is marked. */
@@ -2448,10 +2528,48 @@ fieldset.gallery-stack {
     display: none;
   }
 }
-/* Phones keep the existing flow: no header search and no sticky toolbar. */
+/* Phones: the links scroll sideways instead of wrapping out of sight, the search
+   opens from a button as a field under the header, and the toolbar does not stick. */
 @media (max-width: 640px) {
-  .header-search {
+  .site-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* The padding lets the last link scroll clear of the faded edge. */
+    padding-inline-end: 24px;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 calc(100% - 24px),
+      transparent
+    );
+    mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent);
+    scrollbar-width: none;
+  }
+  .site-nav::-webkit-scrollbar {
     display: none;
+  }
+  .header-search {
+    flex: none;
+    min-width: 0;
+  }
+  .header-search-toggle {
+    display: inline-flex;
+  }
+  .header-search .field {
+    display: none;
+  }
+  .header-search.open .header-search-toggle {
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .header-search.open .field {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: var(--page-pad);
+    left: var(--page-pad);
+    display: flex;
+    height: 42px;
+    box-shadow: var(--shadow-pop);
   }
   .toolbar {
     position: static;
@@ -2934,6 +3052,10 @@ fieldset.gallery-stack {
     grid-column: auto;
   }
 }
+/* Colors and types keep to one row, as in the toolbar. */
+.filter-menu-body .symbol-filters {
+  grid-column: 1 / -1;
+}
 .filter-menu-body .segmented {
   display: flex;
 }
@@ -3415,6 +3537,44 @@ tr[data-selected] .card-name {
   height: 32px;
   padding: 0 13px;
   font-size: var(--fs-small);
+}
+.ranking-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line-1);
+  border-radius: 50%;
+  color: var(--text-3);
+}
+/* Each applied filter is a link that drops it. */
+.ranking-empty-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.ranking-empty-filters .chip {
+  border-color: var(--sigil-line);
+  background: var(--sigil-wash);
+  color: var(--text-1);
+  text-decoration: none;
+}
+.ranking-empty-filters .chip:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.ranking-empty-filters .chip svg {
+  color: var(--text-3);
+}
+.ranking-empty-filters .chip:hover svg {
+  color: var(--text-1);
+}
+.ranking-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 .ranking-footer {
   display: flex;

@@ -4,8 +4,9 @@
 export const en = {
   meta: {
     title: "MTG Scorer · Card discovery",
+    page: "MTG Scorer · {name}",
     description:
-      "Explore a versioned Magic card catalog and its source dataset. Guest access; no tournament scores.",
+      "Magic card rankings graded from published tournament decklists, by format and overall, with a versioned card catalog to explore.",
     rankings: "MTG Scorer · Card rankings",
     compare: "MTG Scorer · Compare formats",
     commanders: "MTG Scorer · Commander rankings",
@@ -51,7 +52,12 @@ export const en = {
     apply: "Apply",
     card: "Card",
     cardType: "Card type",
-    allCardTypes: "All card types",
+    cardTypes: "Card types",
+    // How several selected colors or types combine.
+    matchAny: "Any",
+    matchAll: "All",
+    matchAllColors: "Only cards with every selected color",
+    matchAllTypes: "Only cards with every selected type",
     clearFilters: "Clear filters",
     colors: "Colors",
     dismiss: "Dismiss",
@@ -70,6 +76,8 @@ export const en = {
     sorcery: "Sorceries",
     artifact: "Artifacts",
     enchantment: "Enchantments",
+    battle: "Battles",
+    kindred: "Kindred",
     land: "Lands",
   },
   colors: {
@@ -121,6 +129,10 @@ export const en = {
     genericEyebrow: "Unable to open this view",
     genericTitle: "This request could not be completed.",
     notFoundBody: "This card, dataset or score run could not be found.",
+    pageNotFoundEyebrow: "Page not found",
+    pageNotFoundTitle: "Nothing lives at this address.",
+    pageNotFoundBody:
+      "The link may be mistyped or out of date. Open the rankings or search the card catalog.",
     archetypeNotFound: "This archetype isn't in the format's metagame.",
     decklistNotFound: "This decklist could not be found.",
     backToArchetypes: "Back to archetypes",
@@ -422,6 +434,15 @@ export const en = {
     mostPlayedIn: "Most played in",
     emptyTitle: "No ranked cards match.",
     emptyBody: "Loosen a filter or search a different name.",
+    emptyEveryType:
+      "No card has every selected type at once. Match any of them, or drop one.",
+    emptyEveryColor:
+      "No card has every selected color at once. Match any of them, or drop one.",
+    appliedFilters: "Applied filters",
+    removeFilter: "Remove {filter}",
+    searchFor: "Search: {query}",
+    matchAnyType: "Match any type",
+    matchAnyColor: "Match any color",
     selectedCard: "Selected card",
     rank: "Rank {rank}",
     winRate: "Win rate",

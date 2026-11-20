@@ -8,6 +8,7 @@ import {
   printingParams,
   queryParams,
   rankedCardHref,
+  thumbnail,
 } from "./urls";
 
 describe("queryParams", () => {
@@ -171,5 +172,27 @@ describe("rankedCardHref", () => {
       null,
     );
     expect(rankedCardHref(card, null)).toBe(null);
+  });
+});
+
+describe("thumbnail", () => {
+  it("asks Scryfall for the small scan", () => {
+    expect(
+      thumbnail(
+        "https://cards.scryfall.io/normal/front/6/3/63cda4a0.jpg?1783931023",
+      ),
+    ).toBe("https://cards.scryfall.io/small/front/6/3/63cda4a0.jpg?1783931023");
+  });
+
+  it("leaves other addresses and sizes alone", () => {
+    expect(thumbnail("https://cards.example/m11/149")).toBe(
+      "https://cards.example/m11/149",
+    );
+    expect(
+      thumbnail("https://cards.scryfall.io/large/front/6/3/63cda4a0.jpg"),
+    ).toBe("https://cards.scryfall.io/large/front/6/3/63cda4a0.jpg");
+    expect(
+      thumbnail("https://example.com/https://cards.scryfall.io/normal/x.jpg"),
+    ).toBe("https://example.com/https://cards.scryfall.io/normal/x.jpg");
   });
 });

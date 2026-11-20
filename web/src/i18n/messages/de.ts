@@ -4,8 +4,9 @@ import type { Messages } from "../types";
 export const de: Messages = {
   meta: {
     title: "MTG Scorer · Karten entdecken",
+    page: "MTG Scorer · {name}",
     description:
-      "Erkunde einen versionierten Magic-Kartenkatalog und seinen Quelldatensatz. Gastzugang; keine Turnierwertungen.",
+      "Magic-Kartenranglisten, bewertet aus veröffentlichten Turnier-Decklisten, je Format und insgesamt, dazu ein versionierter Kartenkatalog zum Erkunden.",
     rankings: "MTG Scorer · Kartenranglisten",
     compare: "MTG Scorer · Formate vergleichen",
     commanders: "MTG Scorer · Commander-Ranglisten",
@@ -50,7 +51,12 @@ export const de: Messages = {
     apply: "Anwenden",
     card: "Karte",
     cardType: "Kartentyp",
-    allCardTypes: "Alle Kartentypen",
+    cardTypes: "Kartentypen",
+    // How several selected colors or types combine.
+    matchAny: "Eine",
+    matchAll: "Alle",
+    matchAllColors: "Nur Karten mit allen gewählten Farben",
+    matchAllTypes: "Nur Karten mit allen gewählten Typen",
     clearFilters: "Filter zurücksetzen",
     colors: "Farben",
     dismiss: "Schließen",
@@ -68,6 +74,8 @@ export const de: Messages = {
     sorcery: "Hexereien",
     artifact: "Artefakte",
     enchantment: "Verzauberungen",
+    battle: "Schlachten",
+    kindred: "Sippen",
     land: "Länder",
   },
   colors: {
@@ -124,6 +132,10 @@ export const de: Messages = {
     genericTitle: "Diese Anfrage konnte nicht abgeschlossen werden.",
     notFoundBody:
       "Diese Karte, dieser Datensatz oder dieser Wertungslauf wurde nicht gefunden.",
+    pageNotFoundEyebrow: "Seite nicht gefunden",
+    pageNotFoundTitle: "Unter dieser Adresse gibt es nichts.",
+    pageNotFoundBody:
+      "Der Link ist vielleicht falsch geschrieben oder veraltet. Öffne die Ranglisten oder durchsuche den Kartenkatalog.",
     archetypeNotFound: "Dieser Archetyp ist nicht im Metagame dieses Formats.",
     decklistNotFound: "Diese Deckliste wurde nicht gefunden.",
     backToArchetypes: "Zurück zu den Archetypen",
@@ -463,6 +475,15 @@ export const de: Messages = {
     mostPlayedIn: "Meistgespielt in",
     emptyTitle: "Keine gewerteten Karten gefunden.",
     emptyBody: "Lockere einen Filter oder suche nach einem anderen Namen.",
+    emptyEveryType:
+      "Keine Karte hat alle gewählten Typen zugleich. Lass einen davon genügen oder entferne einen.",
+    emptyEveryColor:
+      "Keine Karte hat alle gewählten Farben zugleich. Lass eine davon genügen oder entferne eine.",
+    appliedFilters: "Aktive Filter",
+    removeFilter: "{filter} entfernen",
+    searchFor: "Suche: {query}",
+    matchAnyType: "Beliebiger Typ",
+    matchAnyColor: "Beliebige Farbe",
     selectedCard: "Ausgewählte Karte",
     rank: "Rang {rank}",
     winRate: "Siegquote",
