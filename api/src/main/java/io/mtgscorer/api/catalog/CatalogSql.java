@@ -1,5 +1,9 @@
 package io.mtgscorer.api.catalog;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 /**
  * SQL fragments over published catalog views, shared by every module that shows catalog cards. Each
  * expects a published card aliased {@code c} and, for printings, a printing aliased {@code p}.
@@ -86,7 +90,42 @@ public final class CatalogSql {
   }
 
   /** "creature" → a match for Creature before the subtype dash on any face of a type line. */
-  public static String typePattern(String type) {
-    return "(^|//)[^—/]*\\m" + Character.toUpperCase(type.charAt(0)) + type.substring(1) + "\\M";
+  public static String typePattern(List<String> types) {
+    List<String> names =
+        types.stream().map(t -> Character.toUpperCase(t.charAt(0)) + t.substring(1)).toList();
+    String name = names.size() == 1 ? names.getFirst() : "(" + String.join("|", names) + ")";
+    return "(^|//)[^—/]*\\m" + name + "\\M";
+  }
+
+  /** Selected types on the shown type line: any one of them, or every one. */
+  public static String typeFilter(List<String> types, String match, Map<String, Object> args) {
+    if (match.equals("any")) {
+      args.put("typePattern", typePattern(types));
+      return "shown.type_line ~ :typePattern";
+    }
+    List<String> all = new ArrayList<>();
+    for (int i = 0; i < types.size(); i++) {
+      all.add("shown.type_line ~ :typePattern" + i);
+      args.put("typePattern" + i, typePattern(List.of(types.get(i))));
+    }
+    return "(" + String.join(" AND ", all) + ")";
+  }
+
+  /**
+   * Selected colors on a color array: any one of them, or every one. C is a known colorless card,
+   * so with all it excludes every other color; unknown colors (null) never match.
+   */
+  public static String colorFilter(
+      String column, List<String> colors, String match, Map<String, Object> args) {
+    List<String> chromatic = colors.stream().filter(c -> !c.equals("C")).toList();
+    List<String> parts = new ArrayList<>();
+    if (!chromatic.isEmpty()) {
+      boolean any = match.equals("any");
+      String key = any ? "anyColors" : "allColors";
+      parts.add(column + (any ? " && " : " @> ") + "string_to_array(:" + key + ",',')");
+      args.put(key, String.join(",", chromatic));
+    }
+    if (colors.contains("C")) parts.add(column + "='{}'");
+    return "(" + String.join(match.equals("any") ? " OR " : " AND ", parts) + ")";
   }
 }

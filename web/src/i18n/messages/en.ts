@@ -52,7 +52,12 @@ export const en = {
     apply: "Apply",
     card: "Card",
     cardType: "Card type",
-    allCardTypes: "All card types",
+    cardTypes: "Card types",
+    // How several selected colors or types combine.
+    matchAny: "Any",
+    matchAll: "All",
+    matchAllColors: "Only cards with every selected color",
+    matchAllTypes: "Only cards with every selected type",
     clearFilters: "Clear filters",
     colors: "Colors",
     dismiss: "Dismiss",
@@ -71,6 +76,8 @@ export const en = {
     sorcery: "Sorceries",
     artifact: "Artifacts",
     enchantment: "Enchantments",
+    battle: "Battles",
+    kindred: "Kindred",
     land: "Lands",
   },
   colors: {
@@ -427,6 +434,15 @@ export const en = {
     mostPlayedIn: "Most played in",
     emptyTitle: "No ranked cards match.",
     emptyBody: "Loosen a filter or search a different name.",
+    emptyEveryType:
+      "No card has every selected type at once. Match any of them, or drop one.",
+    emptyEveryColor:
+      "No card has every selected color at once. Match any of them, or drop one.",
+    appliedFilters: "Applied filters",
+    removeFilter: "Remove {filter}",
+    searchFor: "Search: {query}",
+    matchAnyType: "Match any type",
+    matchAnyColor: "Match any color",
     selectedCard: "Selected card",
     rank: "Rank {rank}",
     winRate: "Win rate",

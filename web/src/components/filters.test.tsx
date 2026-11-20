@@ -47,7 +47,6 @@ describe("Filters", () => {
       ).toHaveValue("");
       for (const box of screen.getAllByRole("checkbox"))
         expect(box).not.toBeChecked();
-      expect(select("Card type")).toHaveValue("");
       expect(selectedValues(select("Sets"))).toEqual([]);
       expect(selectedValues(select("Rarity"))).toEqual([]);
       expect(select("Color identity")).toHaveValue("");
@@ -60,7 +59,7 @@ describe("Filters", () => {
       render(
         <Filters
           snapshot={snapshot}
-          query="q=Bolt&in=name&color=R&color=C&type=instant&set=m11&set=lea&rarity=rare&rarity=mythic&color_identity=WU&game=arena&limit=50"
+          query="q=Bolt&in=name&color=R&color=C&color_match=all&type=instant&set=m11&set=lea&rarity=rare&rarity=mythic&color_identity=WU&game=arena&limit=50"
         />,
       );
       expect(
@@ -70,7 +69,18 @@ describe("Filters", () => {
       expect(screen.getByRole("checkbox", { name: "Red" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Colorless" })).toBeChecked();
       expect(screen.getByRole("checkbox", { name: "Blue" })).not.toBeChecked();
-      expect(select("Card type")).toHaveValue("instant");
+      expect(screen.getByRole("checkbox", { name: "Instants" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Lands" })).not.toBeChecked();
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Only cards with every selected color",
+        }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", {
+          name: "Only cards with every selected type",
+        }),
+      ).not.toBeChecked();
       expect(selectedValues(select("Sets"))).toEqual(["m11", "lea"]);
       expect(selectedValues(select("Rarity"))).toEqual(["rare", "mythic"]);
       expect(select("Color identity")).toHaveValue("WU");
@@ -89,14 +99,20 @@ describe("Filters", () => {
   describe("options", () => {
     it("offers every card type", () => {
       render(<Filters snapshot={snapshot} query="" />);
-      expect(optionLabels(select("Card type"))).toEqual([
-        "All card types",
+      const types = within(screen.getByRole("group", { name: "Card types" }));
+      expect(
+        types
+          .getAllByRole("checkbox")
+          .map((box) => box.closest("label")!.title),
+      ).toEqual([
         "Creatures",
         "Planeswalkers",
         "Instants",
         "Sorceries",
         "Artifacts",
         "Enchantments",
+        "Battles",
+        "Kindred",
         "Lands",
       ]);
     });
@@ -226,14 +242,20 @@ describe("Filters", () => {
       );
       await user.click(screen.getByRole("checkbox", { name: "Blue" }));
       await user.click(screen.getByRole("checkbox", { name: "Black" }));
-      await user.selectOptions(select("Card type"), "Creatures");
+      await user.click(screen.getByRole("checkbox", { name: "Creatures" }));
+      await user.click(screen.getByRole("checkbox", { name: "Artifacts" }));
+      await user.click(
+        screen.getByRole("checkbox", {
+          name: "Only cards with every selected type",
+        }),
+      );
       await user.selectOptions(select("Sets"), ["Magic 2011 (M11)"]);
       await user.selectOptions(select("Game"), "Paper");
       await user.click(screen.getByRole("button", { name: "Find cards" }));
 
       expect(router.push).toHaveBeenCalledTimes(1);
       expect(router.push).toHaveBeenCalledWith(
-        "/cards?q=%C3%86ther+%26+co&color=U&color=B&type=creature&catalog_snapshot_id=snap-1&set=m11&game=paper&limit=24",
+        "/cards?q=%C3%86ther+%26+co&color=U&color=B&type=creature&type=artifact&type_match=all&catalog_snapshot_id=snap-1&set=m11&game=paper&limit=24",
       );
     });
 

@@ -52,7 +52,12 @@ export const fr: Messages = {
     apply: "Appliquer",
     card: "Carte",
     cardType: "Type de carte",
-    allCardTypes: "Tous les types de carte",
+    cardTypes: "Types de carte",
+    // How several selected colors or types combine.
+    matchAny: "Un",
+    matchAll: "Tous",
+    matchAllColors: "Seulement les cartes de toutes les couleurs choisies",
+    matchAllTypes: "Seulement les cartes de tous les types choisis",
     clearFilters: "Effacer les filtres",
     colors: "Couleurs",
     dismiss: "Fermer",
@@ -70,6 +75,8 @@ export const fr: Messages = {
     sorcery: "Rituels",
     artifact: "Artefacts",
     enchantment: "Enchantements",
+    battle: "Batailles",
+    kindred: "Parentés",
     land: "Terrains",
   },
   colors: {
@@ -483,6 +490,15 @@ export const fr: Messages = {
     mostPlayedIn: "Plus jouée dans",
     emptyTitle: "Aucune carte classée ne correspond.",
     emptyBody: "Assouplissez un filtre ou cherchez un autre nom.",
+    emptyEveryType:
+      "Aucune carte n’a tous les types choisis à la fois. Acceptez l’un d’eux ou retirez-en un.",
+    emptyEveryColor:
+      "Aucune carte n’a toutes les couleurs choisies à la fois. Acceptez l’une d’elles ou retirez-en une.",
+    appliedFilters: "Filtres appliqués",
+    removeFilter: "Retirer {filter}",
+    searchFor: "Recherche : {query}",
+    matchAnyType: "N’importe quel type",
+    matchAnyColor: "N’importe quelle couleur",
     selectedCard: "Carte sélectionnée",
     rank: "Rang {rank}",
     winRate: "Taux de victoire",

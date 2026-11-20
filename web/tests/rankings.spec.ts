@@ -118,9 +118,9 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   await page.goto("/rankings?format=Modern");
   // The filter menu repeats the toolbar's controls while hidden, so scope to the toolbar.
   const toolbar = page.getByRole("form", { name: "Ranking filters" });
-  const type = toolbar.getByLabel("Card type");
+  const type = toolbar.getByRole("checkbox", { name: "Instants" });
   await type.focus();
-  await type.selectOption("instant");
+  await type.press("Space");
   await expect(page).toHaveURL(/type=instant/);
   // The toolbar is not rebuilt, so the control keeps focus.
   await expect(type).toBeFocused();
@@ -136,7 +136,7 @@ test("filters apply at once and keep overall ranks, and a card opens its catalog
   await expect(page).toHaveURL(/q=bruna/);
   await expect(page).toHaveURL(/type=instant/);
   await expect(results(page)).toHaveText("No ranked cards match");
-  await type.selectOption("");
+  await type.press("Space");
   await expect(results(page)).toHaveText("1–1 of 1 ranked card");
   await expect(search(page)).toHaveValue("bruna");
   await page

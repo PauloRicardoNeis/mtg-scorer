@@ -52,7 +52,12 @@ export const ru: Messages = {
     apply: "Применить",
     card: "Карта",
     cardType: "Тип карты",
-    allCardTypes: "Все типы карт",
+    cardTypes: "Типы карт",
+    // How several selected colors or types combine.
+    matchAny: "Любой",
+    matchAll: "Все",
+    matchAllColors: "Только карты со всеми выбранными цветами",
+    matchAllTypes: "Только карты со всеми выбранными типами",
     clearFilters: "Сбросить фильтры",
     colors: "Цвета",
     dismiss: "Закрыть",
@@ -70,6 +75,8 @@ export const ru: Messages = {
     sorcery: "Волшебства",
     artifact: "Артефакты",
     enchantment: "Чары",
+    battle: "Сражения",
+    kindred: "Родственные",
     land: "Земли",
   },
   colors: {
@@ -492,6 +499,15 @@ export const ru: Messages = {
     mostPlayedIn: "Чаще всего в",
     emptyTitle: "Нет подходящих карт в рейтинге.",
     emptyBody: "Ослабьте фильтр или поищите другое название.",
+    emptyEveryType:
+      "Ни у одной карты нет сразу всех выбранных типов. Допустите любой из них или уберите один.",
+    emptyEveryColor:
+      "Ни у одной карты нет сразу всех выбранных цветов. Допустите любой из них или уберите один.",
+    appliedFilters: "Применённые фильтры",
+    removeFilter: "Убрать {filter}",
+    searchFor: "Поиск: {query}",
+    matchAnyType: "Любой тип",
+    matchAnyColor: "Любой цвет",
     selectedCard: "Выбранная карта",
     rank: "Место {rank}",
     winRate: "Доля побед",

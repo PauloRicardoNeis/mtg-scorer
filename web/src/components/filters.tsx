@@ -4,20 +4,10 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useI18n } from "#i18n";
 import type { Snapshot } from "@/lib/api";
+import { TypeFilter } from "./card-type-filter";
 import { Icon } from "./icon";
 import { ColorFilter } from "./mana";
 import { SearchIn } from "./search-in";
-
-// A card matches a type on any face, as Scryfall's t: search does.
-export const cardTypes = [
-  "creature",
-  "planeswalker",
-  "instant",
-  "sorcery",
-  "artifact",
-  "enchantment",
-  "land",
-] as const;
 
 const rarities = [
   "common",
@@ -92,29 +82,20 @@ export function Filters({
               />
             </div>
           </div>
-          <ColorFilter
-            label={t.common.colors}
-            name="color"
-            form={form}
-            selected={current.getAll("color")}
-          />
-          <div className="toolbar-field">
-            <label htmlFor="type">{t.common.cardType}</label>
-            <span className="select">
-              <select
-                id="type"
-                name="type"
-                form={form}
-                defaultValue={current.get("type") ?? ""}
-              >
-                <option value="">{t.common.allCardTypes}</option>
-                {cardTypes.map((value) => (
-                  <option key={value} value={value}>
-                    {t.cardTypes[value]}
-                  </option>
-                ))}
-              </select>
-            </span>
+          <div className="symbol-filters">
+            <ColorFilter
+              label={t.common.colors}
+              name="color"
+              form={form}
+              selected={current.getAll("color")}
+              all={current.get("color_match") === "all"}
+            />
+            <TypeFilter
+              label={t.common.cardTypes}
+              form={form}
+              selected={current.getAll("type")}
+              all={current.get("type_match") === "all"}
+            />
           </div>
           <div className="filter-actions">
             <button type="submit" form={form} disabled={pending}>

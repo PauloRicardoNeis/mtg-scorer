@@ -51,7 +51,12 @@ export const ko: Messages = {
     apply: "적용",
     card: "카드",
     cardType: "카드 유형",
-    allCardTypes: "모든 카드 유형",
+    cardTypes: "카드 유형",
+    // How several selected colors or types combine.
+    matchAny: "하나 이상",
+    matchAll: "모두",
+    matchAllColors: "선택한 색을 모두 가진 카드만",
+    matchAllTypes: "선택한 유형을 모두 가진 카드만",
     clearFilters: "필터 초기화",
     colors: "색",
     dismiss: "닫기",
@@ -69,6 +74,8 @@ export const ko: Messages = {
     sorcery: "집중마법",
     artifact: "마법물체",
     enchantment: "부여마법",
+    battle: "전투",
+    kindred: "동족",
     land: "대지",
   },
   colors: {
@@ -451,6 +458,15 @@ export const ko: Messages = {
     mostPlayedIn: "주요 아키타입",
     emptyTitle: "일치하는 랭킹 카드가 없습니다.",
     emptyBody: "필터를 완화하거나 다른 이름으로 검색하세요.",
+    emptyEveryType:
+      "선택한 유형을 모두 가진 카드가 없습니다. 하나라도 일치하게 바꾸거나 하나를 빼 보세요.",
+    emptyEveryColor:
+      "선택한 색을 모두 가진 카드가 없습니다. 하나라도 일치하게 바꾸거나 하나를 빼 보세요.",
+    appliedFilters: "적용된 필터",
+    removeFilter: "{filter} 제거",
+    searchFor: "검색: {query}",
+    matchAnyType: "아무 유형",
+    matchAnyColor: "아무 색",
     selectedCard: "선택한 카드",
     rank: "{rank}위",
     winRate: "승률",

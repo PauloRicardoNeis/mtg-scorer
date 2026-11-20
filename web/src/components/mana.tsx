@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties } from "react";
 import { useI18n } from "#i18n";
+import { MatchToggle } from "./match-toggle";
 
 /** Scryfall hosts the official card symbols as SVGs, alongside the card scans. */
 const symbolBase = "https://svgs.scryfall.io/card-symbols";
@@ -131,6 +132,7 @@ export function ColorFilter({
   form,
   hideLabel = false,
   id = `${name}-label`,
+  all,
 }: {
   label: string;
   name: string;
@@ -139,6 +141,8 @@ export function ColorFilter({
   hideLabel?: boolean;
   /** The label's id, for a page that shows the same filter twice. */
   id?: string;
+  /** Whether every selected color must match; absent, the toggle is left out. */
+  all?: boolean | undefined;
 }) {
   const { t } = useI18n();
   return (
@@ -146,32 +150,46 @@ export function ColorFilter({
       <span className={hideLabel ? "sr-only" : "group-label"} id={id}>
         {label}
       </span>
-      <div role="group" aria-labelledby={id} className="segmented color-filter">
-        {filterColors.map((color) => (
-          <label key={color} title={t.colors[color]}>
-            <input
-              type="checkbox"
-              name={name}
-              value={color}
-              form={form}
-              defaultChecked={selected.includes(color)}
-            />
-            <img
-              className="filter-symbol"
-              data-color={color}
-              src={symbolSrc(color)!}
-              alt=""
-              decoding="async"
-              draggable={false}
-              style={
-                {
-                  "--glow": `var(--mana-${color.toLowerCase()})`,
-                } as CSSProperties
-              }
-            />
-            <span className="sr-only">{t.colors[color]}</span>
-          </label>
-        ))}
+      <div className="symbol-filter">
+        <div
+          role="group"
+          aria-labelledby={id}
+          className="segmented color-filter"
+        >
+          {filterColors.map((color) => (
+            <label key={color} title={t.colors[color]}>
+              <input
+                type="checkbox"
+                name={name}
+                value={color}
+                form={form}
+                defaultChecked={selected.includes(color)}
+              />
+              <img
+                className="filter-symbol"
+                data-color={color}
+                src={symbolSrc(color)!}
+                alt=""
+                decoding="async"
+                draggable={false}
+                style={
+                  {
+                    "--glow": `var(--mana-${color.toLowerCase()})`,
+                  } as CSSProperties
+                }
+              />
+              <span className="sr-only">{t.colors[color]}</span>
+            </label>
+          ))}
+        </div>
+        {all !== undefined && (
+          <MatchToggle
+            name={`${name}_match`}
+            label={t.common.matchAllColors}
+            all={all}
+            form={form}
+          />
+        )}
       </div>
     </div>
   );

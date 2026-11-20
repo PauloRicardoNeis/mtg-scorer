@@ -29,7 +29,9 @@ class CatalogQueryValidationTests {
                 null,
                 null,
                 List.of(),
-                null,
+                "any",
+                List.of(),
+                "any",
                 "name_asc",
                 24,
                 null,
@@ -61,7 +63,9 @@ class CatalogQueryValidationTests {
                 "arena",
                 null,
                 List.of(),
-                null,
+                "any",
+                List.of(),
+                "any",
                 "original_first",
                 10,
                 "catalog-abc",
@@ -140,7 +144,10 @@ class CatalogQueryValidationTests {
 
   @Test
   void typeIsOneOfTheSupportedCardTypes() {
-    for (String type : CatalogQuery.TYPES) assertThat(cards("type", type).type()).isEqualTo(type);
+    for (String type : CatalogQuery.TYPES)
+      assertThat(cards("type", type).types()).containsExactly(type);
+    assertThat(cards("type", "land", "type", "creature").types())
+        .containsExactly("creature", "land");
     assertInvalidQuery(() -> cards("type", "tribal"), "Invalid card type.");
   }
 
@@ -177,7 +184,8 @@ class CatalogQueryValidationTests {
             "in",
             "game",
             "color_identity",
-            "type",
+            "color_match",
+            "type_match",
             "sort",
             "limit",
             "catalog_snapshot_id",

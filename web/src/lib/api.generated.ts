@@ -1194,6 +1194,8 @@ export interface operations {
                 /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
                 color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
                 color_identity?: string;
+                /** @description How several selected values combine: any one of them, or all of them. */
+                color_match?: "any" | "all";
                 cursor?: string;
                 game?: "arena" | "mtgo" | "paper";
                 /** @description Where q is looked for, on any face: names, type lines, rules text, or all of them. */
@@ -1203,8 +1205,10 @@ export interface operations {
                 rarity?: ("bonus" | "common" | "mythic" | "rare" | "special" | "uncommon")[];
                 set?: string[];
                 sort?: "name_asc";
-                /** @description A card type on any face's type line. */
-                type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
+                /** @description Card types on any face's type line; a card matches as type_match says. */
+                type?: ("artifact" | "battle" | "creature" | "enchantment" | "instant" | "kindred" | "land" | "planeswalker" | "sorcery")[];
+                /** @description How several selected values combine: any one of them, or all of them. */
+                type_match?: "any" | "all";
             };
             header?: never;
             path?: never;
@@ -1535,6 +1539,8 @@ export interface operations {
             query?: {
                 /** @description Card colors; a card matches any selected one. C selects known colorless cards. */
                 color?: ("W" | "U" | "B" | "R" | "G" | "C")[];
+                /** @description How several selected values combine: any one of them, or all of them. */
+                color_match?: "any" | "all";
                 format?: string;
                 /** @description Where q is looked for, on any face: names, type lines, rules text, or all of them. */
                 in?: "all" | "name" | "type" | "text";
@@ -1549,8 +1555,10 @@ export interface operations {
                 score_run_id?: string;
                 /** @description score orders by the selected method's first output; movement by places gained since the previous run; price by the USD price; value by score per dollar. */
                 sort?: "score" | "decks" | "top_cuts" | "name" | "win_rate" | "top_cut_lift" | "trend" | "movement" | "price" | "value";
-                /** @description A card type on any face's type line. */
-                type?: "artifact" | "creature" | "enchantment" | "instant" | "land" | "planeswalker" | "sorcery";
+                /** @description Card types on any face's type line; a card matches as type_match says. */
+                type?: ("artifact" | "battle" | "creature" | "enchantment" | "instant" | "kindred" | "land" | "planeswalker" | "sorcery")[];
+                /** @description How several selected values combine: any one of them, or all of them. */
+                type_match?: "any" | "all";
                 /** @description risers and fallers keep cards that gained or lost places. */
                 view?: "all" | "risers" | "fallers";
             };

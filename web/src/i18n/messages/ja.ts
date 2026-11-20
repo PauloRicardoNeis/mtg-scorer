@@ -51,7 +51,12 @@ export const ja: Messages = {
     apply: "適用",
     card: "カード",
     cardType: "カード・タイプ",
-    allCardTypes: "すべてのカード・タイプ",
+    cardTypes: "カード・タイプ",
+    // How several selected colors or types combine.
+    matchAny: "いずれか",
+    matchAll: "すべて",
+    matchAllColors: "選んだ色をすべて持つカードのみ",
+    matchAllTypes: "選んだタイプをすべて持つカードのみ",
     clearFilters: "絞り込みを解除",
     colors: "色",
     dismiss: "閉じる",
@@ -69,6 +74,8 @@ export const ja: Messages = {
     sorcery: "ソーサリー",
     artifact: "アーティファクト",
     enchantment: "エンチャント",
+    battle: "バトル",
+    kindred: "同族",
     land: "土地",
   },
   colors: {
@@ -456,6 +463,15 @@ export const ja: Messages = {
     mostPlayedIn: "主な採用先",
     emptyTitle: "該当するカードはありません。",
     emptyBody: "絞り込みを緩めるか、別の名前で検索してください。",
+    emptyEveryType:
+      "選んだタイプをすべて持つカードはありません。いずれかに一致する設定にするか、1つ外してください。",
+    emptyEveryColor:
+      "選んだ色をすべて持つカードはありません。いずれかに一致する設定にするか、1つ外してください。",
+    appliedFilters: "適用中の絞り込み",
+    removeFilter: "{filter}を外す",
+    searchFor: "検索: {query}",
+    matchAnyType: "いずれかのタイプ",
+    matchAnyColor: "いずれかの色",
     selectedCard: "選択中のカード",
     rank: "{rank}位",
     winRate: "勝率",

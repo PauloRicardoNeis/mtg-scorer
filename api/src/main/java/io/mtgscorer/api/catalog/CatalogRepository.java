@@ -64,21 +64,11 @@ class CatalogRepository {
               ? ""
               : String.join(",", query.colorIdentity().split("")));
     }
-    if (!query.colors().isEmpty()) {
-      // Any selected color matches; unknown colors (null) never match.
-      List<String> any = new ArrayList<>();
-      List<String> chromatic = query.colors().stream().filter(c -> !c.equals("C")).toList();
-      if (!chromatic.isEmpty()) {
-        any.add("c.colors && string_to_array(:anyColors,',')");
-        args.put("anyColors", String.join(",", chromatic));
-      }
-      if (query.colors().contains("C")) any.add("c.colors='{}'");
-      where += " AND (" + String.join(" OR ", any) + ")";
-    }
-    if (query.type() != null) {
-      where += " AND shown.type_line ~ :typePattern";
-      args.put("typePattern", CatalogSql.typePattern(query.type()));
-    }
+    if (!query.colors().isEmpty())
+      where +=
+          " AND " + CatalogSql.colorFilter("c.colors", query.colors(), query.colorMatch(), args);
+    if (!query.types().isEmpty())
+      where += " AND " + CatalogSql.typeFilter(query.types(), query.typeMatch(), args);
     if (cursor != null) {
       where += " AND (c.name_key,c.oracle_id) > (:lastName COLLATE \"C\",CAST(:lastId AS uuid))";
       args.put("lastName", cursor.last_key().getFirst());

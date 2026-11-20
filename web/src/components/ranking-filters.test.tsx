@@ -66,7 +66,20 @@ describe("RankingFilters", () => {
     expect(form).toHaveAttribute("method", "get");
     expect(screen.getByRole("group", { name: "Colors" })).toBeInTheDocument();
     expect(screen.getByText("Colors")).toHaveClass("sr-only");
-    expect(select("Card type")).toHaveValue("");
+    expect(
+      screen.getByRole("group", { name: "Card types" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Card types")).toHaveClass("sr-only");
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected color",
+      }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected type",
+      }),
+    ).not.toBeChecked();
     // Sorting moved to the table's headers.
     expect(screen.queryByRole("combobox", { name: "Sort by" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Clear filters" })).toBeNull();
@@ -91,11 +104,42 @@ describe("RankingFilters", () => {
   });
 
   it("reflects the filters in the query", () => {
-    render(filters("color=R&color=C&type=instant"));
+    render(filters("color=R&color=C&type=instant&type=land&type_match=all"));
     expect(screen.getByRole("checkbox", { name: "Red" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Colorless" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Blue" })).not.toBeChecked();
-    expect(select("Card type")).toHaveValue("instant");
+    expect(screen.getByRole("checkbox", { name: "Instants" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Lands" })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Sorceries" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected type",
+      }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected color",
+      }),
+    ).not.toBeChecked();
+  });
+
+  it("applies the any/all toggles at once", async () => {
+    const user = userEvent.setup();
+    render(filters("color=W&color=U"));
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected color",
+      }),
+    );
+    expect(replaced()).toEqual([
+      ["format", "Modern"],
+      ["score_run_id", "run-1"],
+      ["color", "W"],
+      ["color", "U"],
+      ["color_match", "all"],
+    ]);
   });
 
   it("applies a type at once, keeping the run, search, order, view and page size", async () => {
@@ -105,7 +149,7 @@ describe("RankingFilters", () => {
         "q=bolt&in=text&sort=win_rate&order=asc&view=risers&limit=50&offset=24",
       ),
     );
-    await user.selectOptions(select("Card type"), "instant");
+    await user.click(screen.getByRole("checkbox", { name: "Instants" }));
     expect(replaced()).toEqual([
       ["format", "Modern"],
       ["score_run_id", "run-1"],
@@ -234,7 +278,7 @@ describe("RankingFilters", () => {
     const user = userEvent.setup();
     render(graded("", "signature-score", []));
     expect(screen.queryByRole("combobox", { name: "Grading" })).toBeNull();
-    await user.selectOptions(select("Card type"), "land");
+    await user.click(screen.getByRole("checkbox", { name: "Lands" }));
     expect(replaced()).toEqual([
       ["format", "Modern"],
       ["score_run_id", "run-1"],
@@ -303,11 +347,25 @@ describe("RankingFilters", () => {
   );
 
   it("follows the address when a link elsewhere changes the filters", () => {
-    const { rerender } = render(filters("color=R&type=instant"));
-    rerender(filters("color=U"));
+    const { rerender } = render(
+      filters("color=R&type=instant&color_match=all"),
+    );
+    rerender(filters("color=U&type_match=all"));
     expect(screen.getByRole("checkbox", { name: "Red" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Blue" })).toBeChecked();
-    expect(select("Card type")).toHaveValue("");
+    expect(
+      screen.getByRole("checkbox", { name: "Instants" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected color",
+      }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Only cards with every selected type",
+      }),
+    ).toBeChecked();
     expect(router.replace).not.toHaveBeenCalled();
   });
 });
@@ -357,7 +415,13 @@ describe("RankingFilters for commanders", () => {
       "/rankings?format=EDH",
     );
     expect(screen.queryByRole("navigation", { name: "Views" })).toBeNull();
-    expect(screen.queryByRole("combobox", { name: "Card type" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Card types" })).toBeNull();
+    // Commanders combine colors one way only.
+    expect(
+      screen.queryByRole("checkbox", {
+        name: "Only cards with every selected color",
+      }),
+    ).toBeNull();
   });
 
   it("applies a color on the commanders page", async () => {
@@ -491,9 +555,7 @@ describe("RankingFilters menu", () => {
     expect(dialog.getByRole("radio", { name: /All/ })).not.toBeChecked();
     expect(dialog.getByRole("checkbox", { name: "Red" })).toBeChecked();
     expect(dialog.getByRole("checkbox", { name: "Blue" })).not.toBeChecked();
-    expect(dialog.getByRole("combobox", { name: "Card type" })).toHaveValue(
-      "instant",
-    );
+    expect(dialog.getByRole("checkbox", { name: "Instants" })).toBeChecked();
     const sort = dialog.getByRole("combobox", { name: "Sort by" });
     expect(
       within(sort)
@@ -532,10 +594,7 @@ describe("RankingFilters menu", () => {
     await user.type(search, "fire");
     await user.click(dialog.getByRole("checkbox", { name: "Red" }));
     await user.click(dialog.getByRole("checkbox", { name: "Green" }));
-    await user.selectOptions(
-      dialog.getByRole("combobox", { name: "Card type" }),
-      "instant",
-    );
+    await user.click(dialog.getByRole("checkbox", { name: "Instants" }));
     // Names start ascending, so the kept order needs no place in the address.
     await user.selectOptions(
       dialog.getByRole("combobox", { name: "Sort by" }),
@@ -600,7 +659,7 @@ describe("RankingFilters menu", () => {
     );
     const dialog = await open(user);
     expect(dialog.queryByRole("radiogroup", { name: "Views" })).toBeNull();
-    expect(dialog.queryByRole("combobox", { name: "Card type" })).toBeNull();
+    expect(dialog.queryByRole("group", { name: "Card types" })).toBeNull();
     expect(dialog.getByRole("combobox", { name: "Grading" })).toHaveValue(
       "max-ratio",
     );
@@ -743,7 +802,7 @@ describe("RankingFilters menu", () => {
     expect(dialog.getByRole("combobox", { name: "Minimum decks" })).toHaveValue(
       "10",
     );
-    expect(dialog.queryByRole("combobox", { name: "Card type" })).toBeNull();
+    expect(dialog.queryByRole("group", { name: "Card types" })).toBeNull();
     await user.selectOptions(
       dialog.getByRole("combobox", { name: "Sort by" }),
       "",

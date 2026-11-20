@@ -649,4 +649,41 @@ describe("RankingTable", () => {
     expect(screen.queryByRole("complementary")).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("1–3 of 3");
   });
+
+  it("names the filters that emptied the page and how to widen them", () => {
+    render(
+      <RankingTable
+        {...table([]).props}
+        emptyHints={{
+          reason: "No card has every selected type at once.",
+          filters: [
+            { label: "Planeswalkers", href: "/rankings?type=sorcery" },
+            { label: "Sorceries", href: "/rankings?type=planeswalker" },
+          ],
+          loosen: [
+            {
+              label: "Match any type",
+              href: "/rankings?type=planeswalker&type=sorcery",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("No card has every selected type at once."),
+    ).toBeInTheDocument();
+    const filters = within(
+      screen.getByRole("list", { name: "Applied filters" }),
+    );
+    expect(
+      filters.getByRole("link", { name: "Remove Planeswalkers" }),
+    ).toHaveAttribute("href", "/rankings?type=sorcery");
+    expect(filters.getAllByRole("link")).toHaveLength(2);
+    expect(
+      screen.getByRole("link", { name: "Match any type" }),
+    ).toHaveAttribute("href", "/rankings?type=planeswalker&type=sorcery");
+    expect(
+      screen.getByRole("link", { name: "Clear filters" }),
+    ).toBeInTheDocument();
+  });
 });

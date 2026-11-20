@@ -36,6 +36,69 @@ export type ColumnLabels = {
   value: string;
 };
 
+export type FilterLink = { label: string; href: string };
+
+/** What an empty page tells the reader about the filters that emptied it. */
+export type EmptyHints = {
+  /** Why no card matched, when one filter explains it. */
+  reason?: string | undefined;
+  /** The applied filters, each a link that drops it. */
+  filters: FilterLink[];
+  /** Ways to loosen the filters short of clearing them all. */
+  loosen: FilterLink[];
+};
+
+/** No card on the page: why, which filters apply, and how to widen them. */
+function NoMatches({
+  hints,
+  clearHref,
+}: {
+  hints: EmptyHints;
+  clearHref: string;
+}) {
+  const { t, fill } = useI18n();
+  return (
+    <div className="ranking-empty">
+      <span className="ranking-empty-icon" aria-hidden="true">
+        <Icon name="search" size={18} />
+      </span>
+      <h3>{t.rankingTable.emptyTitle}</h3>
+      <p>{hints.reason ?? t.rankingTable.emptyBody}</p>
+      {hints.filters.length > 0 && (
+        <ul
+          className="ranking-empty-filters"
+          aria-label={t.rankingTable.appliedFilters}
+        >
+          {hints.filters.map((filter) => (
+            <li key={filter.href}>
+              <Link
+                className="chip"
+                href={filter.href}
+                aria-label={fill(t.rankingTable.removeFilter, {
+                  filter: filter.label,
+                })}
+              >
+                {filter.label}
+                <Icon name="x" size={12} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="ranking-empty-actions">
+        {hints.loosen.map((action) => (
+          <Link key={action.href} className="button" href={action.href}>
+            {action.label}
+          </Link>
+        ))}
+        <Link className="button secondary" href={clearHref}>
+          {t.common.clearFilters}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function score(card: RankedCard, { decimal }: I18n): string | null {
   return card.score === null ? null : decimal(card.score, 1);
 }
@@ -309,6 +372,7 @@ export function RankingTable({
   catalogSnapshotId,
   pricesUpdatedAt,
   clearHref,
+  emptyHints = { filters: [], loosen: [] },
   footer,
   moves = true,
 }: {
@@ -322,6 +386,7 @@ export function RankingTable({
   catalogSnapshotId: string | null;
   pricesUpdatedAt: string | null;
   clearHref: string;
+  emptyHints?: EmptyHints;
   footer: ReactNode;
   /** Whether an earlier run of the format measures each card's change of rank. */
   moves?: boolean;
@@ -537,13 +602,7 @@ export function RankingTable({
           </table>
         </div>
         {items.length === 0 && (
-          <div className="ranking-empty">
-            <h3>{t.rankingTable.emptyTitle}</h3>
-            <p>{t.rankingTable.emptyBody}</p>
-            <Link className="button secondary" href={clearHref}>
-              {t.common.clearFilters}
-            </Link>
-          </div>
+          <NoMatches hints={emptyHints} clearHref={clearHref} />
         )}
         <div className="ranking-footer">{footer}</div>
       </div>

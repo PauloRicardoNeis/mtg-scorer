@@ -50,7 +50,12 @@ export const zhHans: Messages = {
     apply: "应用",
     card: "卡牌",
     cardType: "卡牌类别",
-    allCardTypes: "所有卡牌类别",
+    cardTypes: "卡牌类别",
+    // How several selected colors or types combine.
+    matchAny: "任一",
+    matchAll: "全部",
+    matchAllColors: "仅显示具有所有所选颜色的牌",
+    matchAllTypes: "仅显示具有所有所选类别的牌",
     clearFilters: "清除筛选",
     colors: "颜色",
     dismiss: "关闭",
@@ -68,6 +73,8 @@ export const zhHans: Messages = {
     sorcery: "法术",
     artifact: "神器",
     enchantment: "结界",
+    battle: "战役",
+    kindred: "亲族",
     land: "地",
   },
   colors: {
@@ -443,6 +450,15 @@ export const zhHans: Messages = {
     mostPlayedIn: "最常用于",
     emptyTitle: "没有匹配的已排名卡牌。",
     emptyBody: "放宽筛选条件，或搜索其他名称。",
+    emptyEveryType:
+      "没有卡牌同时具备所选的全部类别。改为匹配任一类别，或去掉一个。",
+    emptyEveryColor:
+      "没有卡牌同时具备所选的全部颜色。改为匹配任一颜色，或去掉一个。",
+    appliedFilters: "已应用的筛选",
+    removeFilter: "移除{filter}",
+    searchFor: "搜索：{query}",
+    matchAnyType: "任一类别",
+    matchAnyColor: "任一颜色",
     selectedCard: "所选卡牌",
     rank: "第{rank}名",
     winRate: "胜率",

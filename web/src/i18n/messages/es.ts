@@ -52,7 +52,12 @@ export const es: Messages = {
     apply: "Aplicar",
     card: "Carta",
     cardType: "Tipo de carta",
-    allCardTypes: "Todos los tipos de carta",
+    cardTypes: "Tipos de carta",
+    // How several selected colors or types combine.
+    matchAny: "Alguno",
+    matchAll: "Todos",
+    matchAllColors: "Solo cartas con todos los colores elegidos",
+    matchAllTypes: "Solo cartas con todos los tipos elegidos",
     clearFilters: "Borrar filtros",
     colors: "Colores",
     dismiss: "Cerrar",
@@ -70,6 +75,8 @@ export const es: Messages = {
     sorcery: "Conjuros",
     artifact: "Artefactos",
     enchantment: "Encantamientos",
+    battle: "Batallas",
+    kindred: "Afines",
     land: "Tierras",
   },
   colors: {
@@ -482,6 +489,15 @@ export const es: Messages = {
     mostPlayedIn: "Más jugada en",
     emptyTitle: "Ninguna carta clasificada coincide.",
     emptyBody: "Relaja algún filtro o busca otro nombre.",
+    emptyEveryType:
+      "Ninguna carta tiene a la vez todos los tipos elegidos. Acepta cualquiera de ellos o quita uno.",
+    emptyEveryColor:
+      "Ninguna carta tiene a la vez todos los colores elegidos. Acepta cualquiera de ellos o quita uno.",
+    appliedFilters: "Filtros aplicados",
+    removeFilter: "Quitar {filter}",
+    searchFor: "Búsqueda: {query}",
+    matchAnyType: "Cualquier tipo",
+    matchAnyColor: "Cualquier color",
     selectedCard: "Carta seleccionada",
     rank: "Puesto {rank}",
     winRate: "% de victorias",

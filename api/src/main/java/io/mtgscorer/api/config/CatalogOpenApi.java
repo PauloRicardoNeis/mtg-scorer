@@ -339,7 +339,12 @@ public class CatalogOpenApi {
               new ArraySchema()
                   .items(new StringSchema()._enum(CatalogQuery.COLORS))
                   .maxItems(CatalogQuery.COLORS.size());
-          case "type" -> new StringSchema()._enum(CatalogQuery.TYPES.stream().sorted().toList());
+          case "type" ->
+              new ArraySchema()
+                  .items(new StringSchema()._enum(CatalogQuery.TYPES.stream().sorted().toList()))
+                  .maxItems(CatalogQuery.TYPES.size());
+          case "color_match", "type_match" ->
+              new StringSchema()._enum(CatalogQuery.MATCHES)._default("any");
           case "sort" -> new StringSchema()._enum(List.of("name_asc"))._default("name_asc");
           case "limit" ->
               new IntegerSchema()
@@ -353,11 +358,16 @@ public class CatalogOpenApi {
     if (name.equals("color"))
       parameter.description(
           "Card colors; a card matches any selected one. C selects known colorless cards.");
-    if (name.equals("type")) parameter.description("A card type on any face's type line.");
+    if (name.equals("type"))
+      parameter.description(
+          "Card types on any face's type line; a card matches as type_match says.");
+    if (name.equals("color_match") || name.equals("type_match"))
+      parameter.description(
+          "How several selected values combine: any one of them, or all of them.");
     if (name.equals("in"))
       parameter.description(
           "Where q is looked for, on any face: names, type lines, rules text, or all of them.");
-    if (Set.of("set", "rarity", "color").contains(name))
+    if (CatalogQuery.REPEATED.contains(name))
       parameter.style(Parameter.StyleEnum.FORM).explode(true);
     return parameter;
   }

@@ -52,7 +52,12 @@ export const ptBR: Messages = {
     apply: "Aplicar",
     card: "Card",
     cardType: "Tipo de card",
-    allCardTypes: "Todos os tipos de card",
+    cardTypes: "Tipos de card",
+    // How several selected colors or types combine.
+    matchAny: "Qualquer",
+    matchAll: "Todos",
+    matchAllColors: "Só cards com todas as cores escolhidas",
+    matchAllTypes: "Só cards com todos os tipos escolhidos",
     clearFilters: "Limpar filtros",
     colors: "Cores",
     dismiss: "Dispensar",
@@ -70,6 +75,8 @@ export const ptBR: Messages = {
     sorcery: "Feitiços",
     artifact: "Artefatos",
     enchantment: "Encantamentos",
+    battle: "Batalhas",
+    kindred: "Afins",
     land: "Terrenos",
   },
   colors: {
@@ -483,6 +490,15 @@ export const ptBR: Messages = {
     mostPlayedIn: "Mais jogado em",
     emptyTitle: "Nenhum card ranqueado corresponde.",
     emptyBody: "Afrouxe um filtro ou busque outro nome.",
+    emptyEveryType:
+      "Nenhum card tem todos os tipos selecionados ao mesmo tempo. Aceite qualquer um deles ou remova um.",
+    emptyEveryColor:
+      "Nenhum card tem todas as cores selecionadas ao mesmo tempo. Aceite qualquer uma delas ou remova uma.",
+    appliedFilters: "Filtros aplicados",
+    removeFilter: "Remover {filter}",
+    searchFor: "Busca: {query}",
+    matchAnyType: "Qualquer tipo",
+    matchAnyColor: "Qualquer cor",
     selectedCard: "Card selecionado",
     rank: "Posição {rank}",
     winRate: "Taxa de vitória",

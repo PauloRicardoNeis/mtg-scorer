@@ -11,7 +11,7 @@ import {
   type FormEvent,
 } from "react";
 import { useI18n } from "#i18n";
-import { cardTypes } from "./filters";
+import { TypeFilter } from "./card-type-filter";
 import { Icon } from "./icon";
 import { ColorFilter } from "./mana";
 import { rememberFocus, useRefocus } from "./refocus";
@@ -249,31 +249,23 @@ function FilterMenu({
               </span>
             </div>
           )}
-          <ColorFilter
-            label={t.common.colors}
-            name="color"
-            selected={current.getAll("color")}
-            id={`${id}-colors`}
-          />
-          {types && (
-            <div>
-              <label htmlFor={`${id}-type`}>{t.common.cardType}</label>
-              <span className="select">
-                <select
-                  id={`${id}-type`}
-                  name="type"
-                  defaultValue={current.get("type") ?? ""}
-                >
-                  <option value="">{t.common.allCardTypes}</option>
-                  {cardTypes.map((value) => (
-                    <option key={value} value={value}>
-                      {t.cardTypes[value]}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </div>
-          )}
+          <div className="filter-menu-wide symbol-filters">
+            <ColorFilter
+              label={t.common.colors}
+              name="color"
+              selected={current.getAll("color")}
+              id={`${id}-colors`}
+              all={types ? current.get("color_match") === "all" : undefined}
+            />
+            {types && (
+              <TypeFilter
+                label={t.common.cardTypes}
+                selected={current.getAll("type")}
+                id={`${id}-types`}
+                all={current.get("type_match") === "all"}
+              />
+            )}
+          </div>
           {minDecks.length > 0 && (
             <div>
               <label htmlFor={`${id}-min-decks`}>{t.commanders.minDecks}</label>
@@ -404,7 +396,7 @@ export function RankingFilters({
   method?: string;
   kinds?: KindTab[];
   action?: string;
-  /** Whether the card type select applies. */
+  /** Whether the card type filter and the any/all toggles apply. */
   types?: boolean;
   /** Whether the search can keep to a part of each card, as card rankings can. */
   fields?: boolean;
@@ -433,7 +425,10 @@ export function RankingFilters({
   };
   const current = new URLSearchParams(query);
   const colors = current.getAll("color");
-  const type = current.get("type") ?? "";
+  const typeList = current.getAll("type");
+  // Only card rankings combine several colors or types either way.
+  const colorMatch = current.get("color_match") === "all";
+  const typeMatch = current.get("type_match") === "all";
   const minimum = current.get("min_decks") ?? "";
   const view = current.get("view");
   // Kept as they are: a filter change re-ranks under the same search, order,
@@ -443,18 +438,31 @@ export function RankingFilters({
     return value ? [[key, value] as const] : [];
   });
   const filtered = Boolean(
-    current.get("q") || type || minimum || colors.length,
+    current.get("q") || typeList.length || minimum || colors.length,
   );
-  // The menu's badge counts each kind of filter set, not each color.
-  const active = [current.get("q"), type, minimum, colors.length, view].filter(
-    Boolean,
-  ).length;
+  // The menu's badge counts each kind of filter set, not each color or type.
+  const active = [
+    current.get("q"),
+    typeList.length,
+    minimum,
+    colors.length,
+    view,
+  ].filter(Boolean).length;
   // A link elsewhere (clear filters, the header search, history) changes the
   // address without remounting the form, so its controls follow the address.
   // The server rendered them from this address, so mounting leaves them alone:
   // a choice made before hydration would otherwise be undone.
   const colorKey = colors.join();
-  const address = [colorKey, type, minimum, scoreRunId, method].join("\n");
+  const typeKey = typeList.join();
+  const address = [
+    colorKey,
+    typeKey,
+    colorMatch,
+    typeMatch,
+    minimum,
+    scoreRunId,
+    method,
+  ].join("\n");
   const synced = useRef(address);
   useEffect(() => {
     if (synced.current === address) return;
@@ -462,8 +470,17 @@ export function RankingFilters({
     const controls = form.current!.elements;
     for (const box of controls.namedItem("color") as RadioNodeList)
       box.checked = colorKey.split(",").includes(box.value);
-    const typeSelect = controls.namedItem("type");
-    if (typeSelect instanceof HTMLSelectElement) typeSelect.value = type;
+    const typeBoxes = controls.namedItem("type");
+    if (typeBoxes instanceof RadioNodeList)
+      for (const box of typeBoxes)
+        box.checked = typeKey.split(",").includes(box.value);
+    for (const [name, all] of [
+      ["color_match", colorMatch],
+      ["type_match", typeMatch],
+    ] as const) {
+      const toggle = controls.namedItem(name);
+      if (toggle instanceof HTMLInputElement) toggle.checked = all;
+    }
     (
       controls.namedItem("score_run_id") as HTMLInputElement | HTMLSelectElement
     ).value = scoreRunId;
@@ -471,7 +488,16 @@ export function RankingFilters({
     if (grading instanceof HTMLSelectElement) grading.value = method;
     const decks = controls.namedItem("min_decks");
     if (decks instanceof HTMLSelectElement) decks.value = minimum;
-  }, [address, colorKey, type, minimum, scoreRunId, method]);
+  }, [
+    address,
+    colorKey,
+    typeKey,
+    colorMatch,
+    typeMatch,
+    minimum,
+    scoreRunId,
+    method,
+  ]);
   useRefocus(form, `${scoreRunId}?${query}`);
   const apply = () =>
     startTransition(() =>
@@ -565,28 +591,24 @@ export function RankingFilters({
               </select>
             </span>
           )}
-          <ColorFilter
-            label={t.common.colors}
-            name="color"
-            selected={colors}
-            hideLabel
-          />
-          {types && (
-            <span className="select">
-              <select
-                aria-label={t.common.cardType}
-                name="type"
-                defaultValue={type}
-              >
-                <option value="">{t.common.allCardTypes}</option>
-                {cardTypes.map((value) => (
-                  <option key={value} value={value}>
-                    {t.cardTypes[value]}
-                  </option>
-                ))}
-              </select>
-            </span>
-          )}
+          <div className="symbol-filters">
+            <ColorFilter
+              label={t.common.colors}
+              name="color"
+              selected={colors}
+              hideLabel
+              all={types ? colorMatch : undefined}
+            />
+            {types && (
+              <TypeFilter
+                label={t.common.cardTypes}
+                selected={typeList}
+                hideLabel
+                id={`${panel}-types`}
+                all={typeMatch}
+              />
+            )}
+          </div>
           {minDecks.length > 0 && (
             <span className="select">
               <select

@@ -16,8 +16,10 @@ public record RankingQuery(
     String method,
     String q,
     String in,
-    String type,
+    List<String> types,
+    String typeMatch,
     List<String> colors,
+    String colorMatch,
     String sort,
     String order,
     String view,
@@ -66,7 +68,9 @@ public record RankingQuery(
           "q",
           "in",
           "type",
+          "type_match",
           "color",
+          "color_match",
           "sort",
           "order",
           "view",
@@ -89,14 +93,14 @@ public record RankingQuery(
       if (q.isEmpty()) q = null;
     }
     String in = CatalogQuery.searchIn(input);
-    String type = scalar(input, "type");
-    if (type != null && !CatalogQuery.TYPES.contains(type))
-      throw CatalogProblem.query("Invalid card type.");
+    List<String> types = CatalogQuery.types(input);
+    String typeMatch = CatalogQuery.match(input, "type_match");
     List<String> selected = input.getOrDefault("color", List.of());
     if (selected.size() > CatalogQuery.COLORS.size())
       throw CatalogProblem.query("Too many color filters.");
     if (!CatalogQuery.COLORS.containsAll(selected)) throw CatalogProblem.query("Invalid color.");
     List<String> colors = CatalogQuery.COLORS.stream().filter(selected::contains).toList();
+    String colorMatch = CatalogQuery.match(input, "color_match");
     String sort = scalar(input, "sort");
     if (sort == null) sort = "score";
     else if (!SORTS.contains(sort)) throw CatalogProblem.query("Invalid sort.");
@@ -112,7 +116,20 @@ public record RankingQuery(
     if (scoreRun != null && !scoreRun.matches("scores-[0-9a-f]{64}"))
       throw CatalogProblem.query("Invalid score run ID.");
     return new RankingQuery(
-        format, method, q, in, type, colors, sort, order, view, limit, offset, scoreRun);
+        format,
+        method,
+        q,
+        in,
+        types,
+        typeMatch,
+        colors,
+        colorMatch,
+        sort,
+        order,
+        view,
+        limit,
+        offset,
+        scoreRun);
   }
 
   private static String scalar(Map<String, List<String>> input, String key) {

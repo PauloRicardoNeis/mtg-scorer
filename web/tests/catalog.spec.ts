@@ -159,7 +159,7 @@ test("color and card type filters, with cost and type on tiles", async ({
   await page.getByTitle("Red", { exact: true }).click();
   await page.getByTitle("Blue", { exact: true }).click();
   await expect(page.getByRole("checkbox", { name: "Red" })).toBeChecked();
-  await page.getByLabel("Card type").selectOption("instant");
+  await page.getByTitle("Instants", { exact: true }).click();
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(page).toHaveURL(/color=U&color=R&type=instant/);
   for (const name of [
@@ -173,9 +173,10 @@ test("color and card type filters, with cost and type on tiles", async ({
   // The selection survives a reload of the shareable URL.
   await page.reload();
   await expect(page.getByRole("checkbox", { name: "Blue" })).toBeChecked();
-  await expect(page.getByLabel("Card type")).toHaveValue("instant");
+  await expect(page.getByRole("checkbox", { name: "Instants" })).toBeChecked();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByLabel("Card type").selectOption("land");
+  await page.getByTitle("Instants", { exact: true }).click();
+  await page.getByTitle("Lands", { exact: true }).click();
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(
     page.getByRole("link", {
