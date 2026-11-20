@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.mtgscorer.api.error.CatalogProblem;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -149,6 +150,9 @@ class CatalogQueryValidationTests {
     assertThat(cards("type", "land", "type", "creature").types())
         .containsExactly("creature", "land");
     assertInvalidQuery(() -> cards("type", "tribal"), "Invalid card type.");
+    List<String> tooMany = new ArrayList<>(CatalogQuery.TYPES);
+    tooMany.add("creature");
+    assertInvalidQuery(() -> cards(repeated("type", tooMany)), "Too many type filters.");
   }
 
   @Test
