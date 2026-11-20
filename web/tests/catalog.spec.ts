@@ -158,7 +158,9 @@ test("color and card type filters, with cost and type on tiles", async ({
   // Labels toggle the visually hidden checkboxes, as a pointer user would.
   await page.getByTitle("Red", { exact: true }).click();
   await page.getByTitle("Blue", { exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Red" })).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: "Red", exact: true }),
+  ).toBeChecked();
   await page.getByTitle("Instants", { exact: true }).click();
   await page.getByRole("button", { name: "Find cards", exact: true }).click();
   await expect(page).toHaveURL(/color=U&color=R&type=instant/);
